@@ -35,6 +35,7 @@ import { useEffect, useRef, useState } from "react";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import type { ClipRecord } from "@/features/clips/types";
+import { useObjectUrl } from "@/hooks/use-object-url";
 import { spring } from "@/lib/motion";
 
 const deleteZoneId = "clip-review-delete-zone";
@@ -390,7 +391,7 @@ function ClipPreview({
           muted
           playsInline
           preload="auto"
-          src={src}
+          src={src ?? undefined}
           onCanPlay={() => setCanPlay(true)}
           onError={() => setHasError(true)}
         />
@@ -552,7 +553,7 @@ function FullscreenPreview({ clip, onClose }: { clip: ClipRecord; onClose: () =>
           controls
           playsInline
           preload="auto"
-          src={src}
+          src={src ?? undefined}
           onError={() => setHasError(true)}
         />
         {hasError ? (
@@ -564,14 +565,4 @@ function FullscreenPreview({ clip, onClose }: { clip: ClipRecord; onClose: () =>
       </motion.div>
     </motion.div>
   );
-}
-
-function useObjectUrl(blob: Blob) {
-  const [src] = useState(() => URL.createObjectURL(blob));
-
-  useEffect(() => {
-    return () => URL.revokeObjectURL(src);
-  }, [src]);
-
-  return src;
 }

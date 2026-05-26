@@ -2,11 +2,12 @@
 
 import { Download, RefreshCcw, Share2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import type { VlogRecord } from "@/features/clips/types";
 import { downloadVlog, shareVlog } from "@/features/share/share";
+import { useObjectUrl } from "@/hooks/use-object-url";
 
 type ResultPanelProps = {
   vlog: VlogRecord;
@@ -16,11 +17,7 @@ type ResultPanelProps = {
 export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
-  const src = useMemo(() => URL.createObjectURL(vlog.blob), [vlog.blob]);
-
-  useEffect(() => {
-    return () => URL.revokeObjectURL(src);
-  }, [src]);
+  const src = useObjectUrl(vlog.blob);
 
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden safe-screen">
@@ -48,7 +45,7 @@ export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
             muted
             playsInline
             preload="auto"
-            src={src}
+            src={src ?? undefined}
           />
         </button>
       </div>
@@ -73,7 +70,7 @@ export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
       </div>
 
       <AnimatePresence>
-        {isPlayerOpen ? (
+        {isPlayerOpen && src ? (
           <FullscreenResultPlayer src={src} title={vlog.title} onClose={() => setIsPlayerOpen(false)} />
         ) : null}
       </AnimatePresence>
