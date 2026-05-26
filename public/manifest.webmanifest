@@ -1,0 +1,19 @@
+{
+  "name": "IdleDiary",
+  "short_name": "IdleDiary",
+  "description": "Tap once, record two seconds, generate a vertical diary vlog.",
+  "start_url": "/capture",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d0c",
+  "theme_color": "#0d0d0c",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
