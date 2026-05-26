@@ -26,3 +26,4 @@ tsconfig.tsbuildinfo
 
 # system
 .DS_Store
+.vercel
