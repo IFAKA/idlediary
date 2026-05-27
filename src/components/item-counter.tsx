@@ -10,6 +10,25 @@ type ItemCounterProps = {
   "aria-label"?: string;
 };
 
+type ItemCountStackProps = {
+  value: number;
+  singular: string;
+  plural: string;
+};
+
+export function ItemCountStack({ value, singular, plural }: ItemCountStackProps) {
+  return (
+    <span className="inline-flex min-w-14 flex-col items-end justify-start gap-0.5 tabular-nums">
+      <span className="text-lg font-semibold leading-none">
+        <ItemCounter value={value} aria-label={String(value)} />
+      </span>
+      <span className="text-[11px] font-medium leading-none text-muted-foreground">
+        {value === 1 ? singular : plural}
+      </span>
+    </span>
+  );
+}
+
 export function ItemCounter({ value, "aria-label": ariaLabel }: ItemCounterProps) {
   const reducedMotion = useReducedMotion() === true;
   const [counterState, setCounterState] = useState<{
