@@ -336,6 +336,24 @@ test("record screen videos button navigates to videos", async ({ page }) => {
   await expect(page.getByRole("heading", { exact: true, name: "Saved entries" })).toBeVisible();
 });
 
+test("record screen videos button is disabled while recording", async ({ page }) => {
+  await mockMediaCapture(page);
+  await openRecord(page);
+
+  await page.getByRole("button", { name: "Record three second clip" }).click();
+
+  const videos = page.getByRole("link", { name: "Videos" });
+  await expect(videos).toHaveAttribute("aria-disabled", "true");
+  await expect(videos).toHaveAttribute("tabindex", "-1");
+  await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+
+  await videos.dispatchEvent("click", { bubbles: true, cancelable: true });
+  await expect(page).toHaveURL("/");
+});
+
 test("draft review stops the camera before generation", async ({ page }) => {
   await mockMediaCapture(page, { generationDelayMs: 5_000 });
   await openRecord(page);

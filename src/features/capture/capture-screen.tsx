@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, Clapperboard, Layers2, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { ItemCountStack } from "@/components/item-counter";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,7 @@ export function CaptureScreen() {
     !clips.loading &&
     recorder.state !== "recording" &&
     recorder.state !== "saving";
+  const canOpenVideos = canOpenDraft;
   const clipLimitReached = clips.clips.length >= 20;
   const latestClip = clips.clips.length > 0 ? clips.clips[clips.clips.length - 1] : null;
   const draftClipCount = clips.loading ? null : clips.clips.length;
@@ -141,14 +142,19 @@ export function CaptureScreen() {
     }
   }, []);
 
-  const handleVideosEntry = useCallback(() => {
+  const handleVideosEntry = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    if (!canOpenVideos) {
+      event.preventDefault();
+      return;
+    }
+
     setSlideDirection("left");
     setHasNeedsActionVlog(false);
     void markNeedsActionVlogsHandled().catch((error) => {
       reportError(error);
       void refreshNeedsActionBadge();
     });
-  }, [refreshNeedsActionBadge]);
+  }, [canOpenVideos, refreshNeedsActionBadge]);
 
   const restoreRequestedView = useCallback(
     async (requestedView = requestedViewFromUrl()) => {
@@ -577,9 +583,11 @@ export function CaptureScreen() {
             <div className="mt-auto">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <Link
+                  aria-disabled={!canOpenVideos}
                   aria-label="Videos"
-                  className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 aria-disabled:pointer-events-none aria-disabled:cursor-default aria-disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   href="/videos"
+                  tabIndex={canOpenVideos ? undefined : -1}
                   onClick={handleVideosEntry}
                 >
                   <Clapperboard className="size-6 text-memory" />
