@@ -1,5 +1,6 @@
 import { AppError } from "@/features/errors/app-error";
 import { reportError } from "@/features/errors/report-error";
+import { drawCoverFrame } from "@/features/video/cover-frame";
 
 export type ThumbnailResult = {
   thumbnailBlob: Blob;
@@ -46,36 +47,6 @@ function canvasToBlob(
   return new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, mimeType, quality);
   });
-}
-
-function drawCoverFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Canvas 2D context is unavailable");
-
-  const sourceWidth = video.videoWidth;
-  const sourceHeight = video.videoHeight;
-  if (sourceWidth <= 0 || sourceHeight <= 0) {
-    throw new Error("Video frame has no dimensions");
-  }
-
-  const sourceRatio = sourceWidth / sourceHeight;
-  const targetRatio = canvas.width / canvas.height;
-  const cropWidth = sourceRatio > targetRatio ? sourceHeight * targetRatio : sourceWidth;
-  const cropHeight = sourceRatio > targetRatio ? sourceHeight : sourceWidth / targetRatio;
-  const cropX = (sourceWidth - cropWidth) / 2;
-  const cropY = (sourceHeight - cropHeight) / 2;
-
-  context.drawImage(
-    video,
-    cropX,
-    cropY,
-    cropWidth,
-    cropHeight,
-    0,
-    0,
-    canvas.width,
-    canvas.height,
-  );
 }
 
 export async function generateVideoThumbnail(
@@ -132,7 +103,7 @@ export async function generateVideoThumbnail(
       await waitForVideoEvent(video, "loadeddata");
     }
 
-    drawCoverFrame(video, canvas);
+    drawCoverFrame(video, canvas, video.videoWidth, video.videoHeight);
 
     const webpBlob = await canvasToBlob(canvas, "image/webp", 0.78);
     const thumbnailBlob = webpBlob ?? (await canvasToBlob(canvas, "image/jpeg", 0.82));

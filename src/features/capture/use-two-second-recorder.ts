@@ -6,6 +6,7 @@ import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import { createRecorder } from "./media-recorder";
+import { createComposedRecordingStream, type ComposedRecordingStream } from "./recording-composition";
 
 export type RecordingState = "idle" | "recording" | "saving" | "success" | "error";
 
@@ -47,12 +48,23 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
       const startedAt = performance.now();
       const stopAfterMs = twoSecondRecordMs + recorderSettleMs;
       let recorder: MediaRecorder;
+      let composition: ComposedRecordingStream | null = null;
+      let settled = false;
 
-      try {
-        recorder = createRecorder(stream);
-      } catch (error) {
+      const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        composition?.stop();
         setState("error");
         reject(reportError(error));
+      };
+
+      try {
+        composition = createComposedRecordingStream(stream);
+        recorder = createRecorder(composition.stream);
+      } catch (error) {
+        fail(error);
         return;
       }
 
@@ -63,7 +75,7 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
       };
 
       recorder.onerror = (event) => {
-        const appError = reportError(
+        fail(
           new AppError({
             code: "recording-failed",
             area: "capture",
@@ -73,12 +85,13 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
             context: { recorderState: recorder.state },
           }),
         );
-        setState("error");
-        reject(appError);
       };
 
       recorder.onstop = () => {
+        if (settled) return;
+        settled = true;
         cleanup();
+        composition?.stop();
         setState("saving");
         const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
         addDebugEvent("recording-stopped", "capture", {
@@ -109,18 +122,14 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
           }
         }, stopAfterMs);
       } catch (cause) {
-        cleanup();
-        setState("error");
-        reject(
-          reportError(
-            new AppError({
-              code: "recording-failed",
-              area: "capture",
-              message: "Could not start MediaRecorder",
-              userMessage: "Recording could not start. Try refreshing the app.",
-              cause,
-            }),
-          ),
+        fail(
+          new AppError({
+            code: "recording-failed",
+            area: "capture",
+            message: "Could not start MediaRecorder",
+            userMessage: "Recording could not start. Try refreshing the app.",
+            cause,
+          }),
         );
       }
     });

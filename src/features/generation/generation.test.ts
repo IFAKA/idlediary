@@ -40,6 +40,14 @@ describe("generation export profile", () => {
   });
 
   it("builds the vertical center-crop filter chain", () => {
+    expect(exportProfile).toEqual(
+      expect.objectContaining({
+        width: 720,
+        height: 1280,
+        fps: 30,
+        aspectRatio: 9 / 16,
+      }),
+    );
     expect(buildVideoFilter()).toBe(
       "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30,setsar=1,format=yuv420p",
     );

@@ -9,6 +9,7 @@ import {
   listClips,
   listVlogSummaries,
   markNeedsActionVlogsHandled,
+  markVlogHandled,
   resetStorageForTests,
   saveClip,
   saveClipThumbnail,
@@ -160,8 +161,12 @@ describe("storage media split", () => {
     expect(full?.blob).toBeDefined();
     expect(await hasNeedsActionVlog()).toBe(true);
 
+    await markVlogHandled(saved.id);
+    expect(await hasNeedsActionVlog()).toBe(false);
+
     const rawMetadata = await getRawStoreRecord<Record<string, unknown>>("vlogs", saved.id);
     expect(rawMetadata?.blob).toBeUndefined();
+    expect(rawMetadata?.needsActionKey).toBe("false");
     const rawMedia = await getRawStoreRecord<Record<string, unknown>>("vlog-media", saved.id);
     expect(rawMedia?.blob).toBeDefined();
   });

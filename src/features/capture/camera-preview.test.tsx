@@ -29,14 +29,24 @@ function setVideoSize(video: HTMLVideoElement, width = 1280, height = 720) {
 describe("CameraPreview", () => {
   let container: HTMLDivElement;
   let root: Root;
+  let drawImage: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
+    drawImage = vi.fn();
     debugEvents.addDebugEvent.mockClear();
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+      window.setTimeout(() => callback(performance.now()), 16),
+    );
+    vi.stubGlobal("cancelAnimationFrame", (handle: number) => window.clearTimeout(handle));
     Object.defineProperty(HTMLMediaElement.prototype, "srcObject", {
       configurable: true,
       value: null,
       writable: true,
+    });
+    Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+      configurable: true,
+      value: vi.fn(() => ({ drawImage })),
     });
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -47,6 +57,7 @@ describe("CameraPreview", () => {
     root.unmount();
     container.remove();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("shows the mesh placeholder when no stream is available", () => {
@@ -65,11 +76,19 @@ describe("CameraPreview", () => {
     });
 
     const placeholder = container.querySelector('[data-testid="camera-preview-placeholder"]');
-    const video = container.querySelector('[aria-label="Camera preview"]') as HTMLVideoElement;
+    const canvas = container.querySelector('[aria-label="Camera preview"]') as HTMLCanvasElement;
+    const video = container.querySelector('[data-testid="camera-preview-source"]') as HTMLVideoElement;
     expect(placeholder).not.toBeNull();
+    expect(canvas).not.toBeNull();
     expect(video).not.toBeNull();
     expect(placeholder).toHaveAttribute("data-preview-ready", "false");
     expect(video).toHaveProperty("srcObject", stream);
+    expect(canvas).toHaveAttribute("width", "720");
+    expect(canvas).toHaveAttribute("height", "1280");
+    expect(
+      (container.querySelector('[data-testid="camera-preview-frame"]') as HTMLElement).style
+        .aspectRatio,
+    ).toBe("0.5625");
 
     setVideoSize(video);
     act(() => {
@@ -78,7 +97,13 @@ describe("CameraPreview", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(189);
+      vi.advanceTimersByTime(16);
+    });
+
+    expect(drawImage).toHaveBeenCalledWith(video, 437.5, 0, 405, 720, 0, 0, 720, 1280);
+
+    act(() => {
+      vi.advanceTimersByTime(173);
     });
 
     expect(container.querySelector('[data-testid="camera-preview-placeholder"]')).toHaveAttribute(
@@ -93,6 +118,16 @@ describe("CameraPreview", () => {
     expect(container.querySelector('[data-testid="camera-preview-placeholder"]')).toHaveAttribute(
       "data-preview-ready",
       "true",
+    );
+    expect(debugEvents.addDebugEvent).toHaveBeenCalledWith(
+      "camera-preview-metadata",
+      "capture",
+      expect.objectContaining({
+        rawAspectRatio: 1280 / 720,
+        compositionWidth: 720,
+        compositionHeight: 1280,
+        compositionAspectRatio: 9 / 16,
+      }),
     );
     expect(debugEvents.addDebugEvent).toHaveBeenCalledWith(
       "camera-preview-ready",
@@ -112,7 +147,7 @@ describe("CameraPreview", () => {
     act(() => {
       root.render(<CameraPreview stream={firstStream} />);
     });
-    const firstVideo = container.querySelector('[aria-label="Camera preview"]') as HTMLVideoElement;
+    const firstVideo = container.querySelector('[data-testid="camera-preview-source"]') as HTMLVideoElement;
 
     setVideoSize(firstVideo);
     act(() => {
@@ -135,7 +170,7 @@ describe("CameraPreview", () => {
       "data-preview-ready",
       "false",
     );
-    expect(container.querySelector('[aria-label="Camera preview"]')).toHaveProperty(
+    expect(container.querySelector('[data-testid="camera-preview-source"]')).toHaveProperty(
       "srcObject",
       secondStream,
     );
@@ -149,5 +184,6 @@ describe("CameraPreview", () => {
       "false",
     );
     expect(container.querySelector('[aria-label="Camera preview"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-testid="camera-preview-source"]')).not.toBeInTheDocument();
   });
 });

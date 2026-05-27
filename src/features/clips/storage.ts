@@ -803,7 +803,7 @@ export async function markVlogHandled(id: string) {
       return null;
     }
 
-    const handledVlog = { ...vlog, needsAction: false };
+    const handledVlog = vlogMetadata({ ...vlog, needsAction: false });
     await vlogsStore.put(handledVlog);
     const summary = await hydrateVlogSummary(tx, handledVlog);
     await tx.done;

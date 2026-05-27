@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
+import { exportProfile } from "@/features/video/export-profile";
 import { getCameraPermissionState, type CameraPermissionState } from "./permissions";
 
 export function useCamera() {
@@ -41,9 +42,10 @@ export function useCamera() {
       const nextStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30, max: 30 },
+          width: { ideal: exportProfile.width },
+          height: { ideal: exportProfile.height },
+          aspectRatio: { ideal: exportProfile.aspectRatio },
+          frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
         },
         audio: true,
       });

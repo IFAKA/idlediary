@@ -5,6 +5,8 @@ import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
+import { exportProfile } from "@/features/video/export-profile";
+export { exportProfile } from "@/features/video/export-profile";
 
 export type GenerationProgress = {
   step: "idle" | "loading" | "writing" | "rendering" | "saving" | "done" | "error";
@@ -15,24 +17,11 @@ export type GenerationProgress = {
   logs: string[];
 };
 
-export const exportProfile = {
-  output: "vlog.mp4",
-  width: 720,
-  height: 1280,
-  fps: 30,
-  videoCodec: "libx264",
-  pixelFormat: "yuv420p",
-  audioCodec: "aac",
-  audioSampleRate: 48_000,
-  audioChannels: 2,
-  audioFilter: "loudnorm=I=-16:TP=-1.5:LRA=11",
-} as const;
-
 const maxLogLines = 8;
 const videoFilters = [
-  "scale=720:1280:force_original_aspect_ratio=increase",
-  "crop=720:1280",
-  "fps=30",
+  `scale=${exportProfile.width}:${exportProfile.height}:force_original_aspect_ratio=increase`,
+  `crop=${exportProfile.width}:${exportProfile.height}`,
+  `fps=${exportProfile.fps}`,
   "setsar=1",
   "format=yuv420p",
 ];
