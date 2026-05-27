@@ -45,6 +45,8 @@ const steps: IntroStep[] = [
 const heroDescription = "A quiet three-second video diary for days worth remembering.";
 const mountDuration = 0.42;
 const cardMountDuration = 0.38;
+const buttonMountDelay = mountDuration + steps.length * 0.08;
+const blinkDelay = buttonMountDelay + 0.58;
 
 export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
   const shouldReduceMotion = useReducedMotion() === true;
@@ -72,7 +74,15 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
               className="absolute inset-3 rounded-[2rem] bg-primary/28 blur-3xl"
               aria-hidden="true"
             />
-            <div className="relative flex size-28 items-center justify-center rounded-[1.85rem] border border-primary/30 bg-background/88 p-1.5 shadow-[0_24px_80px_hsl(var(--primary)/0.24)] min-[390px]:size-32">
+            <motion.div
+              className="relative flex size-28 items-center justify-center rounded-[1.85rem] border border-primary/30 bg-background/88 p-1.5 shadow-[0_24px_80px_hsl(var(--primary)/0.24)] min-[390px]:size-32"
+              animate={shouldReduceMotion ? undefined : { scaleY: [1, 0.985, 1] }}
+              transition={
+                shouldReduceMotion
+                  ? undefined
+                  : { delay: blinkDelay, duration: 0.34, ease: [0.25, 1, 0.5, 1] }
+              }
+            >
               <Image
                 className="size-full rounded-[1.48rem] min-[390px]:rounded-[1.58rem]"
                 src="/icon.svg"
@@ -82,7 +92,60 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                 aria-hidden="true"
                 priority
               />
-            </div>
+              <svg
+                className="pointer-events-none absolute inset-1.5 size-[calc(100%-0.75rem)] rounded-[1.48rem] min-[390px]:rounded-[1.58rem]"
+                viewBox="0 0 512 512"
+                aria-hidden="true"
+              >
+                <defs>
+                  <clipPath id="intro-icon-blink-clip">
+                    <circle cx="256" cy="256" r="146" />
+                  </clipPath>
+                </defs>
+                <g clipPath="url(#intro-icon-blink-clip)">
+                  <motion.rect
+                    fill="#0e0a0c"
+                    height="146"
+                    width="292"
+                    x="110"
+                    y="110"
+                    initial={{ scaleY: 0 }}
+                    animate={shouldReduceMotion ? undefined : { scaleY: [0, 1, 0] }}
+                    style={{ originY: 0 }}
+                    transition={
+                      shouldReduceMotion
+                        ? undefined
+                        : {
+                            delay: blinkDelay,
+                            duration: 0.34,
+                            ease: [0.25, 1, 0.5, 1],
+                            times: [0, 0.42, 1],
+                          }
+                    }
+                  />
+                  <motion.rect
+                    fill="#0e0a0c"
+                    height="146"
+                    width="292"
+                    x="110"
+                    y="256"
+                    initial={{ scaleY: 0 }}
+                    animate={shouldReduceMotion ? undefined : { scaleY: [0, 1, 0] }}
+                    style={{ originY: 1 }}
+                    transition={
+                      shouldReduceMotion
+                        ? undefined
+                        : {
+                            delay: blinkDelay,
+                            duration: 0.34,
+                            ease: [0.25, 1, 0.5, 1],
+                            times: [0, 0.42, 1],
+                          }
+                    }
+                  />
+                </g>
+              </svg>
+            </motion.div>
           </div>
 
           <h1 className="mt-5 text-[2.65rem] font-semibold leading-none tracking-normal min-[390px]:text-5xl">
@@ -132,7 +195,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
           transition={{
             duration: shouldReduceMotion ? 0 : 0.42,
             ease: "easeOut",
-            delay: shouldReduceMotion ? 0 : mountDuration + steps.length * 0.08,
+            delay: shouldReduceMotion ? 0 : buttonMountDelay,
           }}
         >
           <Button
