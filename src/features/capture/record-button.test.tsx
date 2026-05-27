@@ -23,9 +23,9 @@ describe("RecordButton", () => {
     vi.useRealTimers();
   });
 
-  function renderButton(state: RecordingState) {
+  function renderButton(state: RecordingState, progress = 0) {
     act(() => {
-      root.render(<RecordButton state={state} progress={0} onClick={() => undefined} />);
+      root.render(<RecordButton state={state} progress={progress} onClick={() => undefined} />);
     });
   }
 
@@ -41,10 +41,29 @@ describe("RecordButton", () => {
     return container.querySelectorAll("[data-record-segment]");
   }
 
+  function completedSegments() {
+    return container.querySelectorAll("[data-record-completed-segment]");
+  }
+
   it("renders three ring segments while recording", () => {
     renderButton("recording");
 
     expect(recordSegments()).toHaveLength(3);
+  });
+
+  it("uses the same segment geometry after recording completes", () => {
+    renderButton("success", 100);
+
+    const baseSegments = Array.from(recordSegments());
+    const finishedSegments = Array.from(completedSegments());
+
+    expect(finishedSegments).toHaveLength(3);
+    for (const [index, finishedSegment] of finishedSegments.entries()) {
+      expect(finishedSegment).toHaveAttribute(
+        "stroke-dashoffset",
+        baseSegments[index]?.getAttribute("stroke-dashoffset"),
+      );
+    }
   });
 
   it("pulses each second marker during a three second recording", () => {

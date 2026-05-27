@@ -56,6 +56,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
   const isSaving = state === "saving";
   const isSuccess = state === "success";
   const isInactive = state === "idle" || state === "error";
+  const showCompletedSegments = !isRecording && !isInactive && progress >= 100;
   const progressOffset = isInactive
     ? ringCircumference
     : ringCircumference * (1 - progress / 100);
@@ -157,7 +158,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
           strokeLinecap="round"
           strokeWidth="6"
           style={{
-            opacity: isInactive ? 0 : 1,
+            opacity: isInactive || showCompletedSegments ? 0 : 1,
             strokeDasharray: ringCircumference,
             strokeDashoffset: isRecording ? ringCircumference : progressOffset,
             animationDuration: `${twoSecondRecordMs}ms`,
@@ -169,6 +170,22 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
             ease: "easeOut",
           }}
         />
+        {recordingMarkerSeconds.map((second, index) => (
+          <circle
+            key={`completed-segment-${second}`}
+            data-record-completed-segment={second}
+            cx="50"
+            cy="50"
+            fill="none"
+            r={markerRadius}
+            stroke="hsl(var(--primary))"
+            strokeDasharray={segmentDashPattern}
+            strokeDashoffset={-(segmentStep * index + segmentGap / 2)}
+            strokeLinecap="round"
+            strokeWidth="6"
+            style={{ opacity: showCompletedSegments ? 1 : 0 }}
+          />
+        ))}
         {recordingMarkerSeconds.map((second, index) => {
           const isActivePulse = isRecording && activePulseSecond === second;
 
