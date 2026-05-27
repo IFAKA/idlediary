@@ -28,13 +28,9 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
         ))}
       </div>
 
-      <div className="relative mb-6">
+      <div className="relative mb-6 max-w-sm">
         <Loader2 className="mb-5 size-8 animate-spin text-primary" aria-hidden="true" />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-          Finish
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold">{progress.label}</h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+        <p className="text-sm leading-6 text-muted-foreground">
           {progress.detail}
         </p>
       </div>

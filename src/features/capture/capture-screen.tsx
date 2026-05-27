@@ -294,7 +294,14 @@ export function CaptureScreen() {
   };
 
   const headerConfig = useMemo<AppHeaderConfig>(() => {
-    if (mode === "review" || mode === "generating") {
+    if (mode === "generating") {
+      return {
+        eyebrow: "Finish",
+        title: generationProgress.label,
+      };
+    }
+
+    if (mode === "review") {
       return {
         eyebrow: "Review",
         title: "Draft clips",
@@ -352,7 +359,7 @@ export function CaptureScreen() {
       eyebrow: "Today",
       title: "No pressure",
     };
-  }, [clips.clips.length, closeResult, isFinishing, mode, vlog]);
+  }, [clips.clips.length, closeResult, generationProgress.label, isFinishing, mode, vlog]);
 
   useAppHeader(headerConfig);
 

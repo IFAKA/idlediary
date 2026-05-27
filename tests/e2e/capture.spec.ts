@@ -280,7 +280,15 @@ test("draft review stops the camera before generation", async ({ page }) => {
 
   await page.getByRole("button", { name: "Make video" }).click();
 
-  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ })).toBeVisible();
+  const generationHeading = page.getByRole("heading", {
+    name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/,
+  });
+  await expect(generationHeading).toBeVisible();
+  await expect(generationHeading).toHaveCount(1);
+  await expect(page.locator("header").getByText("Finish", { exact: true })).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "Draft clips" })).not.toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to camera" })).toHaveCount(0);
+  await expect(page.locator("header").getByText(/^\d+ clips$/)).toHaveCount(0);
   await expect(page.getByText("Centering video, balancing audio, and encoding MP4")).toBeVisible();
   await expect(page.getByText("scale -> crop -> fps -> setsar -> format")).toBeVisible();
   await expect(page.getByText("movflags +faststart")).toBeVisible();
@@ -549,7 +557,13 @@ test("reloading during generation returns to review with clips preserved", async
   await page.getByRole("button", { name: "Review draft clips" }).click();
 
   await page.getByRole("button", { name: "Make video" }).click();
-  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ })).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", {
+        name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/,
+      })
+      .first(),
+  ).toBeVisible();
   await expect(page).toHaveURL("/draft");
 
   await page.reload();
@@ -627,7 +641,13 @@ test("gallery reorders clips and generation receives UI order", async ({ page })
   await expect(rows.nth(0)).toHaveAttribute("data-clip-id", originalSecondId ?? "");
 
   await page.getByRole("button", { name: "Make video" }).click();
-  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ })).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", {
+        name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/,
+      })
+      .first(),
+  ).toBeVisible();
   await expect
     .poll(() =>
       page.evaluate(
