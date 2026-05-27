@@ -146,6 +146,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
           const hiddenDashPattern = `0 ${ringCircumference}`;
           const visibleDashPattern = `${segmentLength} ${ringCircumference - segmentLength}`;
           const progressDashPattern = `${filledLength} ${ringCircumference - filledLength}`;
+          const hasProgress = filledLength > 0.1;
 
           return (
             <motion.circle
@@ -159,15 +160,25 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
               strokeDashoffset={-(segmentStep * index + segmentGap / 2)}
               strokeLinecap="round"
               strokeWidth="6"
-              initial={isRecording ? { strokeDasharray: hiddenDashPattern } : false}
+              initial={isRecording ? { opacity: 0, strokeDasharray: hiddenDashPattern } : false}
               animate={{
-                opacity: isInactive ? 0 : 1,
+                opacity: isInactive ? 0 : isRecording ? [0, 0, 1] : hasProgress ? 1 : 0,
                 strokeDasharray: isRecording ? visibleDashPattern : progressDashPattern,
               }}
               transition={{
-                delay: isRecording ? recordingDelaySeconds : 0,
-                duration: isRecording ? progressSegmentDurationMs / 1000 : 0.12,
-                ease: "linear",
+                opacity: isRecording
+                  ? {
+                      delay: recordingDelaySeconds,
+                      duration: 0.06,
+                      ease: "easeOut",
+                      times: [0, 0.45, 1],
+                    }
+                  : { duration: 0.08, ease: "easeOut" },
+                strokeDasharray: {
+                  delay: isRecording ? recordingDelaySeconds : 0,
+                  duration: isRecording ? progressSegmentDurationMs / 1000 : 0.12,
+                  ease: "linear",
+                },
               }}
             />
           );
