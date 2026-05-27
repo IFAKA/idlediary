@@ -86,7 +86,7 @@ export function HomeScreen() {
           </div>
         ) : null}
 
-        <section className="mt-8 min-h-0 flex-1 overflow-hidden">
+        <section className="mt-3 min-h-0 flex-1 overflow-hidden">
           {state.status === "loading" ? (
             <div className="flex h-full min-h-80 items-center justify-center text-sm text-muted-foreground">
               Loading entries...

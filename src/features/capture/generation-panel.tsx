@@ -19,7 +19,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
       />
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 bottom-28 top-8 overflow-hidden rounded-lg border border-memory/25 bg-surface-soft/60 p-4 text-[11px] leading-5 text-memory/45 [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_72%,transparent)]"
+        className="absolute inset-x-0 bottom-28 top-[var(--app-header-background-start)] overflow-hidden rounded-lg border border-memory/25 bg-surface-soft/60 p-4 text-[11px] leading-5 text-memory/45 [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_72%,transparent)]"
       >
         <p>Arranging today&apos;s saved moments</p>
         <p>Keeping the entry local</p>
