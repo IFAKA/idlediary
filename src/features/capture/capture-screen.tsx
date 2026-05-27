@@ -639,6 +639,7 @@ export function CaptureScreen() {
                   clip={latestClip}
                   clipCount={clips.clips.length}
                   disabled={!canOpenDraft}
+                  isLoading={clips.loading}
                   onOpen={openReview}
                 />
               </div>
@@ -681,11 +682,13 @@ function LatestDraftButton({
   clip,
   clipCount,
   disabled,
+  isLoading,
   onOpen,
 }: {
   clip: ClipRecord | null;
   clipCount: number;
   disabled: boolean;
+  isLoading: boolean;
   onOpen: () => void;
 }) {
   const thumbnailSrc = useMemo(
@@ -703,11 +706,16 @@ function LatestDraftButton({
   const [shouldAnimateDraftChange, setShouldAnimateDraftChange] =
     useState(false);
   const previousClipCountRef = useRef(clipCount);
-  const didMountRef = useRef(false);
+  const didLoadRef = useRef(false);
 
   useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
+    if (isLoading) {
+      previousClipCountRef.current = clipCount;
+      return;
+    }
+
+    if (!didLoadRef.current) {
+      didLoadRef.current = true;
       previousClipCountRef.current = clipCount;
       return;
     }
@@ -724,7 +732,7 @@ function LatestDraftButton({
     );
 
     return () => window.clearTimeout(timeout);
-  }, [clipCount, disabled]);
+  }, [clipCount, disabled, isLoading]);
 
   return (
     <motion.button
@@ -759,8 +767,16 @@ function LatestDraftButton({
             className="absolute inset-0 overflow-hidden rounded-[inherit]"
             key={`draft-preview-${clip.id}`}
             animate={{ opacity: 1, scale: 1 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.08 }}
+            exit={
+              shouldReduceMotion || !shouldAnimateDraftChange
+                ? { opacity: 0 }
+                : { opacity: 0, scale: 0.96 }
+            }
+            initial={
+              shouldReduceMotion || !shouldAnimateDraftChange
+                ? false
+                : { opacity: 0, scale: 1.08 }
+            }
             transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: "easeOut" }}
           >
             {thumbnailSrc ? (
@@ -788,13 +804,13 @@ function LatestDraftButton({
                 layout
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={
-                  shouldReduceMotion
+                  shouldReduceMotion || !shouldAnimateDraftChange
                     ? { opacity: 0 }
                     : { scale: 0.78, opacity: 0, y: -2 }
                 }
                 initial={
-                  shouldReduceMotion
-                    ? { opacity: 0 }
+                  shouldReduceMotion || !shouldAnimateDraftChange
+                    ? false
                     : { scale: 0.72, opacity: 0, y: -2 }
                 }
                 transition={draftBadgeTransition}
@@ -813,8 +829,16 @@ function LatestDraftButton({
             className="inline-flex size-6 items-center justify-center text-muted-foreground"
             key="draft-empty-icon"
             animate={{ opacity: 1, scale: 1 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+            exit={
+              shouldReduceMotion || !shouldAnimateDraftChange
+                ? { opacity: 0 }
+                : { opacity: 0, scale: 0.9 }
+            }
+            initial={
+              shouldReduceMotion || !shouldAnimateDraftChange
+                ? false
+                : { opacity: 0, scale: 0.9 }
+            }
             transition={{ duration: shouldReduceMotion ? 0 : 0.16, ease: "easeOut" }}
           >
             <Layers2 className="size-6" />
