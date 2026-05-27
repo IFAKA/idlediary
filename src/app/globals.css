@@ -113,24 +113,6 @@ button {
   touch-action: manipulation;
 }
 
-.record-progress-segment {
-  animation-name: record-progress-segment;
-  animation-delay: var(--record-segment-delay);
-  animation-duration: 1000ms;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
-}
-
-@keyframes record-progress-segment {
-  from {
-    stroke-dasharray: 0 282.743;
-  }
-
-  to {
-    stroke-dasharray: var(--record-segment-fill) var(--record-segment-rest);
-  }
-}
-
 .record-segment-pulse,
 .record-marker-pulse,
 .record-poof-particle {

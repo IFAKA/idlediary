@@ -38,12 +38,6 @@ type PoofParticleStyle = CSSProperties & {
   "--poof-delay": string;
 };
 
-type ProgressSegmentStyle = CSSProperties & {
-  "--record-segment-delay": string;
-  "--record-segment-fill": string;
-  "--record-segment-rest": string;
-};
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -148,18 +142,14 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
         ))}
         {recordingMarkerSeconds.map((second, index) => {
           const filledLength = isRecording ? 0 : progressSegmentLength(index);
-          const progressSegmentStyle: ProgressSegmentStyle = {
-            "--record-segment-delay": `${index * progressSegmentDurationMs}ms`,
-            "--record-segment-fill": `${segmentLength}`,
-            "--record-segment-rest": `${ringCircumference - segmentLength}`,
-            opacity: isInactive ? 0 : 1,
-            strokeDasharray: `${filledLength} ${ringCircumference - filledLength}`,
-          };
+          const recordingDelaySeconds = (index * progressSegmentDurationMs) / 1000;
+          const hiddenDashPattern = `0 ${ringCircumference}`;
+          const visibleDashPattern = `${segmentLength} ${ringCircumference - segmentLength}`;
+          const progressDashPattern = `${filledLength} ${ringCircumference - filledLength}`;
 
           return (
-            <circle
+            <motion.circle
               key={`progress-segment-${second}-${isRecording ? "recording" : state}`}
-              className={cn(isRecording && "record-progress-segment")}
               data-record-progress-segment={second}
               cx="50"
               cy="50"
@@ -169,7 +159,16 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
               strokeDashoffset={-(segmentStep * index + segmentGap / 2)}
               strokeLinecap="round"
               strokeWidth="6"
-              style={progressSegmentStyle}
+              initial={isRecording ? { strokeDasharray: hiddenDashPattern } : false}
+              animate={{
+                opacity: isInactive ? 0 : 1,
+                strokeDasharray: isRecording ? visibleDashPattern : progressDashPattern,
+              }}
+              transition={{
+                delay: isRecording ? recordingDelaySeconds : 0,
+                duration: isRecording ? progressSegmentDurationMs / 1000 : 0.12,
+                ease: "linear",
+              }}
             />
           );
         })}
