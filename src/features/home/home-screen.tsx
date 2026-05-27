@@ -16,7 +16,7 @@ import {
   getObjectUrlForVlog,
   releaseVlogObjectUrl,
 } from "@/features/clips/media-cache";
-import { listVlogs, sortVlogsNewestFirst } from "@/features/clips/storage";
+import { listVlogs, markVlogHandled, sortVlogsNewestFirst } from "@/features/clips/storage";
 import type { VlogRecord } from "@/features/clips/types";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
@@ -26,14 +26,16 @@ type HomeState =
   | { status: "ready"; vlogs: VlogRecord[]; error?: never }
   | { status: "error"; vlogs: VlogRecord[]; error: string };
 
-function formatSessionDate(value: string) {
-  const parsed = new Date(`${value}T00:00:00`);
+function formatCompletedAt(value: string) {
+  const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
 
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(parsed);
 }
 
@@ -83,8 +85,28 @@ export function HomeScreen() {
     let mounted = true;
 
     listVlogs()
-      .then((vlogs) => {
-        if (mounted) setState({ status: "ready", vlogs: sortVlogsNewestFirst(vlogs) });
+      .then(async (vlogs) => {
+        const sortedVlogs = sortVlogsNewestFirst(vlogs);
+        const needsActionVlogs = sortedVlogs.filter((vlog) => vlog.needsAction === true);
+        const handledVlogs = new Map<string, VlogRecord>();
+
+        await Promise.all(
+          needsActionVlogs.map(async (vlog) => {
+            try {
+              const handledVlog = await markVlogHandled(vlog.id);
+              if (handledVlog) handledVlogs.set(vlog.id, handledVlog);
+            } catch (error) {
+              reportError(error);
+            }
+          }),
+        );
+
+        const readyVlogs =
+          handledVlogs.size > 0
+            ? sortedVlogs.map((vlog) => handledVlogs.get(vlog.id) ?? vlog)
+            : sortedVlogs;
+
+        if (mounted) setState({ status: "ready", vlogs: readyVlogs });
       })
       .catch((error) => {
         const appError = reportError(error);
@@ -213,7 +235,7 @@ function VlogCard({ vlog }: { vlog: VlogRecord }) {
           </dl>
 
           <p className="mt-auto pt-3 text-xs text-muted-foreground">
-            Session {formatSessionDate(vlog.sessionId)}
+            Done {formatCompletedAt(vlog.createdAt)}
           </p>
         </div>
       </article>

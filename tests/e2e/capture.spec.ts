@@ -689,7 +689,7 @@ test("export on result keeps the result open and clears the needs action badge",
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
 });
 
-test("opening a needs action saved video detail clears the videos button badge", async ({ page }) => {
+test("opening the videos list clears the videos button badge before video detail", async ({ page }) => {
   await generateOneVideo(page);
   await page.reload();
   await expect(page).toHaveURL("/");
@@ -697,6 +697,10 @@ test("opening a needs action saved video detail clears the videos button badge",
 
   await page.getByRole("link", { name: "Videos" }).click();
   await expect(page.getByText("Needs action")).toHaveCount(0);
+
+  await page.goto("/");
+  await expect(page.getByTestId("videos-needs-action-badge")).toHaveCount(0);
+  await page.getByRole("link", { name: "Videos" }).click();
 
   await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
   await expect(page).toHaveURL(/\/videos\/[^/]+$/);

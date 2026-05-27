@@ -9,7 +9,7 @@ import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shel
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import { releaseVlogObjectUrl } from "@/features/clips/media-cache";
-import { deleteVlog, getVlog, markVlogHandled } from "@/features/clips/storage";
+import { deleteVlog, getVlog } from "@/features/clips/storage";
 import type { VlogRecord } from "@/features/clips/types";
 import { VlogPlayer } from "@/features/clips/vlog-player";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
@@ -66,16 +66,8 @@ export function VideoDetailScreen() {
           return;
         }
 
-        let handledVlog = vlog;
-        if (vlog.needsAction) {
-          try {
-            handledVlog = (await markVlogHandled(vlog.id)) ?? vlog;
-          } catch (error) {
-            reportError(error);
-          }
-        }
         if (mounted) {
-          setState({ status: "ready", vlog: handledVlog ?? vlog });
+          setState({ status: "ready", vlog });
         }
       })
       .catch((error) => {
