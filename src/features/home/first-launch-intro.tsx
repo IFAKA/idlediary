@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import { Camera, CircleDot, LockKeyhole, Sparkles } from "lucide-react";
@@ -23,168 +22,103 @@ const steps: IntroStep[] = [
   {
     icon: CircleDot,
     title: "Capture 3 seconds",
-    detail: "Hold one small moment from the day.",
+    detail: "Save one tiny moment.",
     iconClassName: "bg-accent/15 text-accent",
-    cardClassName: "border-accent/20 bg-surface-soft/72",
+    cardClassName: "border-accent/20 bg-accent/6",
   },
   {
     icon: LockKeyhole,
     title: "Keep it local",
-    detail: "Camera and microphone access begins only when you record.",
+    detail: "Nothing starts until you tap record.",
     iconClassName: "bg-primary/15 text-primary",
-    cardClassName: "border-primary/20 bg-surface-soft/72",
+    cardClassName: "border-primary/20 bg-primary/6",
   },
   {
     icon: Sparkles,
     title: "Generate the diary",
-    detail: "Turn the saved clips into a short video entry.",
+    detail: "Turn clips into a daily entry.",
     iconClassName: "bg-memory/15 text-memory",
-    cardClassName: "border-memory/25 bg-surface-soft/72",
+    cardClassName: "border-memory/25 bg-memory/7",
   },
 ];
 
-const heroDescription = "A three-second diary that stays quiet until you ask it to make a video.";
+const heroDescription = "A quiet three-second video diary for days worth remembering.";
 const mountDuration = 0.42;
-const cardMountDuration = 0.46;
-const typingSpeed = 0.024;
-const sequenceGap = 0.12;
-
-function typingDuration(text: string) {
-  return text.length * typingSpeed;
-}
-
-function stepMountDelay(index: number) {
-  let delay = mountDuration + typingDuration(heroDescription) + sequenceGap;
-
-  for (let currentIndex = 0; currentIndex < index; currentIndex += 1) {
-    delay += cardMountDuration + typingDuration(steps[currentIndex].detail) + sequenceGap;
-  }
-
-  return delay;
-}
-
-function buttonMountDelay() {
-  const finalStep = steps[steps.length - 1];
-  return stepMountDelay(steps.length - 1) + cardMountDuration + typingDuration(finalStep.detail) + sequenceGap;
-}
-
-function TypedDescription({
-  className,
-  delay,
-  reducedMotion,
-  text,
-}: {
-  className?: string;
-  delay: number;
-  reducedMotion: boolean;
-  text: string;
-}) {
-  const [typedText, setTypedText] = useState("");
-  const visibleText = reducedMotion ? text : typedText;
-
-  useEffect(() => {
-    if (reducedMotion) return;
-
-    let currentIndex = 0;
-    let interval: number | undefined;
-    const timeout = window.setTimeout(() => {
-      interval = window.setInterval(() => {
-        currentIndex += 1;
-        setTypedText(text.slice(0, currentIndex));
-
-        if (currentIndex >= text.length && interval !== undefined) {
-          window.clearInterval(interval);
-        }
-      }, typingSpeed * 1000);
-    }, delay * 1000);
-
-    return () => {
-      window.clearTimeout(timeout);
-      if (interval !== undefined) window.clearInterval(interval);
-    };
-  }, [delay, reducedMotion, text]);
-
-  return (
-    <p className={`relative ${className ?? ""}`} aria-label={text} data-streaming-text>
-      <span className="invisible block" aria-hidden="true">
-        {text}
-      </span>
-      <span className="absolute inset-0 block" aria-hidden="true">
-        {visibleText}
-      </span>
-    </p>
-  );
-}
+const cardMountDuration = 0.38;
 
 export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
   const shouldReduceMotion = useReducedMotion() === true;
 
   return (
-    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden safe-screen">
+    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden">
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 border-b border-memory/15 bg-[linear-gradient(90deg,hsl(var(--memory)/0.14)_1px,transparent_1px),linear-gradient(180deg,hsl(var(--foreground)/0.06)_1px,transparent_1px)] bg-[size:28px_28px]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_7%,hsl(var(--primary)/0.2),transparent_34%),radial-gradient(circle_at_15%_22%,hsl(var(--memory)/0.14),transparent_28%),linear-gradient(180deg,hsl(var(--surface-soft)/0.44),transparent_46%)]"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-36 border-b border-memory/10 bg-[linear-gradient(90deg,hsl(var(--memory)/0.1)_1px,transparent_1px),linear-gradient(180deg,hsl(var(--foreground)/0.05)_1px,transparent_1px)] bg-[size:30px_30px] opacity-65"
         aria-hidden="true"
       />
 
-      <div className="flex min-h-0 flex-1 flex-col justify-between gap-7">
+      <div className="relative flex h-full flex-1 flex-col px-5 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-[calc(env(safe-area-inset-top)+1.1rem)]">
         <motion.header
-          className="pt-5"
+          className="mx-auto flex min-h-0 w-full max-w-sm flex-1 flex-col items-center justify-center pb-4 pt-1 text-center min-[390px]:pb-6"
           animate={{ opacity: 1, y: 0 }}
           initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
           transition={{ duration: shouldReduceMotion ? 0 : mountDuration, ease: "easeOut" }}
         >
-          <div className="flex items-center gap-3">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-[1.05rem] border border-primary/35 bg-background/80 p-1 shadow-[0_0_42px_hsl(var(--primary)/0.22)]">
+          <div className="relative">
+            <div
+              className="absolute inset-3 rounded-[2rem] bg-primary/28 blur-3xl"
+              aria-hidden="true"
+            />
+            <div className="relative flex size-28 items-center justify-center rounded-[1.85rem] border border-primary/30 bg-background/88 p-1.5 shadow-[0_24px_80px_hsl(var(--primary)/0.24)] min-[390px]:size-32">
               <Image
-                className="size-full rounded-[0.85rem]"
+                className="size-full rounded-[1.48rem] min-[390px]:rounded-[1.58rem]"
                 src="/icon.svg"
-                width={56}
-                height={56}
+                width={128}
+                height={128}
                 alt=""
                 aria-hidden="true"
                 priority
               />
             </div>
-            <div>
-              <h1 className="text-3xl font-semibold leading-none">IdleDiary</h1>
-              <TypedDescription
-                className="mt-2 max-w-64 text-sm leading-6 text-muted-foreground"
-                delay={shouldReduceMotion ? 0 : mountDuration}
-                reducedMotion={shouldReduceMotion}
-                text={heroDescription}
-              />
-            </div>
           </div>
+
+          <h1 className="mt-5 text-[2.65rem] font-semibold leading-none tracking-normal min-[390px]:text-5xl">
+            IdleDiary
+          </h1>
+          <p className="mt-3 max-w-72 text-base leading-6 text-muted-foreground min-[390px]:text-[1.05rem]">
+            {heroDescription}
+          </p>
         </motion.header>
 
-        <section className="grid min-h-0 flex-1 content-center gap-4 py-4" aria-label="How IdleDiary works">
+        <section
+          className="mx-auto grid w-full max-w-sm shrink-0 gap-2.5 pb-4 min-[390px]:gap-3 min-[390px]:pb-5"
+          aria-label="How IdleDiary works"
+        >
           {steps.map((step, index) => {
             const Icon = step.icon;
-            const mountDelay = shouldReduceMotion ? 0 : stepMountDelay(index);
+            const mountDelay = shouldReduceMotion ? 0 : mountDuration + index * 0.08;
 
             return (
               <motion.div
-                className={`grid grid-cols-[3rem_1fr] items-start gap-4 rounded-lg border p-3 backdrop-blur-sm ${step.cardClassName}`}
+                className={`grid min-h-[4.45rem] grid-cols-[2.65rem_1fr] items-center gap-3 rounded-lg border px-3 py-2.5 shadow-[0_16px_48px_hsl(var(--background)/0.22)] backdrop-blur-md ${step.cardClassName}`}
                 key={step.title}
                 animate={{ opacity: 1, x: 0 }}
-                initial={shouldReduceMotion ? false : { opacity: 0, x: index % 2 === 0 ? -18 : 18 }}
+                initial={shouldReduceMotion ? false : { opacity: 0, x: index % 2 === 0 ? -12 : 12 }}
                 transition={{
                   duration: shouldReduceMotion ? 0 : cardMountDuration,
                   ease: "easeOut",
                   delay: mountDelay,
                 }}
               >
-                <div className={`flex size-12 items-center justify-center rounded-md ${step.iconClassName}`}>
-                  <Icon className="size-5" />
+                <div className={`flex size-10 items-center justify-center rounded-md ${step.iconClassName}`}>
+                  <Icon className="size-[1.1rem]" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-semibold leading-6">{step.title}</h2>
-                  <TypedDescription
-                    className="mt-1 text-sm leading-6 text-muted-foreground"
-                    delay={mountDelay + cardMountDuration}
-                    reducedMotion={shouldReduceMotion}
-                    text={step.detail}
-                  />
+                  <h2 className="text-[0.98rem] font-semibold leading-5">{step.title}</h2>
+                  <p className="mt-0.5 text-sm leading-5 text-muted-foreground">{step.detail}</p>
                 </div>
               </motion.div>
             );
@@ -192,15 +126,20 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
         </section>
 
         <motion.div
+          className="mx-auto w-full max-w-sm shrink-0"
           animate={{ opacity: 1, y: 0 }}
           initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
           transition={{
             duration: shouldReduceMotion ? 0 : 0.42,
             ease: "easeOut",
-            delay: shouldReduceMotion ? 0 : buttonMountDelay(),
+            delay: shouldReduceMotion ? 0 : mountDuration + steps.length * 0.08,
           }}
         >
-          <Button className="h-14 w-full text-base" type="button" onClick={onStart}>
+          <Button
+            className="h-[3.25rem] w-full rounded-lg text-base shadow-[0_18px_54px_hsl(var(--primary)/0.28)]"
+            type="button"
+            onClick={onStart}
+          >
             <Camera className="size-5" />
             Start recording
           </Button>

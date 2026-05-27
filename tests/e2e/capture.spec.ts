@@ -961,7 +961,7 @@ test("capture controls stay touch-sized and do not overlap on mobile", async ({ 
 });
 
 test("debug report opens in a mobile drawer with copy available", async ({ page }) => {
-  await page.goto("/");
+  await openRecord(page);
   await page.waitForLoadState("networkidle");
 
   await page.getByRole("button", { name: "Open debug report" }).click();

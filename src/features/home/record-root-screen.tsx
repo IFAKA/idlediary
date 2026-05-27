@@ -1,7 +1,6 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { CaptureScreen } from "@/features/capture/capture-screen";
 import { FirstLaunchIntro } from "./first-launch-intro";
 
@@ -42,7 +41,6 @@ export function RecordRootScreen() {
   return (
     <main className="relative isolate h-[100svh] overflow-hidden bg-background">
       <FirstLaunchIntro onStart={markIntroSeen} />
-      <DebugDrawer />
     </main>
   );
 }
