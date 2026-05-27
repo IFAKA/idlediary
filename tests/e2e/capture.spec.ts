@@ -439,7 +439,9 @@ test("generated video preview opens fullscreen and result screen does not scroll
 test("saved video detail opens from videos and returns to videos", async ({ page }) => {
   await generateOneVideo(page);
 
-  await page.getByRole("link", { name: "View saved videos" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page).toHaveURL("/");
+  await page.getByRole("link", { name: "Videos" }).click();
   await expect(page).toHaveURL("/videos");
   await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
   await expect(page).toHaveURL(/\/videos\/[^/]+$/);
@@ -454,7 +456,8 @@ test("saved video detail opens from videos and returns to videos", async ({ page
 test("saved video detail preview closes with escape and browser back", async ({ page }) => {
   await generateOneVideo(page);
 
-  await page.getByRole("link", { name: "View saved videos" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("link", { name: "Videos" }).click();
   await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
   await expect(page).toHaveURL(/\/videos\/[^/]+$/);
 
@@ -484,7 +487,8 @@ test("missing saved video detail shows a not found state", async ({ page }) => {
 test("saved videos can be deleted from detail", async ({ page }) => {
   await generateOneVideo(page);
 
-  await page.getByRole("link", { name: "View saved videos" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("link", { name: "Videos" }).click();
   await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
   const deleteButton = page.getByRole("button", { exact: true, name: "Delete" });
   await expect(deleteButton).toBeVisible();
@@ -536,7 +540,7 @@ test("clearing the draft returns to capture", async ({ page }) => {
   );
 });
 
-test("new recording after generation clears the old draft", async ({ page }) => {
+test("done after generation returns home and clears the needs action badge", async ({ page }) => {
   await mockMediaCapture(page);
   await openRecord(page);
 
@@ -549,22 +553,17 @@ test("new recording after generation clears the old draft", async ({ page }) => 
     timeout: 8_000,
   });
 
-  await page.getByRole("button", { name: "New recording" }).click();
-  await expectMobileDrawer(page, "Start a new recording?");
-  await page.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
-
-  await page.getByRole("button", { name: "New recording" }).click();
-  await page
-    .getByRole("dialog", { name: "Start a new recording?" })
-    .getByRole("button", { name: "New recording" })
-    .click();
-
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
     "aria-disabled",
     "true",
   );
+
+  await page.getByRole("link", { name: "Videos" }).click();
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
+  await expect(page.getByText("Needs action")).toHaveCount(0);
 });
 
 test("success page has no header close button", async ({ page }) => {
@@ -581,7 +580,11 @@ test("success page has no header close button", async ({ page }) => {
   });
 
   await expect(page.getByRole("button", { name: "Back to recording" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "View saved videos" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "New recording" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "View saved videos" })).toHaveCount(0);
 });
 
 test("recording a clip opens review, reloads on review, and keeps a named button", async ({ page }) => {
@@ -637,7 +640,7 @@ test("draft URL without clips falls back to record", async ({ page }) => {
   await expect(page).toHaveTitle("IdleDiary");
 });
 
-test("generated result redirects to saved detail after reload", async ({ page }) => {
+test("generated result reload returns home and leaves the saved video needing action", async ({ page }) => {
   await recordOneClipAndOpenReview(page);
   await page.getByRole("button", { name: "Make video" }).click();
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible({
@@ -648,18 +651,42 @@ test("generated result redirects to saved detail after reload", async ({ page })
 
   await page.reload();
 
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
+  await page.getByRole("link", { name: "Videos" }).click();
+  await expect(page).toHaveURL("/videos");
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
+  await expect(page.getByText("Needs action")).toBeVisible();
+});
+
+test("export on result keeps the result open and clears the needs action badge", async ({ page }) => {
+  await generateOneVideo(page);
+
+  await page.getByRole("button", { name: "Export" }).click();
+
+  await expect(page).toHaveURL("/result");
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
+
+  await page.goto("/videos");
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
+  await expect(page.getByText("Needs action")).toHaveCount(0);
+});
+
+test("opening a needs action saved video detail clears the badge", async ({ page }) => {
+  await generateOneVideo(page);
+  await page.reload();
+  await expect(page).toHaveURL("/");
+
+  await page.getByRole("link", { name: "Videos" }).click();
+  await expect(page.getByText("Needs action")).toBeVisible();
+
+  await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
   await expect(page).toHaveURL(/\/videos\/[^/]+$/);
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open saved video fullscreen" })).toBeVisible();
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          (window as typeof window & { __idleDiaryStartedStreams?: number })
-            .__idleDiaryStartedStreams ?? 0,
-      ),
-    )
-    .toBe(0);
+
+  await page.getByRole("link", { name: "Back to videos" }).click();
+  await expect(page).toHaveURL("/videos");
+  await expect(page.getByText("Needs action")).toHaveCount(0);
 });
 
 test("successful generation clears draft clips without starting a new recording", async ({ page }) => {

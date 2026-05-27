@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Clapperboard, Layers2, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,10 +17,11 @@ import {
 } from "@/features/generation/generation";
 import {
   clearGeneratedVlogForSession,
-  getLatestVlogForSession,
+  markVlogHandled,
   saveVlogAndClearSessionDraft,
 } from "@/features/clips/storage";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
+import { shareVlog } from "@/features/share/share";
 import { CameraPreview } from "./camera-preview";
 import { ClipReviewPanel } from "./clip-review-panel";
 import { GenerationPanel } from "./generation-panel";
@@ -74,7 +74,6 @@ function titleForMode(mode: ScreenMode) {
 }
 
 export function CaptureScreen() {
-  const router = useRouter();
   const camera = useCamera();
   const clips = useClips();
   const recorder = useTwoSecondRecorder(camera.stream);
@@ -86,7 +85,6 @@ export function CaptureScreen() {
   const [resultExitDirection, setResultExitDirection] = useState<"up" | "bottom">("up");
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
-  const redirectingAway = useRef(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     ...makeGenerationProgress("idle", 0),
   });
@@ -127,26 +125,7 @@ export function CaptureScreen() {
       }
 
       if (requestedView === "result") {
-        try {
-          const savedVlog = await getLatestVlogForSession(clips.session.id);
-          if (savedVlog) {
-            redirectingAway.current = true;
-            setVlog(null);
-            setMode("capture");
-            router.replace(`/videos/${encodeURIComponent(savedVlog.id)}`);
-            return;
-          }
-        } catch (error) {
-          reportError(error);
-        }
-
         setVlog(null);
-        if (clips.clips.length > 0) {
-          setMode("review");
-          writeViewToUrl("review", "replace");
-          return;
-        }
-
         setMode("capture");
         writeViewToUrl("capture", "replace");
         return;
@@ -158,7 +137,7 @@ export function CaptureScreen() {
         writeViewToUrl("capture", "replace");
       }
     },
-    [clips.clips.length, clips.loading, clips.session, router],
+    [clips.clips.length, clips.loading, clips.session],
   );
 
   useEffect(() => {
@@ -168,7 +147,6 @@ export function CaptureScreen() {
   useEffect(() => {
     if (
       !initialViewReady ||
-      redirectingAway.current ||
       mode !== "capture" ||
       camera.stream ||
       cameraStartAttempted.current
@@ -230,14 +208,27 @@ export function CaptureScreen() {
     await clips.clearClips();
   };
 
-  const startNewRecording = async () => {
+  const handleResultExport = async () => {
+    if (!vlog) return;
+
     try {
-      setResultExitDirection("up");
-      await clearDraft();
-      setVlog(null);
-      showCapture("push");
+      await markVlogHandled(vlog.id);
+      setVlog({ ...vlog, needsAction: false });
+      await shareVlog(vlog);
     } catch (error) {
       reportError(error);
+    }
+  };
+
+  const handleResultDone = async () => {
+    if (!vlog) return;
+
+    try {
+      await markVlogHandled(vlog.id);
+    } catch (error) {
+      reportError(error);
+    } finally {
+      setResultExitDirection("up");
       setVlog(null);
       showCapture("push");
     }
@@ -385,7 +376,8 @@ export function CaptureScreen() {
           >
             <ResultPanel
               vlog={vlog}
-              onReset={() => void startNewRecording()}
+              onDone={() => void handleResultDone()}
+              onExport={() => void handleResultExport()}
             />
           </motion.div>
         ) : mode === "review" ? (

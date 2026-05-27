@@ -18,6 +18,7 @@ export type VlogRecord = {
   title: string;
   caption: string;
   createdAt: string;
+  needsAction?: boolean;
 };
 
 export type SessionSummary = {

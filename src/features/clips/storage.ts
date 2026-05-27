@@ -253,7 +253,8 @@ export async function saveVlog(vlog: VlogRecord) {
   try {
     const db = await getDb();
     const tx = db.transaction(["vlogs", "sessions"], "readwrite");
-    await tx.objectStore("vlogs").put(vlog);
+    const savedVlog: VlogRecord = { ...vlog, needsAction: vlog.needsAction ?? true };
+    await tx.objectStore("vlogs").put(savedVlog);
     const session = await tx.objectStore("sessions").get(vlog.sessionId);
     if (session) {
       await tx.objectStore("sessions").put({
@@ -263,7 +264,11 @@ export async function saveVlog(vlog: VlogRecord) {
       });
     }
     await tx.done;
-    addDebugEvent("vlog-saved", "storage", { vlogId: vlog.id, clipCount: vlog.clipCount });
+    addDebugEvent("vlog-saved", "storage", {
+      vlogId: savedVlog.id,
+      clipCount: savedVlog.clipCount,
+      needsAction: savedVlog.needsAction,
+    });
   } catch (cause) {
     throw reportError(
       new AppError({
@@ -284,8 +289,9 @@ export async function saveVlogAndClearSessionDraft(vlog: VlogRecord) {
     const tx = db.transaction(["vlogs", "clips", "sessions"], "readwrite");
     const clipsStore = tx.objectStore("clips");
     const clips = await clipsStore.index("by-session").getAll(vlog.sessionId);
+    const savedVlog: VlogRecord = { ...vlog, needsAction: vlog.needsAction ?? true };
 
-    await tx.objectStore("vlogs").put(vlog);
+    await tx.objectStore("vlogs").put(savedVlog);
     await Promise.all(clips.map((clip) => clipsStore.delete(clip.id)));
 
     const session = await tx.objectStore("sessions").get(vlog.sessionId);
@@ -299,9 +305,10 @@ export async function saveVlogAndClearSessionDraft(vlog: VlogRecord) {
 
     await tx.done;
     addDebugEvent("vlog-saved-draft-cleared", "storage", {
-      vlogId: vlog.id,
-      sessionId: vlog.sessionId,
+      vlogId: savedVlog.id,
+      sessionId: savedVlog.sessionId,
       clipCount: clips.length,
+      needsAction: savedVlog.needsAction,
     });
   } catch (cause) {
     throw reportError(
@@ -312,6 +319,36 @@ export async function saveVlogAndClearSessionDraft(vlog: VlogRecord) {
         userMessage: "The vlog was created but could not be saved locally.",
         cause,
         context: { vlogId: vlog.id, sessionId: vlog.sessionId },
+      }),
+    );
+  }
+}
+
+export async function markVlogHandled(id: string) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction("vlogs", "readwrite");
+    const vlogsStore = tx.objectStore("vlogs");
+    const vlog = await vlogsStore.get(id);
+    if (!vlog) {
+      await tx.done;
+      return null;
+    }
+
+    const handledVlog: VlogRecord = { ...vlog, needsAction: false };
+    await vlogsStore.put(handledVlog);
+    await tx.done;
+    addDebugEvent("vlog-handled", "storage", { vlogId: id });
+    return handledVlog;
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-write-failed",
+        area: "storage",
+        message: "Could not mark generated vlog handled",
+        userMessage: "The saved video status could not be updated.",
+        cause,
+        context: { vlogId: id },
       }),
     );
   }
