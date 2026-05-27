@@ -23,6 +23,15 @@ interface IdleDiaryDb extends DBSchema {
 
 let dbPromise: Promise<import("idb").IDBPDatabase<IdleDiaryDb>> | null = null;
 
+export function sortVlogsNewestFirst(vlogs: VlogRecord[]) {
+  return [...vlogs].sort((a, b) => {
+    const byCreatedAt = b.createdAt.localeCompare(a.createdAt);
+    if (byCreatedAt !== 0) return byCreatedAt;
+
+    return b.id.localeCompare(a.id);
+  });
+}
+
 function getDb() {
   if (typeof indexedDB === "undefined") {
     throw new AppError({
@@ -478,9 +487,7 @@ export async function clearGeneratedVlogForSession(sessionId: string) {
 export async function listVlogs() {
   try {
     const db = await getDb();
-    return (await db.getAllFromIndex("vlogs", "by-created")).sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt),
-    );
+    return sortVlogsNewestFirst(await db.getAllFromIndex("vlogs", "by-created"));
   } catch (cause) {
     throw reportError(
       new AppError({

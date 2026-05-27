@@ -16,7 +16,7 @@ import {
   getObjectUrlForVlog,
   releaseVlogObjectUrl,
 } from "@/features/clips/media-cache";
-import { listVlogs } from "@/features/clips/storage";
+import { listVlogs, sortVlogsNewestFirst } from "@/features/clips/storage";
 import type { VlogRecord } from "@/features/clips/types";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
@@ -84,7 +84,7 @@ export function HomeScreen() {
 
     listVlogs()
       .then((vlogs) => {
-        if (mounted) setState({ status: "ready", vlogs });
+        if (mounted) setState({ status: "ready", vlogs: sortVlogsNewestFirst(vlogs) });
       })
       .catch((error) => {
         const appError = reportError(error);
