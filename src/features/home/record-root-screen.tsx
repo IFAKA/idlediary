@@ -31,7 +31,7 @@ export function RecordRootScreen() {
   const introSeen = useSyncExternalStore(
     subscribeToIntroSeen,
     introSeenSnapshot,
-    () => true,
+    () => false,
   );
 
   if (introSeen) {
