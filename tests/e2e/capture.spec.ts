@@ -489,7 +489,13 @@ test("recording a clip opens review, reloads on review, and keeps a named button
   await expect(page).toHaveURL("/draft");
   await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview clip 1" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Back to camera" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to camera" })).toHaveCount(1);
+  await expect(
+    page.getByTestId("review-action-bar").getByRole("button", { name: "Back to camera" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByTestId("review-action-bar").getByRole("link", { name: "Back to camera" }),
+  ).toHaveCount(0);
   await expect
     .poll(() =>
       page.evaluate(
@@ -616,7 +622,7 @@ test("gallery reorders clips and generation receives UI order", async ({ page })
   await expect(rows.nth(0)).toHaveAttribute("data-clip-id", originalSecondId ?? "");
   await expect(rows.nth(1)).toHaveAttribute("data-clip-id", originalFirstId ?? "");
 
-  await page.getByRole("button", { name: "Back to camera" }).click();
+  await page.getByRole("link", { name: "Back to camera" }).click();
   await page.getByRole("button", { name: "Review draft clips" }).click();
   await expect(rows.nth(0)).toHaveAttribute("data-clip-id", originalSecondId ?? "");
 

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Clapperboard, Layers2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Clapperboard, Layers2, RotateCcw, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppHeader } from "@/components/app-header";
+import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
+import { Button } from "@/components/ui/button";
 import { useClips } from "@/features/clips/use-clips";
 import { getObjectUrlForClip, releaseAllVlogObjectUrls } from "@/features/clips/media-cache";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
@@ -243,10 +244,10 @@ export function CaptureScreen() {
     }
   };
 
-  const closeResult = () => {
+  const closeResult = useCallback(() => {
     setResultExitDirection("bottom");
     showCapture("push");
-  };
+  }, [showCapture]);
 
   const captureClip = async () => {
     if (clipLimitReached) {
@@ -292,6 +293,69 @@ export function CaptureScreen() {
     }
   };
 
+  const headerConfig = useMemo<AppHeaderConfig>(() => {
+    if (mode === "review" || mode === "generating") {
+      return {
+        eyebrow: "Review",
+        title: "Draft clips",
+        leading: (
+          <Button
+            asChild
+            aria-label="Back to camera"
+            size="icon"
+            variant="outline"
+          >
+            <Link
+              aria-disabled={isFinishing}
+              href="/"
+              tabIndex={isFinishing ? -1 : undefined}
+              onClick={(event) => {
+                if (isFinishing) {
+                  event.preventDefault();
+                  return;
+                }
+                setSlideDirection("right");
+              }}
+            >
+              <ArrowLeft className="size-5" />
+            </Link>
+          </Button>
+        ),
+        trailing: (
+          <div className="px-1 py-1 text-right">
+            <p className="text-sm font-semibold">{clips.clips.length} clips</p>
+          </div>
+        ),
+      };
+    }
+
+    if (mode === "result" && vlog) {
+      return {
+        eyebrow: "Ready",
+        title: vlog.title,
+        trailing: (
+          <Button
+            aria-label="Back to recording"
+            className="shrink-0 bg-black/35 backdrop-blur hover:bg-black/50"
+            size="icon"
+            type="button"
+            variant="ghost"
+            onClick={closeResult}
+          >
+            <X className="size-5" />
+          </Button>
+        ),
+      };
+    }
+
+    return {
+      eyebrow: "Today",
+      title: "No pressure",
+    };
+  }, [clips.clips.length, closeResult, isFinishing, mode, vlog]);
+
+  useAppHeader(headerConfig);
+
   return (
     <main className="relative isolate h-[100svh] overflow-hidden bg-background">
       <AnimatePresence initial={false}>
@@ -331,7 +395,6 @@ export function CaptureScreen() {
           >
             <ResultPanel
               vlog={vlog}
-              onClose={closeResult}
               onReset={() => void startNewRecording()}
             />
           </motion.div>
@@ -387,14 +450,12 @@ export function CaptureScreen() {
         ) : (
           <motion.div
             key="capture"
-            className="relative z-10 flex h-[100svh] flex-col safe-screen"
+            className="relative z-10 flex h-[100svh] flex-col top-level-screen"
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: slideDirection === "right" ? -42 : 42 }}
             initial={{ opacity: 0, x: 0 }}
             transition={routeSlideTransition}
           >
-            <AppHeader eyebrow="Today" title="No pressure" />
-
             <div className="mt-auto">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <Link

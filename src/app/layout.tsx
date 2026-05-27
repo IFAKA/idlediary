@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AppHeaderProvider } from "@/components/app-header-shell";
 import { PwaRegister } from "./pwa-register";
 import "./globals.css";
 
@@ -28,8 +29,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        {children}
-        <PwaRegister />
+        <AppHeaderProvider>
+          {children}
+          <PwaRegister />
+        </AppHeaderProvider>
       </body>
     </html>
   );

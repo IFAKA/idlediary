@@ -13,11 +13,10 @@ import { useHistoryOverlay } from "@/hooks/use-history-overlay";
 
 type ResultPanelProps = {
   vlog: VlogRecord;
-  onClose: () => void;
   onReset: () => void;
 };
 
-export function ResultPanel({ vlog, onClose, onReset }: ResultPanelProps) {
+export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const src = useMemo(() => getObjectUrlForVlog(vlog), [vlog]);
@@ -32,26 +31,8 @@ export function ResultPanel({ vlog, onClose, onReset }: ResultPanelProps) {
   }, [vlog.id]);
 
   return (
-    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden safe-screen">
-      <AppHeader
-        className="relative z-[60]"
-        eyebrow="Ready"
-        title={vlog.title}
-        trailing={
-          <Button
-            aria-label="Back to recording"
-            className="mr-14 shrink-0 bg-black/35 backdrop-blur hover:bg-black/50"
-            size="icon"
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-          >
-            <X className="size-5" />
-          </Button>
-        }
-      />
-
-      <div className="mt-5 flex min-h-0 flex-1 items-center justify-center">
+    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden top-level-screen">
+      <div className="flex min-h-0 flex-1 items-center justify-center">
         <button
           aria-label="Open generated video fullscreen"
           className="relative aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-lg border bg-black outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"

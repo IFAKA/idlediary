@@ -22,7 +22,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, Play, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import { Play, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -190,20 +190,10 @@ export function ClipReviewPanel({
 
   return (
     <motion.div
-      className="relative z-10 flex h-[100svh] flex-col safe-screen"
+      className="relative z-10 flex h-[100svh] flex-col top-level-screen"
       layoutId="draft-card"
       transition={spring}
     >
-      <AppHeader
-        eyebrow="Review"
-        title="Draft clips"
-        trailing={
-          <div className="px-1 py-1 text-right">
-            <p className="text-sm font-semibold">{orderedClips.length} clips</p>
-          </div>
-        }
-      />
-
       <DndContext
         collisionDetection={collisionDetection}
         sensors={sensors}
@@ -239,7 +229,6 @@ export function ClipReviewPanel({
           isDeleting={isOverDeleteZone}
           isDragging={Boolean(activeClipId)}
           isFinishing={isFinishing}
-          onBack={onBack}
           onClearDraft={() => setConfirmClearDraft(true)}
           onMakeVideo={makeVideo}
         />
@@ -450,7 +439,6 @@ function ReviewActionBar({
   isDeleting,
   isDragging,
   isFinishing,
-  onBack,
   onClearDraft,
   onMakeVideo,
 }: {
@@ -458,7 +446,6 @@ function ReviewActionBar({
   isDeleting: boolean;
   isDragging: boolean;
   isFinishing: boolean;
-  onBack: () => void;
   onClearDraft: () => void;
   onMakeVideo: () => void;
 }) {
@@ -471,10 +458,10 @@ function ReviewActionBar({
     <motion.div
       ref={setNodeRef}
       data-testid="review-action-bar"
-      className={`mt-3 rounded-lg border p-2.5 ${
+      className={`mt-3 ${
         isDragging
-          ? "border-destructive/65 bg-destructive/20"
-          : "border-border bg-black/42"
+          ? "rounded-lg border border-destructive/65 bg-destructive/20 p-2.5"
+          : ""
       }`}
       animate={{
         scale: isDeleting ? 1.025 : 1,
@@ -501,42 +488,30 @@ function ReviewActionBar({
         ) : (
           <motion.div
             key="actions"
-            className="flex items-center justify-between gap-3"
+            className="flex items-center justify-end gap-2"
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             initial={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.16, ease: "easeOut" }}
           >
             <Button
-              aria-label="Back to camera"
-              disabled={isFinishing}
-              size="icon"
+              aria-label="Clear draft"
+              disabled={isFinishing || clipCount === 0}
               type="button"
               variant="outline"
-              onClick={onBack}
+              onClick={onClearDraft}
             >
-              <ArrowLeft className="size-4" />
+              <RotateCcw className="size-4" />
+              Clear draft
             </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                aria-label="Clear draft"
-                disabled={isFinishing || clipCount === 0}
-                size="icon"
-                type="button"
-                variant="outline"
-                onClick={onClearDraft}
-              >
-                <RotateCcw className="size-4" />
-              </Button>
-              <Button
-                disabled={isFinishing || clipCount === 0}
-                type="button"
-                onClick={onMakeVideo}
-              >
-                <Sparkles className="size-4" />
-                Make video
-              </Button>
-            </div>
+            <Button
+              disabled={isFinishing || clipCount === 0}
+              type="button"
+              onClick={onMakeVideo}
+            >
+              <Sparkles className="size-4" />
+              Make video
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>

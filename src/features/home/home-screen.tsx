@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, Clapperboard, RefreshCw } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { AppHeader } from "@/components/app-header";
+import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { Button } from "@/components/ui/button";
 import {
   getObjectUrlForVlog,
@@ -31,6 +31,22 @@ function formatDate(value: string) {
 
 export function HomeScreen() {
   const [state, setState] = useState<HomeState>({ status: "loading", vlogs: [] });
+  const headerConfig = useMemo<AppHeaderConfig>(
+    () => ({
+      eyebrow: "IdleDiary",
+      title: "Generated videos",
+      leading: (
+        <Button asChild size="icon" variant="outline" aria-label="Back to camera">
+          <Link href="/">
+            <ArrowLeft className="size-5" />
+          </Link>
+        </Button>
+      ),
+    }),
+    [],
+  );
+
+  useAppHeader(headerConfig);
 
   useEffect(() => {
     let mounted = true;
@@ -56,27 +72,14 @@ export function HomeScreen() {
   }, []);
 
   return (
-    <main className="relative isolate h-[100svh] overflow-hidden bg-background safe-screen">
+    <main className="relative isolate h-[100svh] overflow-hidden bg-background">
       <motion.div
-        className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col"
+        className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col top-level-screen"
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -42 }}
         initial={{ opacity: 0, x: -42 }}
         transition={{ duration: 0.24, ease: "easeOut" }}
       >
-        <AppHeader
-          eyebrow="IdleDiary"
-          title="Generated videos"
-          leading={
-            <Button asChild size="icon" variant="outline" aria-label="Back to camera">
-              <Link href="/">
-                <ArrowLeft className="size-5" />
-              </Link>
-            </Button>
-          }
-          trailing={<div className="size-11 shrink-0" aria-hidden="true" />}
-        />
-
         {state.status === "error" ? (
           <div className="mt-5 shrink-0 rounded-md border border-destructive/45 bg-destructive/10 p-3 text-sm leading-6 text-destructive-foreground">
             {state.error}

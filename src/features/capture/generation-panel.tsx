@@ -12,7 +12,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
   const logs = progress.logs.slice(-5);
 
   return (
-    <div className="relative z-10 flex h-[100svh] flex-col justify-end overflow-hidden safe-screen">
+    <div className="relative z-10 flex h-[100svh] flex-col justify-end overflow-hidden top-level-screen">
       <div
         aria-hidden="true"
         className="absolute inset-x-0 bottom-28 top-8 overflow-hidden rounded-sm border border-border/50 bg-muted/20 p-4 font-mono text-[10px] leading-5 text-muted-foreground/60 [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_72%,transparent)]"
