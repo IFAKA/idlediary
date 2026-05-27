@@ -78,14 +78,14 @@ async function waitFor(assertion: () => void) {
   const startedAt = Date.now();
   let lastError: unknown;
 
-  while (Date.now() - startedAt < 1000) {
+  while (Date.now() - startedAt < 2000) {
     try {
       assertion();
       return;
     } catch (error) {
       lastError = error;
       await act(async () => {
-        await Promise.resolve();
+        await new Promise((resolve) => window.setTimeout(resolve, 10));
       });
     }
   }
@@ -227,9 +227,11 @@ describe("thumbnail rendering", () => {
       expect(container.querySelectorAll('a[aria-label^="Open "]')).toHaveLength(2);
     });
 
-    expect(
-      container.querySelector('a[aria-label="Open Two Seconds Today"]')?.parentElement,
-    ).toHaveClass("new-video-card-highlight");
+    await waitFor(() => {
+      expect(
+        container.querySelector('a[aria-label="Open Two Seconds Today"]')?.parentElement,
+      ).toHaveClass("new-video-card-highlight");
+    });
     expect(
       container.querySelector('a[aria-label="Open Yesterday"]')?.parentElement,
     ).not.toHaveClass("new-video-card-highlight");

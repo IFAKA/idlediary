@@ -293,7 +293,7 @@ button {
   inset: -5px;
   border: 1px solid hsl(var(--primary) / 0.55);
   border-radius: calc(0.5rem + 5px);
-  animation: new-video-card-glow 1.8s ease-out 2;
+  animation: new-video-card-glow 2.4s ease-out 3;
   will-change: opacity, box-shadow, transform;
 }
 

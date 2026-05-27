@@ -72,12 +72,17 @@ function formatMimeType(mimeType: string) {
   return mimeType.split(";")[0]?.replace("video/", "").toUpperCase() || "VIDEO";
 }
 
+const newVideoHighlightDelayMs = 420;
+
 export function HomeScreen() {
   const [state, setState] = useState<HomeState>({ status: "loading" });
   const [highlightedVlogIds, setHighlightedVlogIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  const [isNewVideoHighlightActive, setIsNewVideoHighlightActive] = useState(false);
   const mountedRef = useRef(false);
+  const highlightTimerRef = useRef<number | null>(null);
+  const highlightFrameRef = useRef<number | null>(null);
   const thumbnailBackfillsRef = useRef(new Set<string>());
   const videoCount = state.status === "ready" ? state.vlogs.length : null;
   const headerConfig = useMemo<AppHeaderConfig>(
@@ -123,6 +128,31 @@ export function HomeScreen() {
       mountedRef.current = false;
     };
   }, []);
+
+  const clearHighlightStart = useCallback(() => {
+    if (highlightTimerRef.current !== null) {
+      window.clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = null;
+    }
+
+    if (highlightFrameRef.current !== null) {
+      window.cancelAnimationFrame(highlightFrameRef.current);
+      highlightFrameRef.current = null;
+    }
+  }, []);
+
+  const scheduleHighlightStart = useCallback(() => {
+    clearHighlightStart();
+    highlightTimerRef.current = window.setTimeout(() => {
+      highlightTimerRef.current = null;
+      highlightFrameRef.current = window.requestAnimationFrame(() => {
+        highlightFrameRef.current = null;
+        if (mountedRef.current) {
+          setIsNewVideoHighlightActive(true);
+        }
+      });
+    }, newVideoHighlightDelayMs);
+  }, [clearHighlightStart]);
 
   const backfillVlogThumbnail = useCallback(async (vlogId: string) => {
     if (thumbnailBackfillsRef.current.has(vlogId)) return;
@@ -178,8 +208,12 @@ export function HomeScreen() {
             : sortedVlogs;
 
         if (!mounted) return;
+        setIsNewVideoHighlightActive(false);
         setHighlightedVlogIds(new Set(newVlogIds));
         setState({ status: "ready", vlogs: readyVlogs });
+        if (newVlogIds.length > 0) {
+          scheduleHighlightStart();
+        }
 
         void (async () => {
           for (const vlog of readyVlogs.filter((entry) => !entry.thumbnailBlob)) {
@@ -201,8 +235,9 @@ export function HomeScreen() {
 
     return () => {
       mounted = false;
+      clearHighlightStart();
     };
-  }, [backfillVlogThumbnail]);
+  }, [backfillVlogThumbnail, clearHighlightStart, scheduleHighlightStart]);
 
   return (
     <main className="relative isolate h-[100svh] overflow-hidden bg-background">
@@ -230,7 +265,7 @@ export function HomeScreen() {
                 {state.vlogs.map((vlog) => (
                   <VlogCard
                     key={vlog.id}
-                    isNew={highlightedVlogIds.has(vlog.id)}
+                    isNew={isNewVideoHighlightActive && highlightedVlogIds.has(vlog.id)}
                     vlog={vlog}
                     onThumbnailError={backfillVlogThumbnail}
                   />
