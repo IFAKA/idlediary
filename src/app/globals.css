@@ -125,16 +125,16 @@ button {
 .record-segment-pulse[data-record-segment-pulse-active="true"] {
   animation: record-segment-pulse 1420ms cubic-bezier(0.16, 1, 0.3, 1) both;
   filter:
-    drop-shadow(0 0 4px hsl(var(--primary) / 0.84))
-    drop-shadow(0 0 12px hsl(var(--primary) / 0.5))
-    drop-shadow(0 0 22px rgba(235, 214, 255, 0.34));
+    drop-shadow(0 0 6px hsl(var(--primary) / 0.96))
+    drop-shadow(0 0 16px hsl(var(--primary) / 0.72))
+    drop-shadow(0 0 30px rgba(235, 214, 255, 0.52));
 }
 
 .record-marker-pulse[data-record-marker-active="true"] {
   animation: record-marker-pulse 1320ms cubic-bezier(0.16, 1, 0.3, 1) both;
   filter:
-    drop-shadow(0 0 4px hsl(var(--primary) / 0.72))
-    drop-shadow(0 0 10px rgba(235, 214, 255, 0.38));
+    drop-shadow(0 0 5px hsl(var(--primary) / 0.86))
+    drop-shadow(0 0 14px rgba(235, 214, 255, 0.54));
 }
 
 .record-poof-particle[data-record-poof-particle-active="true"] {
@@ -150,28 +150,28 @@ button {
   }
 
   5% {
-    opacity: 0.68;
-    stroke-width: 7.35;
+    opacity: 0.92;
+    stroke-width: 7.65;
   }
 
   14% {
-    opacity: 0.46;
-    stroke-width: 7.7;
+    opacity: 0.64;
+    stroke-width: 8.05;
   }
 
   32% {
-    opacity: 0.28;
-    stroke-width: 8;
+    opacity: 0.4;
+    stroke-width: 8.35;
   }
 
   68% {
-    opacity: 0.1;
-    stroke-width: 8.42;
+    opacity: 0.14;
+    stroke-width: 8.82;
   }
 
   100% {
     opacity: 0;
-    stroke-width: 8.55;
+    stroke-width: 9.05;
   }
 }
 
@@ -183,21 +183,21 @@ button {
   }
 
   6% {
-    opacity: 0.42;
-    transform: scale(1.08);
-    stroke-width: 1.16;
+    opacity: 0.62;
+    transform: scale(1.14);
+    stroke-width: 1.22;
   }
 
   18% {
-    opacity: 0.26;
-    transform: scale(1.2);
-    stroke-width: 1.26;
+    opacity: 0.36;
+    transform: scale(1.28);
+    stroke-width: 1.34;
   }
 
   56% {
-    opacity: 0.1;
-    transform: scale(1.38);
-    stroke-width: 1.4;
+    opacity: 0.14;
+    transform: scale(1.46);
+    stroke-width: 1.5;
   }
 
   100% {
@@ -292,15 +292,43 @@ button {
   }
 }
 
-@keyframes new-video-card-shimmer {
+@keyframes new-video-card-pulse {
+  0% {
+    opacity: 0;
+    box-shadow:
+      0 0 0 0 hsl(var(--primary) / 0),
+      0 0 0 0 hsl(var(--primary) / 0),
+      0 0 0 hsl(var(--primary) / 0);
+  }
+
+  26% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.9),
+      0 0 0 9px hsl(var(--primary) / 0.28),
+      0 0 30px hsl(var(--primary) / 0.58);
+  }
+
+  56% {
+    opacity: 0.72;
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.68),
+      0 0 0 15px hsl(var(--primary) / 0.16),
+      0 0 42px hsl(var(--primary) / 0.38);
+  }
+
   100% {
-    transform: translateX(100%);
+    opacity: 0;
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0),
+      0 0 0 22px hsl(var(--primary) / 0),
+      0 0 54px hsl(var(--primary) / 0);
   }
 }
 
 .new-video-card-highlight {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .new-video-card-highlight::after {
@@ -310,17 +338,10 @@ button {
   inset: 0;
   border-radius: inherit;
   z-index: 1;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(var(--memory) / 0.1) 42%,
-    rgba(255, 255, 255, 0.24) 50%,
-    hsl(var(--memory) / 0.1) 58%,
-    transparent 100%
-  );
-  transform: translateX(-100%);
-  animation: new-video-card-shimmer 1.25s ease-in-out both;
-  will-change: transform;
+  border: 1px solid hsl(var(--primary) / 0.78);
+  opacity: 0;
+  animation: new-video-card-pulse 2.2s cubic-bezier(0.33, 1, 0.68, 1) both;
+  will-change: opacity, box-shadow;
 }
 
 .saved-videos-scroll {
@@ -339,7 +360,7 @@ button {
 
   .new-video-card-highlight::after {
     animation: none;
-    transform: translateX(100%);
+    opacity: 0;
     will-change: auto;
   }
 }
