@@ -29,6 +29,7 @@ import {
   RotateCcw,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -586,32 +587,42 @@ function FullscreenPreview({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] h-[100svh] overflow-hidden bg-black safe-screen"
+      className="fixed inset-0 z-[100] h-[100svh] overflow-hidden bg-black"
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
     >
       <motion.div
-        className="relative h-full w-full overflow-hidden bg-black"
+        className="grid h-full w-full place-items-center overflow-hidden bg-black"
         layoutId={`clip-preview-${clip.id}`}
         transition={spring}
       >
-        <video
-          aria-label="Fullscreen clip preview"
-          autoPlay
-          className="h-full w-full object-contain"
-          controls
-          playsInline
-          preload="auto"
-          src={src ?? undefined}
-          onError={() => setHasError(true)}
-        />
-        {hasError ? (
-          <div className="absolute inset-x-4 bottom-4 bg-black/80 p-3 text-sm text-white">
-            This clip can&apos;t be loaded by this browser. Record the next clip
-            using the current recorder format.
-          </div>
-        ) : null}
+        <div className="relative aspect-[9/16] h-full max-h-full max-w-full overflow-hidden bg-black">
+          <video
+            aria-label="Fullscreen clip preview"
+            autoPlay
+            className="h-full w-full object-contain"
+            controls
+            playsInline
+            preload="auto"
+            src={src ?? undefined}
+            onError={() => setHasError(true)}
+          />
+          {hasError ? (
+            <div className="absolute inset-x-4 bottom-4 bg-black/80 p-3 text-sm text-white">
+              This clip can&apos;t be loaded by this browser. Record the next clip
+              using the current recorder format.
+            </div>
+          ) : null}
+          <button
+            aria-label="Close fullscreen preview"
+            className="absolute right-2 top-2 z-10 grid size-11 place-items-center rounded-full border border-white/25 bg-black/55 text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-md transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            type="button"
+            onClick={onClose}
+          >
+            <X className="size-5" strokeWidth={2.5} />
+          </button>
+        </div>
       </motion.div>
     </motion.div>
   );
