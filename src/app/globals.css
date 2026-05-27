@@ -123,7 +123,7 @@ button {
 }
 
 .record-segment-pulse[data-record-segment-pulse-active="true"] {
-  animation: record-segment-pulse 1360ms cubic-bezier(0.33, 1, 0.68, 1) both;
+  animation: record-segment-pulse 1100ms cubic-bezier(0.23, 1, 0.32, 1) both;
   filter:
     drop-shadow(0 0 6px hsl(var(--primary) / 0.96))
     drop-shadow(0 0 16px hsl(var(--primary) / 0.72))
@@ -131,14 +131,14 @@ button {
 }
 
 .record-marker-pulse[data-record-marker-active="true"] {
-  animation: record-marker-pulse 1240ms cubic-bezier(0.33, 1, 0.68, 1) both;
+  animation: record-marker-pulse 980ms cubic-bezier(0.23, 1, 0.32, 1) both;
   filter:
     drop-shadow(0 0 5px hsl(var(--primary) / 0.86))
     drop-shadow(0 0 14px rgba(235, 214, 255, 0.54));
 }
 
 .record-poof-particle[data-record-poof-particle-active="true"] {
-  animation: record-poof-particle 1120ms cubic-bezier(0.33, 1, 0.68, 1) both;
+  animation: record-poof-particle 900ms cubic-bezier(0.23, 1, 0.32, 1) both;
   animation-delay: var(--poof-delay);
   filter: blur(0.7px);
 }
@@ -149,29 +149,24 @@ button {
     stroke-width: 6;
   }
 
-  8% {
-    opacity: 0.24;
-    stroke-width: 6.65;
-  }
-
-  22% {
+  10% {
     opacity: 0.82;
-    stroke-width: 7.45;
+    stroke-width: 7.35;
   }
 
-  46% {
-    opacity: 0.48;
-    stroke-width: 8.15;
+  34% {
+    opacity: 0.56;
+    stroke-width: 8.05;
   }
 
-  78% {
-    opacity: 0.08;
-    stroke-width: 8.85;
+  68% {
+    opacity: 0.18;
+    stroke-width: 8.7;
   }
 
   100% {
     opacity: 0;
-    stroke-width: 9.05;
+    stroke-width: 9;
   }
 }
 
@@ -182,20 +177,14 @@ button {
     stroke-width: 1;
   }
 
-  10% {
-    opacity: 0.22;
-    transform: scale(1.02);
-    stroke-width: 1.08;
+  12% {
+    opacity: 0.56;
+    transform: scale(1.12);
+    stroke-width: 1.2;
   }
 
-  24% {
-    opacity: 0.5;
-    transform: scale(1.16);
-    stroke-width: 1.22;
-  }
-
-  62% {
-    opacity: 0.16;
+  48% {
+    opacity: 0.28;
     transform: scale(1.36);
     stroke-width: 1.42;
   }
@@ -214,15 +203,11 @@ button {
     transform: translate(0, 0) scale(0.28) rotate(0deg);
   }
 
-  12% {
-    opacity: calc(var(--poof-opacity) * 0.36);
-  }
-
-  26% {
+  14% {
     opacity: var(--poof-opacity);
   }
 
-  64% {
+  56% {
     opacity: calc(var(--poof-opacity) * 0.48);
     filter: blur(1.8px);
   }
@@ -321,24 +306,27 @@ button {
 @keyframes new-video-card-sheen {
   0% {
     opacity: 0;
-    transform: translate3d(-72%, 0, 0) rotate(12deg);
+    transform: translate3d(-140%, 0, 0) rotate(7deg);
   }
 
-  18% {
-    opacity: 0;
+  12% {
+    opacity: 0.18;
+    transform: translate3d(-92%, 0, 0) rotate(9deg);
   }
 
-  42% {
+  46% {
     opacity: 0.52;
+    transform: translate3d(36%, 0, 0) rotate(13deg);
   }
 
-  68% {
+  76% {
     opacity: 0.2;
+    transform: translate3d(138%, 0, 0) rotate(16deg);
   }
 
   100% {
     opacity: 0;
-    transform: translate3d(186%, 0, 0) rotate(12deg);
+    transform: translate3d(214%, 0, 0) rotate(18deg);
   }
 }
 
@@ -388,7 +376,10 @@ button {
   filter: blur(0.35px);
   mix-blend-mode: plus-lighter;
   transform-origin: center;
-  animation: new-video-card-sheen 920ms cubic-bezier(0.19, 1, 0.22, 1) 140ms both;
+  opacity: 0;
+  transform: translate3d(-140%, 0, 0) rotate(7deg);
+  will-change: transform, opacity;
+  animation: new-video-card-sheen 980ms cubic-bezier(0.19, 1, 0.22, 1) both;
 }
 
 .new-video-card-highlight::after {
