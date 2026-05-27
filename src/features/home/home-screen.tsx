@@ -10,7 +10,10 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
+import {
+  useAppHeader,
+  type AppHeaderConfig,
+} from "@/components/app-header-shell";
 import { ItemCountStack } from "@/components/item-counter";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +27,10 @@ import {
   saveVlogThumbnail,
   sortVlogsNewestFirst,
 } from "@/features/clips/storage";
-import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbnail";
+import {
+  generateVideoThumbnail,
+  thumbnailSizes,
+} from "@/features/clips/thumbnail";
 import type { VlogSummary } from "@/features/clips/types";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
@@ -76,10 +82,11 @@ const newVideoHighlightDelayMs = 420;
 
 export function HomeScreen() {
   const [state, setState] = useState<HomeState>({ status: "loading" });
-  const [highlightedVlogIds, setHighlightedVlogIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const [isNewVideoHighlightActive, setIsNewVideoHighlightActive] = useState(false);
+  const [highlightedVlogIds, setHighlightedVlogIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const [isNewVideoHighlightActive, setIsNewVideoHighlightActive] =
+    useState(false);
   const mountedRef = useRef(false);
   const highlightTimerRef = useRef<number | null>(null);
   const highlightFrameRef = useRef<number | null>(null);
@@ -90,7 +97,12 @@ export function HomeScreen() {
       eyebrow: "IdleDiary",
       title: "Saved entries",
       leading: (
-        <Button asChild size="icon" variant="outline" aria-label="Back to camera">
+        <Button
+          asChild
+          size="icon"
+          variant="outline"
+          aria-label="Back to camera"
+        >
           <Link href="/">
             <ArrowLeft className="size-5" />
           </Link>
@@ -109,7 +121,11 @@ export function HomeScreen() {
                   initial={{ opacity: 0 }}
                   transition={{ duration: 0.18, ease: "easeOut" }}
                 >
-                  <ItemCountStack value={videoCount} singular="video" plural="videos" />
+                  <ItemCountStack
+                    value={videoCount}
+                    singular="video"
+                    plural="videos"
+                  />
                 </motion.span>
               )}
             </AnimatePresence>
@@ -162,7 +178,10 @@ export function HomeScreen() {
       const fullVlog = await getVlog(vlogId);
       if (!fullVlog) return;
 
-      const thumbnail = await generateVideoThumbnail(fullVlog.blob, thumbnailSizes.vlog);
+      const thumbnail = await generateVideoThumbnail(
+        fullVlog.blob,
+        thumbnailSizes.vlog,
+      );
       const updatedVlog = await saveVlogThumbnail(vlogId, thumbnail);
       if (!updatedVlog || !mountedRef.current) return;
 
@@ -171,7 +190,9 @@ export function HomeScreen() {
         return {
           status: "ready",
           vlogs: sortVlogsNewestFirst(
-            current.vlogs.map((item) => (item.id === updatedVlog.id ? updatedVlog : item)),
+            current.vlogs.map((item) =>
+              item.id === updatedVlog.id ? updatedVlog : item,
+            ),
           ),
         };
       });
@@ -216,7 +237,9 @@ export function HomeScreen() {
         }
 
         void (async () => {
-          for (const vlog of readyVlogs.filter((entry) => !entry.thumbnailBlob)) {
+          for (const vlog of readyVlogs.filter(
+            (entry) => !entry.thumbnailBlob,
+          )) {
             if (!mounted) return;
             void backfillVlogThumbnail(vlog.id);
           }
@@ -254,18 +277,21 @@ export function HomeScreen() {
           </div>
         ) : null}
 
-        <section className="mt-3 min-h-0 flex-1 overflow-hidden">
+        <section className="min-h-0 flex-1 overflow-hidden">
           {state.status === "loading" ? (
             <div className="flex h-full min-h-80 items-center justify-center text-sm text-muted-foreground">
               Loading entries...
             </div>
           ) : state.vlogs.length > 0 ? (
             <div className="saved-videos-scroll h-full overflow-y-auto overscroll-contain">
-              <div className="grid gap-5 p-5 pb-10 xl:grid-cols-2">
+              <div className="grid gap-5 pb-10 xl:grid-cols-2">
                 {state.vlogs.map((vlog) => (
                   <VlogCard
                     key={vlog.id}
-                    isNew={isNewVideoHighlightActive && highlightedVlogIds.has(vlog.id)}
+                    isNew={
+                      isNewVideoHighlightActive &&
+                      highlightedVlogIds.has(vlog.id)
+                    }
                     vlog={vlog}
                     onThumbnailError={backfillVlogThumbnail}
                   />
@@ -290,7 +316,8 @@ function EmptyHistory() {
       </div>
       <h2 className="text-2xl font-semibold">No diary entries yet</h2>
       <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-        Record a few three-second clips, review the draft, then generate your first diary video.
+        Record a few three-second clips, review the draft, then generate your
+        first diary video.
       </p>
       <Button asChild className="mt-6">
         <Link href="/">
@@ -311,8 +338,13 @@ function VlogCard({
   vlog: VlogSummary;
   onThumbnailError: (vlogId: string) => void;
 }) {
-  const thumbnailSrc = useMemo(() => getThumbnailObjectUrlForVlog(vlog), [vlog]);
-  const [failedThumbnailSrc, setFailedThumbnailSrc] = useState<string | null>(null);
+  const thumbnailSrc = useMemo(
+    () => getThumbnailObjectUrlForVlog(vlog),
+    [vlog],
+  );
+  const [failedThumbnailSrc, setFailedThumbnailSrc] = useState<string | null>(
+    null,
+  );
   const thumbnailFailed = thumbnailSrc === failedThumbnailSrc;
 
   useEffect(() => {
@@ -329,57 +361,59 @@ function VlogCard({
         href={`/videos/${encodeURIComponent(vlog.id)}`}
       >
         <article className="contents">
-        <div className="relative h-full w-full bg-black">
-          {thumbnailSrc && !thumbnailFailed ? (
-            <img
-              alt=""
-              className="h-full w-full object-cover"
-              decoding="async"
-              loading="lazy"
-              src={thumbnailSrc}
-              onError={() => {
-                setFailedThumbnailSrc(thumbnailSrc);
-                onThumbnailError(vlog.id);
-              }}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-black text-white/60">
-              <FileVideo className="size-8" />
-            </div>
-          )}
-        </div>
-        <div className="flex min-w-0 flex-col border-l border-memory/15 p-3">
-          <div className="min-w-0">
-            <h2 className="line-clamp-1 text-base font-semibold leading-6">{vlog.title}</h2>
+          <div className="relative h-full w-full bg-black">
+            {thumbnailSrc && !thumbnailFailed ? (
+              <img
+                alt=""
+                className="h-full w-full object-cover"
+                decoding="async"
+                loading="lazy"
+                src={thumbnailSrc}
+                onError={() => {
+                  setFailedThumbnailSrc(thumbnailSrc);
+                  onThumbnailError(vlog.id);
+                }}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-black text-white/60">
+                <FileVideo className="size-8" />
+              </div>
+            )}
           </div>
+          <div className="flex min-w-0 flex-col border-l border-memory/15 p-3">
+            <div className="min-w-0">
+              <h2 className="line-clamp-1 text-base font-semibold leading-6">
+                {vlog.title}
+              </h2>
+            </div>
 
-          <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Clapperboard className="size-3.5 shrink-0 text-memory" />
-              <dt className="sr-only">Clips</dt>
-              <dd className="truncate">{vlog.clipCount} clips</dd>
-            </div>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Clock3 className="size-3.5 shrink-0 text-memory" />
-              <dt className="sr-only">Duration</dt>
-              <dd className="truncate">{formatDuration(vlog.clipCount)}</dd>
-            </div>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <FileVideo className="size-3.5 shrink-0 text-memory" />
-              <dt className="sr-only">Format</dt>
-              <dd className="truncate">{formatMimeType(vlog.mimeType)}</dd>
-            </div>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <HardDrive className="size-3.5 shrink-0 text-memory" />
-              <dt className="sr-only">File size</dt>
-              <dd className="truncate">{formatFileSize(vlog.size)}</dd>
-            </div>
-          </dl>
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <Clapperboard className="size-3.5 shrink-0 text-memory" />
+                <dt className="sr-only">Clips</dt>
+                <dd className="truncate">{vlog.clipCount} clips</dd>
+              </div>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <Clock3 className="size-3.5 shrink-0 text-memory" />
+                <dt className="sr-only">Duration</dt>
+                <dd className="truncate">{formatDuration(vlog.clipCount)}</dd>
+              </div>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <FileVideo className="size-3.5 shrink-0 text-memory" />
+                <dt className="sr-only">Format</dt>
+                <dd className="truncate">{formatMimeType(vlog.mimeType)}</dd>
+              </div>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <HardDrive className="size-3.5 shrink-0 text-memory" />
+                <dt className="sr-only">File size</dt>
+                <dd className="truncate">{formatFileSize(vlog.size)}</dd>
+              </div>
+            </dl>
 
-          <p className="mt-auto pt-3 text-xs text-muted-foreground">
-            Done {formatCompletedAt(vlog.createdAt)}
-          </p>
-        </div>
+            <p className="mt-auto pt-3 text-xs text-muted-foreground">
+              Done {formatCompletedAt(vlog.createdAt)}
+            </p>
+          </div>
         </article>
       </Link>
     </div>
