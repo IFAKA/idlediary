@@ -42,10 +42,21 @@ type ScreenMode = "capture" | "review" | "generating" | "result";
 type DurableView = Exclude<ScreenMode, "generating">;
 
 const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+const wait = (durationMs: number) =>
+  new Promise<void>((resolve) => window.setTimeout(resolve, durationMs));
 
 const routeSlideTransition = { duration: 0.24, ease: "easeOut" } as const;
+const notificationBadgeSpring = { type: "spring", stiffness: 680, damping: 24, mass: 0.55 } as const;
+const notificationBadgePulse = { duration: 1.6, repeat: Infinity, repeatDelay: 1.8, ease: "easeInOut" } as const;
 const draftBadgeTransition = { type: "spring", stiffness: 520, damping: 32, bounce: 0.12 } as const;
 const draftDigitTransition = { duration: 0.18, ease: "easeOut" } as const;
+const minimumVisibleGenerationStepMs = 450;
+const minimumVisibleSavingStepMs = 500;
+const introGenerationProgress = [
+  makeGenerationProgress("loading", 8),
+  makeGenerationProgress("writing", 14),
+  makeGenerationProgress("rendering", 24),
+];
 
 function requestedViewFromUrl(): DurableView {
   if (typeof window === "undefined") return "capture";
@@ -94,6 +105,7 @@ export function CaptureScreen() {
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [resultExitDirection, setResultExitDirection] = useState<"up" | "bottom">("up");
   const [hasNeedsActionVlog, setHasNeedsActionVlog] = useState(false);
+  const shouldReduceMotion = useReducedMotion() === true;
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
@@ -319,7 +331,61 @@ export function CaptureScreen() {
       await waitForPaint();
       camera.stop();
       await waitForPaint();
-      const nextVlog = await generateVlog(selectedClips, clips.session.id, setGenerationProgress);
+      let realtimeProgressEnabled = false;
+      let latestProgress = makeGenerationProgress("idle", 0);
+      let savingShownAt: number | null = null;
+      const publishGenerationProgress = (nextProgress: GenerationProgress) => {
+        latestProgress = nextProgress;
+
+        if (!realtimeProgressEnabled || nextProgress.step === "done") {
+          return;
+        }
+
+        if (nextProgress.step === "saving") {
+          savingShownAt ??= performance.now();
+        }
+
+        setGenerationProgress(nextProgress);
+      };
+      const generationResultPromise = generateVlog(
+        selectedClips,
+        clips.session.id,
+        publishGenerationProgress,
+      ).then(
+        (value) => ({ status: "fulfilled" as const, value }),
+        (reason: unknown) => ({ status: "rejected" as const, reason }),
+      );
+
+      for (const introProgress of introGenerationProgress) {
+        setGenerationProgress(introProgress);
+        await wait(minimumVisibleGenerationStepMs);
+      }
+
+      realtimeProgressEnabled = true;
+      if (latestProgress.step !== "idle" && latestProgress.step !== "done") {
+        if (latestProgress.step === "saving") {
+          savingShownAt ??= performance.now();
+        }
+
+        setGenerationProgress(latestProgress);
+      }
+
+      const generationResult = await generationResultPromise;
+      if (generationResult.status === "rejected") {
+        throw generationResult.reason;
+      }
+
+      if (savingShownAt === null) {
+        savingShownAt = performance.now();
+        setGenerationProgress(makeGenerationProgress("saving", 92));
+      }
+
+      const remainingSavingTime = minimumVisibleSavingStepMs - (performance.now() - savingShownAt);
+      if (remainingSavingTime > 0) {
+        await wait(remainingSavingTime);
+      }
+
+      const nextVlog = generationResult.value;
       if (!nextVlog.thumbnailBlob) {
         try {
           Object.assign(nextVlog, await generateVideoThumbnail(nextVlog.blob, thumbnailSizes.vlog));
@@ -510,13 +576,36 @@ export function CaptureScreen() {
                   onClick={handleVideosEntry}
                 >
                   <Clapperboard className="size-6 text-memory" />
-                  {hasNeedsActionVlog ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute -right-1 -top-1 size-4 rounded-full bg-primary ring-2 ring-background"
-                      data-testid="videos-needs-action-badge"
-                    />
-                  ) : null}
+                  <AnimatePresence initial={false}>
+                    {hasNeedsActionVlog ? (
+                      <motion.span
+                        aria-hidden="true"
+                        className="absolute -right-1 -top-1 size-4 rounded-full bg-primary ring-2 ring-background"
+                        data-testid="videos-needs-action-badge"
+                        key="videos-needs-action-badge"
+                        animate={
+                          shouldReduceMotion
+                            ? { opacity: 1 }
+                            : { opacity: 1, scale: [1, 1.16, 1] }
+                        }
+                        exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.64 }}
+                        initial={
+                          shouldReduceMotion
+                            ? { opacity: 0 }
+                            : { opacity: 0, scale: 0.32 }
+                        }
+                        transition={
+                          shouldReduceMotion
+                            ? { duration: 0 }
+                            : {
+                                opacity: { duration: 0.12 },
+                                scale: notificationBadgeSpring,
+                                default: notificationBadgePulse,
+                              }
+                        }
+                      />
+                    ) : null}
+                  </AnimatePresence>
                 </Link>
 
                 <RecordButton
