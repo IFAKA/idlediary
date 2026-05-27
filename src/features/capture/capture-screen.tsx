@@ -399,10 +399,6 @@ export function CaptureScreen() {
                 </p>
                 <h1 className="mt-1 text-2xl font-semibold">No pressure</h1>
               </div>
-              <div className="px-1 py-1 text-right">
-                <p className="text-xl font-semibold">{clips.clips.length}</p>
-                <p className="text-xs text-muted-foreground">clips</p>
-              </div>
             </header>
 
             <div className="mt-auto">
