@@ -81,7 +81,7 @@ export async function mockMediaCapture(
         testWindow.__idleDiaryFfmpegExecArgs = args;
         this.emit("log", { message: "scale -> crop -> fps -> setsar -> format" });
         this.emit("progress", { progress: 0.64 });
-        this.emit("log", { message: "loudnorm AAC 48kHz stereo" });
+        this.emit("log", { message: "AAC 48kHz stereo" });
         this.emit("progress", { progress: 0.96 });
         await new Promise((resolve) => window.setTimeout(resolve, generationDelayMs));
       }

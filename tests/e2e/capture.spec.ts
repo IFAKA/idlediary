@@ -506,8 +506,6 @@ test("draft review stops the camera before generation", async ({ page }) => {
         "+genpts",
         "-vf",
         "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30,setsar=1,format=yuv420p",
-        "-af",
-        "loudnorm=I=-16:TP=-1.5:LRA=11",
         "-movflags",
         "+faststart",
         "vlog.mp4",

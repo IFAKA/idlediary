@@ -80,7 +80,7 @@ export function buildVideoFilter() {
 }
 
 export function buildFfmpegArgs() {
-  return [
+  const args = [
     "-fflags",
     "+genpts",
     "-f",
@@ -109,8 +109,6 @@ export function buildFfmpegArgs() {
     String(exportProfile.audioSampleRate),
     "-ac",
     String(exportProfile.audioChannels),
-    "-af",
-    exportProfile.audioFilter,
     "-movflags",
     "+faststart",
     "-avoid_negative_ts",
@@ -118,6 +116,12 @@ export function buildFfmpegArgs() {
     "-shortest",
     exportProfile.output,
   ];
+
+  if (exportProfile.audioFilter) {
+    args.splice(args.indexOf("-movflags"), 0, "-af", exportProfile.audioFilter);
+  }
+
+  return args;
 }
 
 function stableJson(value: unknown): string {

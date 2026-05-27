@@ -9,5 +9,5 @@ export const exportProfile = {
   audioCodec: "aac",
   audioSampleRate: 48_000,
   audioChannels: 2,
-  audioFilter: "loudnorm=I=-16:TP=-1.5:LRA=11",
+  audioFilter: null,
 } as const;

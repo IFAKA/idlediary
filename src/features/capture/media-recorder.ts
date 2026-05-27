@@ -9,6 +9,8 @@ const preferredTypes = [
   "video/webm",
 ];
 
+const audioBitsPerSecond = 192_000;
+
 export function supportedRecordingMimeType() {
   if (typeof MediaRecorder === "undefined") {
     return "";
@@ -24,6 +26,13 @@ function videoOnlyStream(stream: MediaStream) {
   return new MediaStream(stream.getVideoTracks());
 }
 
+function recorderOptions(stream: MediaStream, mimeType?: string): MediaRecorderOptions {
+  return {
+    ...(mimeType ? { mimeType } : {}),
+    ...(stream.getAudioTracks().length > 0 ? { audioBitsPerSecond } : {}),
+  };
+}
+
 export function createRecorder(stream: MediaStream) {
   if (typeof MediaRecorder === "undefined") {
     throw new AppError({
@@ -37,12 +46,13 @@ export function createRecorder(stream: MediaStream) {
 
   const mimeType = supportedRecordingMimeType();
   if (mimeType) {
-    return new MediaRecorder(stream, { mimeType });
+    return new MediaRecorder(stream, recorderOptions(stream, mimeType));
   }
 
   if (canRecordBareMp4() && stream.getVideoTracks().length > 0) {
-    return new MediaRecorder(videoOnlyStream(stream), { mimeType: "video/mp4" });
+    const videoStream = videoOnlyStream(stream);
+    return new MediaRecorder(videoStream, recorderOptions(videoStream, "video/mp4"));
   }
 
-  return new MediaRecorder(stream);
+  return new MediaRecorder(stream, recorderOptions(stream));
 }

@@ -82,13 +82,13 @@ describe("generation export profile", () => {
     expect(args).toContain("+faststart");
   });
 
-  it("includes timestamp hardening and safe audio normalization", () => {
+  it("includes timestamp hardening without post-processing short-clip audio", () => {
     const args = buildFfmpegArgs();
 
     expect(args).toEqual(expect.arrayContaining(["-fflags", "+genpts"]));
     expect(args).toEqual(expect.arrayContaining(["-avoid_negative_ts", "make_zero"]));
     expect(args).toContain("-shortest");
-    expect(args).toEqual(expect.arrayContaining(["-af", exportProfile.audioFilter]));
+    expect(args).not.toContain("-af");
     expect(args.at(-1)).toBe("vlog.mp4");
   });
 
@@ -110,7 +110,7 @@ describe("generation export profile", () => {
         execArgs.push(args);
         this.emit("log", { message: "scale -> crop -> fps -> setsar -> format" });
         this.emit("progress", { progress: 0.62 });
-        this.emit("log", { message: "loudnorm AAC 48kHz stereo" });
+        this.emit("log", { message: "AAC 48kHz stereo" });
         this.emit("progress", { progress: 0.96 });
       }
 

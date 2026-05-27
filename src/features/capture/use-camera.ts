@@ -39,6 +39,15 @@ function videoConstraintsForDevice(deviceId: string): MediaTrackConstraints {
   };
 }
 
+const audioConstraints: MediaTrackConstraints = {
+  echoCancellation: { ideal: false },
+  noiseSuppression: { ideal: false },
+  autoGainControl: { ideal: false },
+  sampleRate: { ideal: exportProfile.audioSampleRate },
+  sampleSize: { ideal: 16 },
+  channelCount: { ideal: 1 },
+};
+
 function facingModeFromLabel(label: string): CameraFacingMode | null {
   const normalizedLabel = label.toLowerCase();
   if (/\b(front|face|selfie|user)\b/.test(normalizedLabel)) return "user";
@@ -134,10 +143,12 @@ export function useCamera() {
     try {
       const nextStream = await navigator.mediaDevices.getUserMedia({
         video,
-        audio: true,
+        audio: audioConstraints,
       });
       const videoTrack = nextStream.getVideoTracks()[0];
+      const audioTrack = nextStream.getAudioTracks()[0];
       const settings = videoTrack?.getSettings();
+      const audioSettings = audioTrack?.getSettings();
       const previousStream = streamRef.current;
       streamRef.current = nextStream;
       setStream(nextStream);
@@ -158,6 +169,13 @@ export function useCamera() {
         facingMode: settings?.facingMode,
         requestedFacingMode: errorFacingMode,
         deviceLabel: videoTrack?.label,
+        audioSampleRate: audioSettings?.sampleRate,
+        audioSampleSize: audioSettings?.sampleSize,
+        audioChannelCount: audioSettings?.channelCount,
+        echoCancellation: audioSettings?.echoCancellation,
+        noiseSuppression: audioSettings?.noiseSuppression,
+        autoGainControl: audioSettings?.autoGainControl,
+        audioDeviceLabel: audioTrack?.label,
       });
       return nextStream;
     } catch (cause) {
