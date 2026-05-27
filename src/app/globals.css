@@ -301,20 +301,24 @@ button {
 @keyframes new-video-card-sheen {
   0% {
     opacity: 0;
-    transform: translateX(-145%) skewX(-16deg);
+    transform: translate3d(-72%, 0, 0) rotate(12deg);
   }
 
-  22% {
-    opacity: 0.42;
+  18% {
+    opacity: 0;
   }
 
-  58% {
-    opacity: 0.18;
+  42% {
+    opacity: 0.52;
+  }
+
+  68% {
+    opacity: 0.2;
   }
 
   100% {
     opacity: 0;
-    transform: translateX(145%) skewX(-16deg);
+    transform: translate3d(186%, 0, 0) rotate(12deg);
   }
 }
 
@@ -349,15 +353,22 @@ button {
 }
 
 .new-video-card-highlight::before {
-  background: linear-gradient(
-    105deg,
-    transparent 22%,
-    hsl(var(--primary) / 0.22) 44%,
-    rgba(255, 255, 255, 0.28) 50%,
-    transparent 62%
-  );
-  mix-blend-mode: screen;
-  animation: new-video-card-sheen 760ms cubic-bezier(0.23, 1, 0.32, 1) 90ms both;
+  inset: -34% auto -34% -22%;
+  width: 42%;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--primary) / 0.04) 22%,
+      hsl(var(--memory) / 0.13) 42%,
+      rgba(255, 255, 255, 0.22) 50%,
+      hsl(var(--memory) / 0.1) 58%,
+      transparent 82%
+    );
+  filter: blur(0.35px);
+  mix-blend-mode: plus-lighter;
+  transform-origin: center;
+  animation: new-video-card-sheen 920ms cubic-bezier(0.19, 1, 0.22, 1) 140ms both;
 }
 
 .new-video-card-highlight::after {
