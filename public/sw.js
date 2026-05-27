@@ -1,4 +1,4 @@
-const CACHE_NAME = "idlediary-v1";
+const CACHE_NAME = "idlediary-v2";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -19,6 +19,15 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (event.request.mode === "navigate" || url.pathname.startsWith("/_next/")) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match("/").then((cached) => cached ?? Response.error())),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

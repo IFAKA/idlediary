@@ -12,7 +12,10 @@ export function PwaRegister() {
 
     navigator.serviceWorker
       .register("/sw.js")
-      .then(() => addDebugEvent("service-worker-registered", "pwa"))
+      .then((registration) => {
+        addDebugEvent("service-worker-registered", "pwa");
+        return registration.update();
+      })
       .catch((error) => reportError(error, { area: "pwa" }));
   }, []);
 
