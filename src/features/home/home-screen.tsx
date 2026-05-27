@@ -8,7 +8,7 @@ import {
   FileVideo,
   HardDrive,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { ItemCounter } from "@/components/item-counter";
@@ -94,11 +94,20 @@ export function HomeScreen() {
       trailing: (
         <div className="px-1 py-1 text-right">
           <p className="whitespace-nowrap text-sm font-semibold">
-            {videoCount === null ? null : (
-              <>
-                <ItemCounter value={videoCount} /> {videoCount === 1 ? "video" : "videos"}
-              </>
-            )}
+            <AnimatePresence initial={false}>
+              {videoCount === null ? null : (
+                <motion.span
+                  key="video-count"
+                  animate={{ opacity: 1 }}
+                  className="inline-flex items-center justify-end"
+                  exit={{ opacity: 0 }}
+                  initial={{ opacity: 0 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <ItemCounter value={videoCount} /> {videoCount === 1 ? "video" : "videos"}
+                </motion.span>
+              )}
+            </AnimatePresence>
           </p>
         </div>
       ),

@@ -154,32 +154,44 @@ function HeaderActionSlot({
   action: ReactNode;
   side: "leading" | "trailing";
 }) {
+  const isTrailing = side === "trailing";
+  const slotWidth = isTrailing ? 84 : 56;
+  const slotMarginLeft = isTrailing ? 16 : 0;
+  const slotMarginRight = side === "leading" ? 16 : 0;
+  const hiddenSlotLayout = isTrailing
+    ? {
+        marginLeft: slotMarginLeft,
+        marginRight: slotMarginRight,
+        scale: 1,
+        width: slotWidth,
+      }
+    : {
+        marginLeft: 0,
+        marginRight: 0,
+        scale: 0.96,
+        width: 0,
+      };
+
   return (
     <motion.div
       animate={{
-        marginLeft: side === "trailing" ? 16 : 0,
-        marginRight: side === "leading" ? 16 : 0,
+        marginLeft: slotMarginLeft,
+        marginRight: slotMarginRight,
         opacity: 1,
         scale: 1,
-        width: side === "trailing" ? 84 : 56,
+        width: slotWidth,
       }}
       className={cn(
         "pointer-events-auto flex h-14 shrink-0 items-start overflow-hidden",
         side === "leading" ? "justify-start" : "justify-end",
       )}
       exit={{
-        marginLeft: 0,
-        marginRight: 0,
+        ...hiddenSlotLayout,
         opacity: 0,
-        scale: 0.96,
-        width: 0,
       }}
       initial={{
-        marginLeft: 0,
-        marginRight: 0,
+        ...hiddenSlotLayout,
         opacity: 0,
-        scale: 0.96,
-        width: 0,
       }}
       transition={easeOut}
     >
