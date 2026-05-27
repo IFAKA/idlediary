@@ -697,10 +697,34 @@ function LatestDraftButton({
     [clip, thumbnailSrc],
   );
   const shouldReduceMotion = useReducedMotion() === true;
-  const showDraftAttention = clipCount > 0 && !disabled;
   const hasPreview = Boolean(clip && (thumbnailSrc || src));
   const draftCountTextSize =
     clipCount >= 100 ? "text-lg" : clipCount >= 10 ? "text-xl" : "text-2xl";
+  const [shouldAnimateDraftChange, setShouldAnimateDraftChange] =
+    useState(false);
+  const previousClipCountRef = useRef(clipCount);
+  const didMountRef = useRef(false);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      previousClipCountRef.current = clipCount;
+      return;
+    }
+
+    const previousClipCount = previousClipCountRef.current;
+    previousClipCountRef.current = clipCount;
+
+    if (disabled || clipCount <= previousClipCount) return;
+
+    setShouldAnimateDraftChange(true);
+    const timeout = window.setTimeout(
+      () => setShouldAnimateDraftChange(false),
+      360,
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [clipCount, disabled]);
 
   return (
     <motion.button
@@ -711,7 +735,7 @@ function LatestDraftButton({
       disabled={disabled}
       type="button"
       animate={
-        showDraftAttention && !shouldReduceMotion
+        shouldAnimateDraftChange && !shouldReduceMotion
           ? {
               boxShadow: [
                 "0 0 0 0 hsl(var(--memory) / 0)",
@@ -722,8 +746,8 @@ function LatestDraftButton({
           : { boxShadow: "0 0 0 0 hsl(var(--memory) / 0)" }
       }
       transition={
-        showDraftAttention && !shouldReduceMotion
-          ? { duration: 2.8, repeat: Infinity, repeatDelay: 1.4, ease: "easeInOut" }
+        shouldAnimateDraftChange && !shouldReduceMotion
+          ? { duration: 0.36, ease: "easeOut" }
           : { duration: 0.16 }
       }
       onClick={onOpen}
@@ -776,6 +800,7 @@ function LatestDraftButton({
                 transition={draftBadgeTransition}
               >
                 <AnimatedDraftCount
+                  animateChange={shouldAnimateDraftChange}
                   count={clipCount}
                   reducedMotion={shouldReduceMotion}
                 />
@@ -801,9 +826,11 @@ function LatestDraftButton({
 }
 
 function AnimatedDraftCount({
+  animateChange,
   count,
   reducedMotion,
 }: {
+  animateChange: boolean;
   count: number;
   reducedMotion: boolean;
 }) {
@@ -827,7 +854,7 @@ function AnimatedDraftCount({
         aria-hidden="true"
         initial={false}
         animate={
-          reducedMotion
+          reducedMotion || !animateChange
             ? undefined
             : {
                 scale: [1, direction > 0 ? 1.12 : 0.94, 1],
