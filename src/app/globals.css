@@ -102,6 +102,11 @@ span {
   text-wrap: balance;
 }
 
+[data-streaming-text],
+[data-streaming-text] * {
+  text-wrap: auto;
+}
+
 button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;

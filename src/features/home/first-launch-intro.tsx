@@ -104,7 +104,7 @@ function TypedDescription({
   }, [delay, reducedMotion, text]);
 
   return (
-    <p className={`relative ${className ?? ""}`} aria-label={text}>
+    <p className={`relative ${className ?? ""}`} aria-label={text} data-streaming-text>
       <span className="invisible block" aria-hidden="true">
         {text}
       </span>
