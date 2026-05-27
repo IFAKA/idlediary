@@ -64,7 +64,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
   const completedStages = completedGenerationStages(progress);
 
   return (
-    <div className="relative z-10 flex h-[100svh] flex-col justify-end overflow-hidden top-level-screen">
+    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden top-level-screen">
       <div
         aria-hidden="true"
         className="absolute inset-x-[-22%] bottom-[-7rem] h-[34rem] bg-[radial-gradient(circle_at_50%_55%,hsl(var(--memory)/0.26),transparent_58%)]"
@@ -142,7 +142,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
         </motion.div>
       </motion.div>
       <Progress
-        className="bg-memory/22"
+        className="mt-auto bg-memory/22"
         indicatorClassName="bg-gradient-to-r from-primary via-memory to-accent"
         value={progress.value}
       />
