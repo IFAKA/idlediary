@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { Play } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { getObjectUrlForVlog, retainVlogObjectUrl } from "@/features/clips/media-cache";
@@ -11,9 +12,15 @@ type VlogPlayerProps = {
   vlog: VlogRecord;
   openLabel: string;
   fullscreenLabel: string;
+  showOpenAffordance?: boolean;
 };
 
-export function VlogPlayer({ vlog, openLabel, fullscreenLabel }: VlogPlayerProps) {
+export function VlogPlayer({
+  vlog,
+  openLabel,
+  fullscreenLabel,
+  showOpenAffordance = false,
+}: VlogPlayerProps) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const src = useMemo(() => getObjectUrlForVlog(vlog), [vlog]);
   const closePlayer = useHistoryOverlay({
@@ -44,6 +51,17 @@ export function VlogPlayer({ vlog, openLabel, fullscreenLabel }: VlogPlayerProps
           preload="auto"
           src={src ?? undefined}
         />
+        {showOpenAffordance ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 grid place-items-center bg-black/10"
+            data-testid="generated-video-open-affordance"
+          >
+            <span className="grid size-16 place-items-center rounded-full border border-white/50 bg-black/45 text-white shadow-[0_18px_56px_rgba(0,0,0,0.38)] backdrop-blur-md">
+              <Play className="ml-1 size-8 fill-current" strokeWidth={2.4} />
+            </span>
+          </span>
+        ) : null}
       </button>
 
       <BodyPortal>

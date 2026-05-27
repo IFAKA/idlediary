@@ -584,6 +584,8 @@ test("success page has no header close button", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible({
     timeout: 8_000,
   });
+  await expect(page.getByTestId("success-confetti")).toBeVisible();
+  await expect(page.getByTestId("generated-video-open-affordance")).toBeVisible();
 
   await expect(page.getByRole("button", { name: "Back to recording" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
