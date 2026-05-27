@@ -4,31 +4,31 @@
 
 :root {
   color-scheme: dark;
-  --background: 48 9% 7%;
-  --foreground: 42 24% 92%;
-  --card: 48 8% 11%;
-  --card-foreground: 42 24% 92%;
-  --popover: 48 8% 9%;
-  --popover-foreground: 42 24% 92%;
-  --primary: 151 42% 55%;
-  --primary-foreground: 154 48% 7%;
-  --secondary: 38 17% 18%;
-  --secondary-foreground: 42 24% 92%;
-  --muted: 42 9% 20%;
-  --muted-foreground: 42 12% 66%;
-  --accent: 14 58% 59%;
-  --accent-foreground: 39 35% 95%;
-  --memory: 31 46% 58%;
-  --memory-foreground: 38 34% 9%;
-  --surface-soft: 42 11% 14%;
-  --surface-soft-foreground: 42 24% 92%;
-  --danger: 2 55% 54%;
-  --danger-foreground: 36 30% 96%;
+  --background: 330 18% 7%;
+  --foreground: 32 26% 93%;
+  --card: 330 15% 11%;
+  --card-foreground: 32 26% 93%;
+  --popover: 330 18% 9%;
+  --popover-foreground: 32 26% 93%;
+  --primary: 346 62% 66%;
+  --primary-foreground: 336 31% 9%;
+  --secondary: 330 14% 17%;
+  --secondary-foreground: 32 26% 93%;
+  --muted: 330 10% 20%;
+  --muted-foreground: 326 12% 68%;
+  --accent: 326 52% 62%;
+  --accent-foreground: 336 31% 9%;
+  --memory: 276 36% 70%;
+  --memory-foreground: 276 31% 10%;
+  --surface-soft: 330 13% 14%;
+  --surface-soft-foreground: 32 26% 93%;
+  --danger: 355 58% 58%;
+  --danger-foreground: 32 30% 96%;
   --destructive: var(--danger);
   --destructive-foreground: var(--danger-foreground);
-  --border: 45 8% 23%;
-  --input: 45 8% 23%;
-  --ring: 151 42% 55%;
+  --border: 330 10% 24%;
+  --input: 330 10% 24%;
+  --ring: 346 62% 66%;
   --radius: 8px;
 }
 
@@ -77,7 +77,7 @@ body {
 body {
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(13, 13, 12, 0.76), rgba(13, 13, 12, 1)),
+    linear-gradient(180deg, rgba(14, 10, 12, 0.76), rgba(14, 10, 12, 1)),
     radial-gradient(circle at 20% 0%, hsl(var(--primary) / 0.18), transparent 30%),
     hsl(var(--background));
   color: hsl(var(--foreground));
