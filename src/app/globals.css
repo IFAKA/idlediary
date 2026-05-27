@@ -97,6 +97,11 @@ textarea {
   font: inherit;
 }
 
+p,
+span {
+  text-wrap: balance;
+}
+
 button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
