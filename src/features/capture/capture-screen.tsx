@@ -279,7 +279,7 @@ export function CaptureScreen() {
   };
 
   return (
-    <main className="relative isolate min-h-[100svh] overflow-hidden bg-background">
+    <main className="relative isolate h-[100svh] overflow-hidden bg-background">
       <AnimatePresence initial={false}>
         <motion.div
           key={mode === "capture" && camera.stream ? "camera-preview" : "processing-backdrop"}
@@ -370,7 +370,7 @@ export function CaptureScreen() {
         ) : (
           <motion.div
             key="capture"
-            className="relative z-10 flex min-h-[100svh] flex-col safe-screen"
+            className="relative z-10 flex h-[100svh] flex-col safe-screen"
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, y: -10 }}
             initial={{ opacity: 0 }}

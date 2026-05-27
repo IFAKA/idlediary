@@ -94,7 +94,7 @@ export function HomeScreen() {
 
   if (!introSeen) {
     return (
-      <main className="relative isolate overflow-hidden bg-background">
+      <main className="relative isolate h-[100svh] overflow-hidden bg-background">
         <CameraPreview stream={null} />
         <PermissionPanel
           permission="prompt"
@@ -109,9 +109,9 @@ export function HomeScreen() {
   }
 
   return (
-    <main className="relative isolate min-h-[100svh] overflow-hidden bg-background safe-screen">
-      <div className="mx-auto flex min-h-[calc(100svh-32px)] w-full max-w-5xl flex-col">
-        <header className="flex items-start justify-between gap-4">
+    <main className="relative isolate h-[100svh] overflow-hidden bg-background safe-screen">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
+        <header className="shrink-0 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               IdleDiary
@@ -126,21 +126,23 @@ export function HomeScreen() {
         </header>
 
         {state.status === "error" ? (
-          <div className="mt-5 rounded-md border border-destructive/45 bg-destructive/10 p-3 text-sm leading-6 text-destructive-foreground">
+          <div className="mt-5 shrink-0 rounded-md border border-destructive/45 bg-destructive/10 p-3 text-sm leading-6 text-destructive-foreground">
             {state.error}
           </div>
         ) : null}
 
-        <section className="mt-8 flex-1">
+        <section className="mt-8 min-h-0 flex-1 overflow-hidden">
           {state.status === "checking" || state.status === "loading" ? (
             <div className="flex h-full min-h-80 items-center justify-center text-sm text-muted-foreground">
               Loading videos...
             </div>
           ) : state.vlogs.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {state.vlogs.map((vlog) => (
-                <VlogCard key={vlog.id} vlog={vlog} />
-              ))}
+            <div className="h-full overflow-y-auto overscroll-contain pr-1">
+              <div className="grid gap-4 pb-4 sm:grid-cols-2 lg:grid-cols-3">
+                {state.vlogs.map((vlog) => (
+                  <VlogCard key={vlog.id} vlog={vlog} />
+                ))}
+              </div>
             </div>
           ) : (
             <EmptyHistory />
@@ -154,7 +156,7 @@ export function HomeScreen() {
 
 function EmptyHistory() {
   return (
-    <div className="flex min-h-[70svh] flex-col items-center justify-center text-center">
+    <div className="flex h-full flex-col items-center justify-center text-center">
       <div className="mb-6 inline-flex size-14 items-center justify-center rounded-full border bg-black/35 text-primary">
         <Film className="size-7" />
       </div>

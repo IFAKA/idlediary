@@ -14,7 +14,7 @@ export function PermissionPanel({ permission, error, onStart }: PermissionPanelP
   const denied = permission === "denied";
 
   return (
-    <div className="relative z-10 flex min-h-[100svh] flex-col justify-end safe-screen">
+    <div className="relative z-10 flex h-[100svh] flex-col justify-end safe-screen">
       <div className="mb-8 max-w-sm">
         <div className="mb-5 inline-flex size-12 items-center justify-center rounded-full bg-white/10 text-primary">
           {denied ? <ShieldAlert className="size-6" /> : <Camera className="size-6" />}

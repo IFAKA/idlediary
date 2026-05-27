@@ -20,7 +20,7 @@ const labels: Record<GenerationProgress["step"], string> = {
 
 export function GenerationPanel({ progress }: GenerationPanelProps) {
   return (
-    <div className="relative z-10 flex min-h-[100svh] flex-col justify-end safe-screen">
+    <div className="relative z-10 flex h-[100svh] flex-col justify-end safe-screen">
       <div className="mb-6">
         <Loader2 className="mb-5 size-8 animate-spin text-primary" />
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">

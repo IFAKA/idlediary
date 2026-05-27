@@ -183,7 +183,7 @@ export function ClipReviewPanel({
 
   return (
     <motion.div
-      className="relative z-10 flex min-h-[100svh] flex-col safe-screen"
+      className="relative z-10 flex h-[100svh] flex-col safe-screen"
       layoutId="draft-card"
       transition={spring}
     >
@@ -534,7 +534,7 @@ function FullscreenPreview({ clip, onClose }: { clip: ClipRecord; onClose: () =>
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex flex-col bg-black safe-screen"
+      className="fixed inset-0 z-50 flex h-[100svh] flex-col overflow-hidden bg-black safe-screen"
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
