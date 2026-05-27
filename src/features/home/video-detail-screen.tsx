@@ -116,9 +116,7 @@ export function VideoDetailScreen() {
         transition={{ duration: 0.24, ease: "easeOut" }}
       >
         {viewState.status === "loading" ? (
-          <div className="flex h-full min-h-80 items-center justify-center text-sm text-muted-foreground">
-            Loading video...
-          </div>
+          <LoadingVideoDetail />
         ) : viewState.status === "ready" ? (
           <SavedVideoDetail
             vlog={viewState.vlog}
@@ -172,6 +170,45 @@ function SavedVideoDetail({
             Download
           </Button>
           <Button type="button" variant="destructive" onClick={onDelete}>
+            <Trash2 className="size-4" />
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingVideoDetail() {
+  return (
+    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div
+          aria-label="Loading saved video"
+          aria-busy="true"
+          className="relative aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-lg border border-memory/30 bg-black"
+          role="status"
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/[0.03] to-white/[0.08]" />
+          <div className="absolute inset-x-6 top-6 h-2 rounded-full bg-white/10" />
+          <div className="absolute inset-x-10 bottom-8 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-memory/70" />
+          </div>
+          <div className="absolute inset-0 animate-pulse bg-memory/10" />
+        </div>
+      </div>
+
+      <div className="grid shrink-0 gap-3 pb-1 pt-6">
+        <Button className="h-14 text-base" disabled type="button">
+          <Share2 className="size-5" />
+          Export
+        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Button disabled type="button" variant="outline">
+            <Download className="size-4" />
+            Download
+          </Button>
+          <Button disabled type="button" variant="destructive">
             <Trash2 className="size-4" />
             Delete
           </Button>
