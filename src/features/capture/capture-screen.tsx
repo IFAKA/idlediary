@@ -139,6 +139,7 @@ export function CaptureScreen() {
   const canSwitchCamera =
     mode === "capture" &&
     Boolean(camera.stream) &&
+    camera.hasMultipleCameras &&
     !camera.switching &&
     !isFinishing &&
     recorder.state !== "recording" &&
@@ -348,6 +349,26 @@ export function CaptureScreen() {
     }
   }, [camera, canSwitchCamera]);
 
+  const maybeSwitchCameraFromSwipe = useCallback(
+    (clientX: number, clientY: number, pointerId: number) => {
+      const start = cameraSwipeStartRef.current;
+      if (!start || start.pointerId !== pointerId || !canSwitchCamera) return;
+
+      const deltaX = clientX - start.x;
+      const deltaY = clientY - start.y;
+      if (
+        Math.abs(deltaY) < cameraSwipeMinDistance ||
+        Math.abs(deltaY) < Math.abs(deltaX) * cameraSwipeAxisRatio
+      ) {
+        return;
+      }
+
+      cameraSwipeStartRef.current = null;
+      void switchCamera();
+    },
+    [canSwitchCamera, switchCamera],
+  );
+
   const handleCapturePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!event.isPrimary || isInteractiveTarget(event.target)) {
       cameraSwipeStartRef.current = null;
@@ -361,21 +382,13 @@ export function CaptureScreen() {
     };
   };
 
+  const handleCapturePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    maybeSwitchCameraFromSwipe(event.clientX, event.clientY, event.pointerId);
+  };
+
   const handleCapturePointerUp = (event: PointerEvent<HTMLDivElement>) => {
-    const start = cameraSwipeStartRef.current;
+    maybeSwitchCameraFromSwipe(event.clientX, event.clientY, event.pointerId);
     cameraSwipeStartRef.current = null;
-    if (!start || start.pointerId !== event.pointerId || !canSwitchCamera) return;
-
-    const deltaX = event.clientX - start.x;
-    const deltaY = event.clientY - start.y;
-    if (
-      Math.abs(deltaY) < cameraSwipeMinDistance ||
-      Math.abs(deltaY) < Math.abs(deltaX) * cameraSwipeAxisRatio
-    ) {
-      return;
-    }
-
-    void switchCamera();
   };
 
   const openReview = () => {
@@ -531,7 +544,7 @@ export function CaptureScreen() {
     return {
       eyebrow: "Today",
       title: "No pressure",
-      trailing: (
+      trailing: camera.hasMultipleCameras ? (
         <Button
           aria-label="Switch camera"
           disabled={!canSwitchCamera}
@@ -543,9 +556,18 @@ export function CaptureScreen() {
         >
           <SwitchCamera className="size-5" />
         </Button>
-      ),
+      ) : null,
     };
-  }, [canSwitchCamera, draftClipCount, isFinishing, mode, showCapture, switchCamera, vlog]);
+  }, [
+    camera.hasMultipleCameras,
+    canSwitchCamera,
+    draftClipCount,
+    isFinishing,
+    mode,
+    showCapture,
+    switchCamera,
+    vlog,
+  ]);
 
   useAppHeader(headerConfig);
 
@@ -653,7 +675,9 @@ export function CaptureScreen() {
               cameraSwipeStartRef.current = null;
             }}
             onPointerDown={handleCapturePointerDown}
+            onPointerMove={handleCapturePointerMove}
             onPointerUp={handleCapturePointerUp}
+            style={{ touchAction: "none" }}
           >
             <div className="mt-auto">
               <div className="mb-5 flex items-center justify-between gap-3">

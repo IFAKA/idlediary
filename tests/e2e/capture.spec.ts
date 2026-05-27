@@ -273,7 +273,7 @@ test("record screen switches camera from the header and vertical swipe", async (
   await mockMediaCapture(page);
   await openRecord(page);
 
-  const requestedFacingModes = async () =>
+  const requestedCameras = async () =>
     page.evaluate(() => {
       const testWindow = window as typeof window & {
         __idleDiaryCameraConstraints?: MediaStreamConstraints[];
@@ -281,17 +281,24 @@ test("record screen switches camera from the header and vertical swipe", async (
 
       return (testWindow.__idleDiaryCameraConstraints ?? []).map((constraints) => {
         if (!constraints.video || typeof constraints.video === "boolean") return null;
-        return constraints.video.facingMode ?? null;
+        const { deviceId, facingMode } = constraints.video;
+        if (deviceId && typeof deviceId === "object" && "exact" in deviceId) {
+          return deviceId.exact;
+        }
+        if (facingMode && typeof facingMode === "object" && "ideal" in facingMode) {
+          return facingMode.ideal;
+        }
+        return facingMode ?? null;
       });
     });
 
-  await expect.poll(requestedFacingModes).toEqual(["environment"]);
+  await expect.poll(requestedCameras).toEqual(["environment"]);
 
   const switchCamera = page.getByRole("button", { name: "Switch camera" });
   await expect(switchCamera).toBeVisible();
   await expect(switchCamera).toBeEnabled();
   await switchCamera.click();
-  await expect.poll(requestedFacingModes).toEqual(["environment", "user"]);
+  await expect.poll(requestedCameras).toEqual(["environment", "front-camera"]);
 
   const frame = page.locator('[data-testid="camera-preview-frame"]:has([aria-label="Camera preview"])');
   const box = await frame.boundingBox();
@@ -302,7 +309,41 @@ test("record screen switches camera from the header and vertical swipe", async (
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 96, { steps: 4 });
   await page.mouse.up();
 
-  await expect.poll(requestedFacingModes).toEqual(["environment", "user", "environment"]);
+  await expect.poll(requestedCameras).toEqual(["environment", "front-camera", "back-camera"]);
+});
+
+test("record screen hides camera switch when only one camera is available", async ({ page }) => {
+  await mockMediaCapture(page, {
+    videoInputs: [
+      { deviceId: "back-camera", groupId: "back", kind: "videoinput", label: "Back Camera" },
+    ],
+  });
+  await openRecord(page);
+
+  await expect(page.getByRole("button", { name: "Switch camera" })).toHaveCount(0);
+});
+
+test("failed camera switch keeps the working camera active", async ({ page }) => {
+  await mockMediaCapture(page, { failingDeviceIds: ["front-camera"] });
+  await openRecord(page);
+
+  const switchCamera = page.getByRole("button", { name: "Switch camera" });
+  await expect(switchCamera).toBeVisible();
+  await expect(switchCamera).toBeEnabled();
+  await switchCamera.click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const testWindow = window as typeof window & {
+          __idleDiaryCameraConstraints?: MediaStreamConstraints[];
+        };
+        return testWindow.__idleDiaryCameraConstraints?.length ?? 0;
+      }),
+    )
+    .toBe(2);
+
+  await expect(page.getByText("Camera is blocked")).toHaveCount(0);
+  await expect(page.locator('[aria-label="Camera preview"]')).toBeVisible();
 });
 
 test("permission denial gives recovery copy and retry action", async ({ page }) => {

@@ -2,9 +2,25 @@ import type { Page } from "@playwright/test";
 
 export async function mockMediaCapture(
   page: Page,
-  { generationDelayMs = 250 }: { generationDelayMs?: number } = {},
+  {
+    failingDeviceIds = [],
+    generationDelayMs = 250,
+    videoInputs = [
+      { deviceId: "back-camera", groupId: "back", kind: "videoinput", label: "Back Camera" },
+      { deviceId: "front-camera", groupId: "front", kind: "videoinput", label: "Front Camera" },
+    ],
+  }: {
+    failingDeviceIds?: string[];
+    generationDelayMs?: number;
+    videoInputs?: Array<{
+      deviceId: string;
+      groupId: string;
+      kind: "videoinput";
+      label: string;
+    }>;
+  } = {},
 ) {
-  await page.addInitScript(({ generationDelayMs }) => {
+  await page.addInitScript(({ failingDeviceIds, generationDelayMs, videoInputs }) => {
     const blob = new Blob(["mock-video"], { type: "video/webm" });
     const generatedBlob = new Blob(["mock-generated-video"], { type: "video/mp4" });
     const thumbnailBlob = new Blob(["mock-thumbnail"], { type: "image/webp" });
@@ -105,11 +121,22 @@ export async function mockMediaCapture(
             __idleDiaryCameraConstraints?: MediaStreamConstraints[];
             __idleDiaryStartedStreams?: number;
           };
-          testWindow.__idleDiaryStartedStreams = (testWindow.__idleDiaryStartedStreams ?? 0) + 1;
           testWindow.__idleDiaryCameraConstraints = [
             ...(testWindow.__idleDiaryCameraConstraints ?? []),
             constraints ?? {},
           ];
+          if (constraints?.video && typeof constraints.video !== "boolean") {
+            const deviceId = constraints.video.deviceId;
+            const exactDeviceId =
+              deviceId && typeof deviceId === "object" && "exact" in deviceId
+                ? deviceId.exact
+                : null;
+            if (typeof exactDeviceId === "string" && failingDeviceIds.includes(exactDeviceId)) {
+              throw new DOMException("unavailable", "NotReadableError");
+            }
+          }
+
+          testWindow.__idleDiaryStartedStreams = (testWindow.__idleDiaryStartedStreams ?? 0) + 1;
           const stream = new MediaStream();
           Object.defineProperty(stream, "getTracks", {
             configurable: true,
@@ -127,9 +154,10 @@ export async function mockMediaCapture(
           });
           return stream;
         },
+        enumerateDevices: async () => videoInputs,
       },
     });
-  }, { generationDelayMs });
+  }, { failingDeviceIds, generationDelayMs, videoInputs });
 }
 
 export async function mockDeniedCamera(page: Page) {

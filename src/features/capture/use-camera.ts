@@ -9,8 +9,58 @@ import { getCameraPermissionState, type CameraPermissionState } from "./permissi
 
 export type CameraFacingMode = "environment" | "user";
 
+type VideoInputDevice = {
+  deviceId: string;
+  groupId: string;
+  label: string;
+};
+
 function oppositeFacingMode(facingMode: CameraFacingMode): CameraFacingMode {
   return facingMode === "environment" ? "user" : "environment";
+}
+
+function videoConstraintsForFacingMode(facingMode: CameraFacingMode): MediaTrackConstraints {
+  return {
+    facingMode: { ideal: facingMode },
+    width: { ideal: exportProfile.width },
+    height: { ideal: exportProfile.height },
+    aspectRatio: { ideal: exportProfile.aspectRatio },
+    frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
+  };
+}
+
+function videoConstraintsForDevice(deviceId: string): MediaTrackConstraints {
+  return {
+    ...videoConstraintsForFacingMode("environment"),
+    deviceId: { exact: deviceId },
+  };
+}
+
+function facingModeFromLabel(label: string): CameraFacingMode | null {
+  const normalizedLabel = label.toLowerCase();
+  if (/\b(front|face|selfie|user)\b/.test(normalizedLabel)) return "user";
+  if (/\b(back|rear|environment|world)\b/.test(normalizedLabel)) return "environment";
+  return null;
+}
+
+function bestDeviceForFacingMode(
+  devices: VideoInputDevice[],
+  facingMode: CameraFacingMode,
+): VideoInputDevice | null {
+  return devices.find((device) => facingModeFromLabel(device.label) === facingMode) ?? null;
+}
+
+async function listVideoInputDevices(): Promise<VideoInputDevice[]> {
+  if (!navigator.mediaDevices?.enumerateDevices) return [];
+
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  return devices
+    .filter((device) => device.kind === "videoinput" && device.deviceId)
+    .map((device) => ({
+      deviceId: device.deviceId,
+      groupId: device.groupId,
+      label: device.label,
+    }));
 }
 
 export function useCamera() {
@@ -19,6 +69,7 @@ export function useCamera() {
   const [permission, setPermission] = useState<CameraPermissionState>("prompt");
   const [error, setError] = useState<AppError | null>(null);
   const [facingMode, setFacingMode] = useState<CameraFacingMode>("environment");
+  const [videoInputs, setVideoInputs] = useState<VideoInputDevice[]>([]);
   const [switching, setSwitching] = useState(false);
 
   const stopStream = useCallback((streamToStop: MediaStream | null) => {
@@ -32,7 +83,34 @@ export function useCamera() {
     addDebugEvent("camera-stopped", "capture");
   }, [stopStream]);
 
-  const startWithFacingMode = useCallback(async (nextFacingMode: CameraFacingMode) => {
+  const refreshVideoInputs = useCallback(async () => {
+    try {
+      const nextVideoInputs = await listVideoInputDevices();
+      setVideoInputs(nextVideoInputs);
+      addDebugEvent("camera-devices-refreshed", "capture", {
+        videoInputs: nextVideoInputs.map((device) => ({
+          hasDeviceId: Boolean(device.deviceId),
+          groupId: device.groupId,
+          label: device.label,
+        })),
+      });
+      return nextVideoInputs;
+    } catch (cause) {
+      reportError(cause);
+      setVideoInputs([]);
+      return [];
+    }
+  }, []);
+
+  const startWithVideoConstraints = useCallback(async ({
+    errorFacingMode,
+    setErrorOnFailure = true,
+    video,
+  }: {
+    errorFacingMode: CameraFacingMode;
+    setErrorOnFailure?: boolean;
+    video: MediaTrackConstraints;
+  }) => {
     setError(null);
     const state = await getCameraPermissionState();
     setPermission(state);
@@ -52,13 +130,7 @@ export function useCamera() {
 
     try {
       const nextStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: nextFacingMode,
-          width: { ideal: exportProfile.width },
-          height: { ideal: exportProfile.height },
-          aspectRatio: { ideal: exportProfile.aspectRatio },
-          frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
-        },
+        video,
         audio: true,
       });
       const videoTrack = nextStream.getVideoTracks()[0];
@@ -66,9 +138,14 @@ export function useCamera() {
       const previousStream = streamRef.current;
       streamRef.current = nextStream;
       setStream(nextStream);
-      setFacingMode(nextFacingMode);
+      setFacingMode(
+        settings?.facingMode === "user" || settings?.facingMode === "environment"
+          ? settings.facingMode
+          : errorFacingMode,
+      );
       setPermission("granted");
       stopStream(previousStream);
+      void refreshVideoInputs();
       addDebugEvent("camera-started", "capture", {
         videoTracks: nextStream.getVideoTracks().length,
         audioTracks: nextStream.getAudioTracks().length,
@@ -76,7 +153,7 @@ export function useCamera() {
         videoHeight: settings?.height,
         frameRate: settings?.frameRate,
         facingMode: settings?.facingMode,
-        requestedFacingMode: nextFacingMode,
+        requestedFacingMode: errorFacingMode,
         deviceLabel: videoTrack?.label,
       });
       return nextStream;
@@ -94,17 +171,30 @@ export function useCamera() {
             : "The camera could not be opened. Close other camera apps and retry.",
           cause,
           context: {
-            facingMode: nextFacingMode,
+            facingMode: errorFacingMode,
             permissionState: state,
             userAgent: navigator.userAgent,
           },
         }),
       );
-      setPermission(denied ? "denied" : "prompt");
-      setError(appError);
+      if (setErrorOnFailure) {
+        setPermission(denied ? "denied" : "prompt");
+        setError(appError);
+      }
       throw appError;
     }
-  }, [stopStream]);
+  }, [refreshVideoInputs, stopStream]);
+
+  const startWithFacingMode = useCallback(async (
+    nextFacingMode: CameraFacingMode,
+    options: { setErrorOnFailure?: boolean } = {},
+  ) => {
+    return startWithVideoConstraints({
+      errorFacingMode: nextFacingMode,
+      setErrorOnFailure: options.setErrorOnFailure,
+      video: videoConstraintsForFacingMode(nextFacingMode),
+    });
+  }, [startWithVideoConstraints]);
 
   const start = useCallback(async () => {
     return startWithFacingMode(facingMode);
@@ -120,16 +210,37 @@ export function useCamera() {
 
     setSwitching(true);
     try {
-      return await startWithFacingMode(nextFacingMode);
+      const nextVideoInputs = videoInputs.length > 0 ? videoInputs : await refreshVideoInputs();
+      const nextDevice = bestDeviceForFacingMode(nextVideoInputs, nextFacingMode);
+
+      if (nextDevice) {
+        return await startWithVideoConstraints({
+          errorFacingMode: nextFacingMode,
+          setErrorOnFailure: false,
+          video: videoConstraintsForDevice(nextDevice.deviceId),
+        });
+      }
+
+      return await startWithFacingMode(nextFacingMode, { setErrorOnFailure: false });
     } finally {
       setSwitching(false);
     }
-  }, [facingMode, startWithFacingMode]);
+  }, [facingMode, refreshVideoInputs, startWithFacingMode, startWithVideoConstraints, videoInputs]);
 
   useEffect(() => {
     getCameraPermissionState().then(setPermission).catch(reportError);
     return stop;
   }, [stop]);
 
-  return { stream, permission, error, facingMode, switching, start, stop, switchCamera };
+  return {
+    stream,
+    permission,
+    error,
+    facingMode,
+    hasMultipleCameras: videoInputs.length > 1,
+    switching,
+    start,
+    stop,
+    switchCamera,
+  };
 }
