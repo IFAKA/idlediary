@@ -515,6 +515,19 @@ test("recording a clip opens review, reloads on review, and keeps a named button
     .toBe(0);
 });
 
+test("draft header back button returns to capture", async ({ page }) => {
+  await recordOneClipAndOpenReview(page);
+
+  await expect(page).toHaveURL("/draft");
+  await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Back to camera" }).click();
+
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Draft clips" })).not.toBeVisible();
+});
+
 test("draft URL without clips falls back to record", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/draft");

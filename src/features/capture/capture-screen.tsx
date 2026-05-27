@@ -317,11 +317,11 @@ export function CaptureScreen() {
               href="/"
               tabIndex={isFinishing ? -1 : undefined}
               onClick={(event) => {
+                event.preventDefault();
                 if (isFinishing) {
-                  event.preventDefault();
                   return;
                 }
-                setSlideDirection("right");
+                showCapture("push");
               }}
             >
               <ArrowLeft className="size-5" />
@@ -359,7 +359,7 @@ export function CaptureScreen() {
       eyebrow: "Today",
       title: "No pressure",
     };
-  }, [clips.clips.length, closeResult, generationProgress.label, isFinishing, mode, vlog]);
+  }, [clips.clips.length, closeResult, generationProgress.label, isFinishing, mode, showCapture, vlog]);
 
   useAppHeader(headerConfig);
 
