@@ -292,59 +292,41 @@ button {
   }
 }
 
-@keyframes new-video-card-pulse {
+@keyframes new-video-card-shimmer {
   0% {
-    opacity: 0;
-    box-shadow:
-      0 0 0 0 hsl(var(--primary) / 0),
-      0 0 0 0 hsl(var(--primary) / 0),
-      0 0 0 hsl(var(--primary) / 0);
-  }
-
-  26% {
-    opacity: 1;
-    box-shadow:
-      0 0 0 1px hsl(var(--primary) / 0.9),
-      0 0 0 9px hsl(var(--primary) / 0.28),
-      0 0 30px hsl(var(--primary) / 0.58);
-  }
-
-  56% {
-    opacity: 0.72;
-    box-shadow:
-      0 0 0 1px hsl(var(--primary) / 0.68),
-      0 0 0 15px hsl(var(--primary) / 0.16),
-      0 0 42px hsl(var(--primary) / 0.38);
+    transform: translateX(-140%);
   }
 
   100% {
-    opacity: 0;
-    box-shadow:
-      0 0 0 1px hsl(var(--primary) / 0),
-      0 0 0 22px hsl(var(--primary) / 0),
-      0 0 54px hsl(var(--primary) / 0);
+    transform: translateX(400%);
   }
 }
 
 .new-video-card-highlight {
   position: relative;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .new-video-card-highlight::after {
   pointer-events: none;
   content: "";
   position: absolute;
-  inset: 0;
+  inset-block: 0;
+  left: 0;
+  width: 36%;
   border-radius: inherit;
   z-index: 1;
-}
-
-.new-video-card-highlight::after {
-  border: 1px solid hsl(var(--primary) / 0.78);
-  opacity: 0;
-  animation: new-video-card-pulse 2.2s cubic-bezier(0.33, 1, 0.68, 1) both;
-  will-change: opacity, box-shadow;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--memory) / 0.12) 38%,
+    rgba(255, 255, 255, 0.24) 50%,
+    hsl(var(--memory) / 0.1) 62%,
+    transparent 100%
+  );
+  transform: translateX(-140%);
+  animation: new-video-card-shimmer 1.25s ease-in-out both;
+  will-change: transform;
 }
 
 .saved-videos-scroll {
@@ -363,7 +345,7 @@ button {
 
   .new-video-card-highlight::after {
     animation: none;
-    opacity: 0;
+    transform: translateX(400%);
     will-change: auto;
   }
 }
