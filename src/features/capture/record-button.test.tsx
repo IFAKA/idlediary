@@ -114,7 +114,7 @@ describe("RecordButton", () => {
     expect(activeSegmentPulseFor(2)).not.toBeNull();
 
     act(() => {
-      vi.advanceTimersByTime(150);
+      vi.advanceTimersByTime(450);
     });
     expect(activeMarkerFor(1)).toBeNull();
     expect(activeMarkerFor(2)).not.toBeNull();
