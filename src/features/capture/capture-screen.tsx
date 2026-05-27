@@ -41,56 +41,10 @@ type ScreenMode = "capture" | "review" | "generating" | "result";
 type DurableView = Exclude<ScreenMode, "generating">;
 
 const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 const routeSlideTransition = { duration: 0.24, ease: "easeOut" } as const;
 const draftBadgeTransition = { type: "spring", stiffness: 520, damping: 32, bounce: 0.12 } as const;
 const draftDigitTransition = { duration: 0.18, ease: "easeOut" } as const;
-const minimumProgressMilestoneMs = 380;
-
-function progressMilestone(progress: GenerationProgress) {
-  if (progress.step === "rendering") return `${progress.step}:${progress.label}`;
-  return progress.step;
-}
-
-function createProgressDisplayBuffer(
-  onProgress: (progress: GenerationProgress) => void,
-  now = () => performance.now(),
-) {
-  let queue = Promise.resolve();
-  let currentMilestone: string | null = null;
-  let lastMilestoneShownAt = 0;
-  let isCancelled = false;
-
-  return {
-    cancel: () => {
-      isCancelled = true;
-    },
-    flush: () => queue,
-    push: (progress: GenerationProgress) => {
-      queue = queue.then(async () => {
-        if (isCancelled) return;
-
-        const nextMilestone = progressMilestone(progress);
-        if (nextMilestone !== currentMilestone) {
-          const elapsed = now() - lastMilestoneShownAt;
-          const delay =
-            lastMilestoneShownAt === 0
-              ? 0
-              : Math.max(0, minimumProgressMilestoneMs - elapsed);
-          if (delay > 0) {
-            await wait(delay);
-          }
-          currentMilestone = nextMilestone;
-          lastMilestoneShownAt = now();
-        }
-
-        if (isCancelled) return;
-        onProgress(progress);
-      });
-    },
-  };
-}
 
 function requestedViewFromUrl(): DurableView {
   if (typeof window === "undefined") return "capture";
@@ -357,8 +311,6 @@ export function CaptureScreen() {
       return;
     }
 
-    const progressDisplay = createProgressDisplayBuffer(setGenerationProgress);
-
     try {
       setIsFinishing(true);
       setGenerationProgress(makeGenerationProgress("idle", 0));
@@ -366,8 +318,7 @@ export function CaptureScreen() {
       await waitForPaint();
       camera.stop();
       await waitForPaint();
-      const nextVlog = await generateVlog(selectedClips, clips.session.id, progressDisplay.push);
-      await progressDisplay.flush();
+      const nextVlog = await generateVlog(selectedClips, clips.session.id, setGenerationProgress);
       if (!nextVlog.thumbnailBlob) {
         try {
           Object.assign(nextVlog, await generateVideoThumbnail(nextVlog.blob, thumbnailSizes.vlog));
@@ -379,7 +330,6 @@ export function CaptureScreen() {
       clips.clearLocalClips();
       showResult(nextVlog, "replace");
     } catch (error) {
-      progressDisplay.cancel();
       reportError(error);
       setGenerationProgress(makeGenerationProgress("error", 0));
       showReview("replace");

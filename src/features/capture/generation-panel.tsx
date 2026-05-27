@@ -152,6 +152,9 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
             <LockKeyhole className="size-3.5" aria-hidden="true" />
             This stays on your device.
           </p>
+          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-memory/80">
+            {progress.label}
+          </p>
           <AnimatePresence initial={false}>
             {showReassurance ? (
               <motion.p

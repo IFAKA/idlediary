@@ -73,7 +73,7 @@ describe("GenerationPanel", () => {
     ]);
   });
 
-  it("keeps the stage list, privacy note, progress bar, and reduced-motion classes visible", () => {
+  it("keeps the friendly status, privacy note, progress bar, and reduced-motion classes visible", () => {
     const view = renderPanel(
       generationProgress("rendering", 56, {
         label: "Softening audio",
@@ -86,7 +86,7 @@ describe("GenerationPanel", () => {
     expect(view.textContent).toContain("Smoothing clips");
     expect(view.textContent).toContain("Making playback ready");
     expect(view.textContent).toContain("Saving privately");
-    expect(view.textContent).not.toContain("Softening audio");
+    expect(view.textContent).toContain("Softening audio");
     expect(view.textContent).toContain("This stays on your device.");
     expect(view.textContent).not.toContain("scale -> crop -> fps -> setsar -> format");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();
