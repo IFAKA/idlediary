@@ -3,7 +3,19 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 
-const digitTransition = { duration: 0.18, ease: "easeOut" } as const;
+const counterPulseTransition = {
+  type: "spring",
+  stiffness: 520,
+  damping: 24,
+  mass: 0.65,
+} as const;
+
+const digitTransition = {
+  type: "spring",
+  stiffness: 680,
+  damping: 32,
+  mass: 0.62,
+} as const;
 
 type ItemCounterProps = {
   value: number;
@@ -51,6 +63,17 @@ export function ItemCounter({ value, "aria-label": ariaLabel }: ItemCounterProps
         className="inline-flex items-center"
         layout
         aria-hidden={ariaLabel ? true : undefined}
+        initial={false}
+        animate={
+          reducedMotion
+            ? undefined
+            : {
+                scale: [1, direction > 0 ? 1.1 : 0.94, 1],
+                y: [0, direction > 0 ? -1 : 1, 0],
+                filter: ["brightness(1)", "brightness(1.18)", "brightness(1)"],
+              }
+        }
+        transition={counterPulseTransition}
       >
         {digits.map((digit, index) => {
           const place = digits.length - index - 1;
@@ -71,7 +94,8 @@ export function ItemCounter({ value, "aria-label": ariaLabel }: ItemCounterProps
                       ? { opacity: 0 }
                       : {
                           opacity: 0,
-                          y: direction > 0 ? "-100%" : "100%",
+                          scale: 0.82,
+                          y: direction > 0 ? "-72%" : "72%",
                         }
                   }
                   initial={
@@ -79,7 +103,8 @@ export function ItemCounter({ value, "aria-label": ariaLabel }: ItemCounterProps
                       ? { opacity: 0 }
                       : {
                           opacity: 0,
-                          y: direction > 0 ? "100%" : "-100%",
+                          scale: 1.12,
+                          y: direction > 0 ? "72%" : "-72%",
                         }
                   }
                   transition={reducedMotion ? { duration: 0 } : digitTransition}

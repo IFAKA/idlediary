@@ -49,7 +49,7 @@ const routeSlideTransition = { duration: 0.24, ease: "easeOut" } as const;
 const notificationBadgeSpring = { type: "spring", stiffness: 680, damping: 24, mass: 0.55 } as const;
 const notificationBadgePulse = { duration: 1.6, repeat: Infinity, repeatDelay: 1.8, ease: "easeInOut" } as const;
 const draftBadgeTransition = { type: "spring", stiffness: 520, damping: 32, bounce: 0.12 } as const;
-const draftDigitTransition = { duration: 0.18, ease: "easeOut" } as const;
+const draftDigitTransition = { type: "spring", stiffness: 680, damping: 32, mass: 0.62 } as const;
 const minimumVisibleGenerationStepMs = 450;
 const minimumVisibleSavingStepMs = 500;
 const minimumVisibleDoneStepMs = 900;
@@ -806,7 +806,21 @@ function AnimatedDraftCount({
   return (
     <span className="inline-flex items-center tabular-nums" aria-label={`+${count}`}>
       <span aria-hidden="true">+</span>
-      <motion.span className="inline-flex items-center" layout aria-hidden="true">
+      <motion.span
+        className="inline-flex items-center"
+        layout
+        aria-hidden="true"
+        initial={false}
+        animate={
+          reducedMotion
+            ? undefined
+            : {
+                scale: [1, direction > 0 ? 1.12 : 0.94, 1],
+                y: [0, direction > 0 ? -1 : 1, 0],
+              }
+        }
+        transition={draftBadgeTransition}
+      >
         {digits.map((digit, index) => {
           const place = digits.length - index - 1;
 
@@ -826,7 +840,8 @@ function AnimatedDraftCount({
                       ? { opacity: 0 }
                       : {
                           opacity: 0,
-                          y: direction > 0 ? "-100%" : "100%",
+                          scale: 0.82,
+                          y: direction > 0 ? "-72%" : "72%",
                         }
                   }
                   initial={
@@ -834,7 +849,8 @@ function AnimatedDraftCount({
                       ? { opacity: 0 }
                       : {
                           opacity: 0,
-                          y: direction > 0 ? "100%" : "-100%",
+                          scale: 1.12,
+                          y: direction > 0 ? "72%" : "-72%",
                         }
                   }
                   transition={reducedMotion ? { duration: 0 } : draftDigitTransition}
