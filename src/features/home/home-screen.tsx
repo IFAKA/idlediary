@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CalendarDays, Film, Plus, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { CameraPreview } from "@/features/capture/camera-preview";
+import { PermissionPanel } from "@/features/capture/permission-panel";
 import {
   getObjectUrlForVlog,
   releaseVlogObjectUrl,
@@ -14,9 +17,33 @@ import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
 
 type HomeState =
+  | { status: "checking"; vlogs: VlogRecord[]; error?: never }
   | { status: "loading"; vlogs: VlogRecord[]; error?: never }
   | { status: "ready"; vlogs: VlogRecord[]; error?: never }
   | { status: "error"; vlogs: VlogRecord[]; error: string };
+
+const INTRO_SEEN_KEY = "idlediary:intro-seen";
+const INTRO_SEEN_CHANGE_EVENT = "idlediary:intro-seen-change";
+
+function introSeenSnapshot() {
+  if (typeof window === "undefined") return true;
+  return window.localStorage.getItem(INTRO_SEEN_KEY) === "true";
+}
+
+function subscribeToIntroSeen(listener: () => void) {
+  window.addEventListener("storage", listener);
+  window.addEventListener(INTRO_SEEN_CHANGE_EVENT, listener);
+
+  return () => {
+    window.removeEventListener("storage", listener);
+    window.removeEventListener(INTRO_SEEN_CHANGE_EVENT, listener);
+  };
+}
+
+function markIntroSeen() {
+  window.localStorage.setItem(INTRO_SEEN_KEY, "true");
+  window.dispatchEvent(new Event(INTRO_SEEN_CHANGE_EVENT));
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -28,10 +55,22 @@ function formatDate(value: string) {
 }
 
 export function HomeScreen() {
-  const [state, setState] = useState<HomeState>({ status: "loading", vlogs: [] });
+  const router = useRouter();
+  const introSeen = useSyncExternalStore(
+    subscribeToIntroSeen,
+    introSeenSnapshot,
+    () => true,
+  );
+  const [state, setState] = useState<HomeState>({ status: "checking", vlogs: [] });
 
   useEffect(() => {
     let mounted = true;
+
+    if (!introSeen) {
+      return () => {
+        mounted = false;
+      };
+    }
 
     listVlogs()
       .then((vlogs) => {
@@ -51,7 +90,23 @@ export function HomeScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [introSeen]);
+
+  if (!introSeen) {
+    return (
+      <main className="relative isolate overflow-hidden bg-background">
+        <CameraPreview stream={null} />
+        <PermissionPanel
+          permission="prompt"
+          onStart={() => {
+            markIntroSeen();
+            router.push("/capture");
+          }}
+        />
+        <DebugDrawer />
+      </main>
+    );
+  }
 
   return (
     <main className="relative isolate min-h-[100svh] overflow-hidden bg-background safe-screen">
@@ -77,7 +132,7 @@ export function HomeScreen() {
         ) : null}
 
         <section className="mt-8 flex-1">
-          {state.status === "loading" ? (
+          {state.status === "checking" || state.status === "loading" ? (
             <div className="flex h-full min-h-80 items-center justify-center text-sm text-muted-foreground">
               Loading videos...
             </div>

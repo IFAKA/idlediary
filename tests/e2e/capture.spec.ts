@@ -133,13 +133,27 @@ async function holdDragClipToDeleteZone(page: Page, index: number) {
 async function recordOneClipAndOpenReview(page: Page) {
   await mockMediaCapture(page);
   await page.goto("/capture");
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
   await page.getByRole("button", { name: "Review draft clips" }).click();
 }
 
-test("home shows generated videos entry point", async ({ page }) => {
+test("first launch shows intro screen", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+
+  await expect(page.getByRole("heading", { name: "IdleDiary" })).toBeVisible();
+  const start = page.getByRole("button", { name: "Start recording" });
+  await expect(start).toBeVisible();
+
+  const box = await start.boundingBox();
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+});
+
+test("home shows generated videos entry point after intro", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("idlediary:intro-seen", "true");
+  });
   await page.goto("/");
   await page.waitForLoadState("networkidle");
 
@@ -152,34 +166,32 @@ test("home shows generated videos entry point", async ({ page }) => {
   expect(box?.height).toBeGreaterThanOrEqual(44);
 });
 
-test("capture route shows mobile permission screen", async ({ page }) => {
+test("capture route opens the recording screen", async ({ page }) => {
+  await mockMediaCapture(page);
   await page.goto("/capture");
   await page.waitForLoadState("networkidle");
 
-  await expect(page.getByRole("heading", { name: "IdleDiary" })).toBeVisible();
-  const start = page.getByRole("button", { name: "Start recording" });
-  await expect(start).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Record two second clip" })).toBeVisible();
 });
 
 test("permission denial gives recovery copy and retry action", async ({ page }) => {
   await mockDeniedCamera(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
 
   await expect(
     page
       .getByRole("main")
       .getByText("Camera access is blocked. Allow camera and microphone in browser settings, then retry."),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Retry Access" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry camera" })).toBeVisible();
 });
 
 test("mocked capture saves a two-second clip and enables draft review", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
     "aria-disabled",
@@ -201,7 +213,6 @@ test("draft review opens before generation and make video stops the camera", asy
   await mockMediaCapture(page, { generationDelayMs: 5_000 });
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
 
@@ -239,7 +250,6 @@ test("delete actions require confirmation and cancel preserves clips", async ({ 
   await mockMediaCapture(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
 
@@ -259,7 +269,6 @@ test("preview opens a fullscreen media player", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
 
@@ -275,7 +284,6 @@ test("generated video preview opens fullscreen and result screen does not scroll
   await mockMediaCapture(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
 
@@ -304,7 +312,6 @@ test("deleting the final clip returns to capture", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
 
@@ -322,7 +329,6 @@ test("clearing the draft returns to capture", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
 
@@ -343,7 +349,6 @@ test("new recording after generation clears the old draft", async ({ page }) => 
   await mockMediaCapture(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
 
@@ -393,7 +398,7 @@ test("review URL without clips falls back to capture", async ({ page }) => {
   await page.goto("/review");
 
   await expect(page).toHaveURL("/capture");
-  await expect(page.getByRole("button", { name: "Start recording" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
   await expect(page).toHaveTitle("IdleDiary");
 });
 
@@ -416,7 +421,6 @@ test("generated result restores after reload", async ({ page }) => {
 test("reloading during generation returns to review with clips preserved", async ({ page }) => {
   await mockMediaCapture(page, { generationDelayMs: 10_000 });
   await page.goto("/capture");
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
   await page.getByRole("button", { name: "Review draft clips" }).click();
@@ -458,7 +462,6 @@ test("gallery reorders clips and generation receives UI order", async ({ page })
   await mockMediaCapture(page);
   await page.goto("/capture");
 
-  await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Record two second clip" }).click();
   await expect(page.getByText("Saved")).toBeVisible({ timeout: 4_000 });
   await page.getByRole("button", { name: "Record two second clip" }).click();
@@ -498,7 +501,6 @@ test("gallery reorders clips and generation receives UI order", async ({ page })
 test("capture controls stay touch-sized and do not overlap on mobile", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/capture");
-  await page.getByRole("button", { name: "Start recording" }).click();
 
   const controls = [
     page.getByRole("button", { name: "Record two second clip" }),

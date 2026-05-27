@@ -1,6 +1,6 @@
 "use client";
 
-import { Film } from "lucide-react";
+import { Film, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -19,7 +19,6 @@ import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 import { CameraPreview } from "./camera-preview";
 import { ClipReviewPanel } from "./clip-review-panel";
 import { GenerationPanel } from "./generation-panel";
-import { PermissionPanel } from "./permission-panel";
 import { RecordButton } from "./record-button";
 import { ResultPanel } from "./result-panel";
 import { useCamera } from "./use-camera";
@@ -80,9 +79,11 @@ export function CaptureScreen() {
   const clips = useClips();
   const recorder = useTwoSecondRecorder(camera.stream);
   const [mode, setMode] = useState<ScreenMode>("capture");
+  const [isStartingCamera, setIsStartingCamera] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [vlog, setVlog] = useState<VlogRecord | null>(null);
   const initialViewResolved = useRef(false);
+  const cameraStartAttempted = useRef(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     step: "idle",
     value: 0,
@@ -97,6 +98,18 @@ export function CaptureScreen() {
     recorder.state !== "recording" &&
     recorder.state !== "saving";
   const clipLimitReached = clips.clips.length >= 20;
+
+  const startCamera = useCallback(async () => {
+    try {
+      setIsStartingCamera(true);
+      await camera.start();
+    } catch (error) {
+      const appError = reportError(error);
+      toast.error(appError.userMessage);
+    } finally {
+      setIsStartingCamera(false);
+    }
+  }, [camera]);
 
   const restoreRequestedView = useCallback(
     async (requestedView = requestedViewFromUrl()) => {
@@ -156,6 +169,12 @@ export function CaptureScreen() {
   }, [mode]);
 
   useEffect(() => {
+    if (mode !== "capture" || camera.stream || cameraStartAttempted.current) return;
+    cameraStartAttempted.current = true;
+    void startCamera();
+  }, [camera.stream, mode, startCamera]);
+
+  useEffect(() => {
     if (initialViewResolved.current || clips.loading || !clips.session) return;
     initialViewResolved.current = true;
     void restoreRequestedView();
@@ -210,15 +229,6 @@ export function CaptureScreen() {
     }
   };
 
-  const startCamera = async () => {
-    try {
-      await camera.start();
-    } catch (error) {
-      const appError = reportError(error);
-      toast.error(appError.userMessage);
-    }
-  };
-
   const captureClip = async () => {
     if (clipLimitReached) {
       toast("Session limit reached for v1.");
@@ -267,20 +277,6 @@ export function CaptureScreen() {
       setIsFinishing(false);
     }
   };
-
-  if (mode === "capture" && needsPermission) {
-    return (
-      <main className="relative isolate overflow-hidden bg-background">
-        <CameraPreview stream={null} />
-        <PermissionPanel
-          error={camera.error?.userMessage}
-          permission={camera.permission}
-          onStart={startCamera}
-        />
-        <DebugDrawer />
-      </main>
-    );
-  }
 
   return (
     <main className="relative isolate min-h-[100svh] overflow-hidden bg-background">
@@ -387,7 +383,7 @@ export function CaptureScreen() {
                 </p>
                 <h1 className="mt-1 text-2xl font-semibold">No pressure</h1>
               </div>
-              <div className="rounded-md border bg-black/45 px-3 py-2 text-right">
+              <div className="px-1 py-1 text-right">
                 <p className="text-xl font-semibold">{clips.clips.length}</p>
                 <p className="text-xs text-muted-foreground">clips</p>
               </div>
@@ -399,6 +395,8 @@ export function CaptureScreen() {
 
                 <RecordButton
                   disabled={
+                    needsPermission ||
+                    isStartingCamera ||
                     recorder.state === "recording" ||
                     recorder.state === "saving" ||
                     clipLimitReached
@@ -410,6 +408,30 @@ export function CaptureScreen() {
 
                 <div className="size-11" aria-hidden="true" />
               </div>
+
+              {needsPermission ? (
+                <div className="mb-3 rounded-lg border bg-black/50 p-3">
+                  <p className="text-sm font-semibold">
+                    {camera.error ? "Camera is blocked" : "Starting camera..."}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {camera.error?.userMessage ?? "Allow camera access to begin recording clips."}
+                  </p>
+                  {camera.error ? (
+                    <button
+                      className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                      type="button"
+                      onClick={() => {
+                        cameraStartAttempted.current = false;
+                        void startCamera();
+                      }}
+                    >
+                      <RotateCcw className="size-4" />
+                      Retry camera
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
 
               <motion.button
                 aria-label="Review draft clips"
