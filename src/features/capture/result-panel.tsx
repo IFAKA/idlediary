@@ -52,8 +52,6 @@ export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
         </button>
       </div>
 
-      <p className="mt-4 shrink-0 text-sm leading-6 text-muted-foreground">{vlog.caption}</p>
-
       <div className="grid shrink-0 gap-3 pb-1 pt-6">
         <Button className="h-14 text-base" type="button" onClick={() => shareVlog(vlog)}>
           <Share2 className="size-5" />
