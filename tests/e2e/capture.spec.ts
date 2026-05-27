@@ -269,6 +269,42 @@ test("capture preview uses the vertical export frame", async ({ page }) => {
     .toBeCloseTo(9 / 16, 2);
 });
 
+test("record screen switches camera from the header and vertical swipe", async ({ page }) => {
+  await mockMediaCapture(page);
+  await openRecord(page);
+
+  const requestedFacingModes = async () =>
+    page.evaluate(() => {
+      const testWindow = window as typeof window & {
+        __idleDiaryCameraConstraints?: MediaStreamConstraints[];
+      };
+
+      return (testWindow.__idleDiaryCameraConstraints ?? []).map((constraints) => {
+        if (!constraints.video || typeof constraints.video === "boolean") return null;
+        return constraints.video.facingMode ?? null;
+      });
+    });
+
+  await expect.poll(requestedFacingModes).toEqual(["environment"]);
+
+  const switchCamera = page.getByRole("button", { name: "Switch camera" });
+  await expect(switchCamera).toBeVisible();
+  await expect(switchCamera).toBeEnabled();
+  await switchCamera.click();
+  await expect.poll(requestedFacingModes).toEqual(["environment", "user"]);
+
+  const frame = page.locator('[data-testid="camera-preview-frame"]:has([aria-label="Camera preview"])');
+  const box = await frame.boundingBox();
+  if (!box) throw new Error("Expected camera preview frame");
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 96, { steps: 4 });
+  await page.mouse.up();
+
+  await expect.poll(requestedFacingModes).toEqual(["environment", "user", "environment"]);
+});
+
 test("permission denial gives recovery copy and retry action", async ({ page }) => {
   await mockDeniedCamera(page);
   await openRecord(page);

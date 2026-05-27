@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Clapperboard, Layers2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Clapperboard, Layers2, RotateCcw, SwitchCamera } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { ItemCountStack } from "@/components/item-counter";
 import { Button } from "@/components/ui/button";
@@ -53,6 +61,8 @@ const draftDigitTransition = { type: "spring", stiffness: 680, damping: 32, mass
 const minimumVisibleGenerationStepMs = 450;
 const minimumVisibleSavingStepMs = 500;
 const minimumVisibleDoneStepMs = 900;
+const cameraSwipeMinDistance = 56;
+const cameraSwipeAxisRatio = 1.2;
 const introGenerationProgress = [
   makeGenerationProgress("loading", 8),
   makeGenerationProgress("writing", 14),
@@ -95,6 +105,10 @@ function titleForMode(mode: ScreenMode) {
   return "IdleDiary";
 }
 
+function isInteractiveTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest("button, a, input, textarea, select"));
+}
+
 export function CaptureScreen() {
   const camera = useCamera();
   const clips = useClips();
@@ -109,6 +123,7 @@ export function CaptureScreen() {
   const shouldReduceMotion = useReducedMotion() === true;
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
+  const cameraSwipeStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     ...makeGenerationProgress("idle", 0),
   });
@@ -121,6 +136,13 @@ export function CaptureScreen() {
     recorder.state !== "recording" &&
     recorder.state !== "saving";
   const canOpenVideos = canOpenDraft;
+  const canSwitchCamera =
+    mode === "capture" &&
+    Boolean(camera.stream) &&
+    !camera.switching &&
+    !isFinishing &&
+    recorder.state !== "recording" &&
+    recorder.state !== "saving";
   const clipLimitReached = clips.clips.length >= 20;
   const latestClip = clips.clips.length > 0 ? clips.clips[clips.clips.length - 1] : null;
   const draftClipCount = clips.loading ? null : clips.clips.length;
@@ -316,6 +338,46 @@ export function CaptureScreen() {
     void captureClip();
   };
 
+  const switchCamera = useCallback(async () => {
+    if (!canSwitchCamera) return;
+
+    try {
+      await camera.switchCamera();
+    } catch (error) {
+      reportError(error);
+    }
+  }, [camera, canSwitchCamera]);
+
+  const handleCapturePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary || isInteractiveTarget(event.target)) {
+      cameraSwipeStartRef.current = null;
+      return;
+    }
+
+    cameraSwipeStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId,
+    };
+  };
+
+  const handleCapturePointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const start = cameraSwipeStartRef.current;
+    cameraSwipeStartRef.current = null;
+    if (!start || start.pointerId !== event.pointerId || !canSwitchCamera) return;
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (
+      Math.abs(deltaY) < cameraSwipeMinDistance ||
+      Math.abs(deltaY) < Math.abs(deltaX) * cameraSwipeAxisRatio
+    ) {
+      return;
+    }
+
+    void switchCamera();
+  };
+
   const openReview = () => {
     if (!canOpenDraft) return;
     showReview("push");
@@ -469,8 +531,21 @@ export function CaptureScreen() {
     return {
       eyebrow: "Today",
       title: "No pressure",
+      trailing: (
+        <Button
+          aria-label="Switch camera"
+          disabled={!canSwitchCamera}
+          size="icon"
+          title="Switch camera"
+          type="button"
+          variant="outline"
+          onClick={() => void switchCamera()}
+        >
+          <SwitchCamera className="size-5" />
+        </Button>
+      ),
     };
-  }, [draftClipCount, isFinishing, mode, showCapture, vlog]);
+  }, [canSwitchCamera, draftClipCount, isFinishing, mode, showCapture, switchCamera, vlog]);
 
   useAppHeader(headerConfig);
 
@@ -574,6 +649,11 @@ export function CaptureScreen() {
             exit={{ opacity: 0, x: slideDirection === "right" ? -42 : 42 }}
             initial={{ opacity: 0, x: 0 }}
             transition={routeSlideTransition}
+            onPointerCancel={() => {
+              cameraSwipeStartRef.current = null;
+            }}
+            onPointerDown={handleCapturePointerDown}
+            onPointerUp={handleCapturePointerUp}
           >
             <div className="mt-auto">
               <div className="mb-5 flex items-center justify-between gap-3">

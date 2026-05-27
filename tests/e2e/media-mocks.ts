@@ -100,9 +100,16 @@ export async function mockMediaCapture(
     Object.defineProperty(Navigator.prototype, "mediaDevices", {
       configurable: true,
       value: {
-        getUserMedia: async () => {
-          const testWindow = window as typeof window & { __idleDiaryStartedStreams?: number };
+        getUserMedia: async (constraints?: MediaStreamConstraints) => {
+          const testWindow = window as typeof window & {
+            __idleDiaryCameraConstraints?: MediaStreamConstraints[];
+            __idleDiaryStartedStreams?: number;
+          };
           testWindow.__idleDiaryStartedStreams = (testWindow.__idleDiaryStartedStreams ?? 0) + 1;
+          testWindow.__idleDiaryCameraConstraints = [
+            ...(testWindow.__idleDiaryCameraConstraints ?? []),
+            constraints ?? {},
+          ];
           const stream = new MediaStream();
           Object.defineProperty(stream, "getTracks", {
             configurable: true,
