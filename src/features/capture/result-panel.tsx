@@ -2,12 +2,12 @@
 
 import { Download, RefreshCcw, Share2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
+import { getObjectUrlForVlog, retainVlogObjectUrl } from "@/features/clips/media-cache";
 import type { VlogRecord } from "@/features/clips/types";
 import { downloadVlog, shareVlog } from "@/features/share/share";
-import { useObjectUrl } from "@/hooks/use-object-url";
 
 type ResultPanelProps = {
   vlog: VlogRecord;
@@ -17,7 +17,11 @@ type ResultPanelProps = {
 export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
-  const src = useObjectUrl(vlog.blob);
+  const src = useMemo(() => getObjectUrlForVlog(vlog), [vlog]);
+
+  useEffect(() => {
+    retainVlogObjectUrl(vlog.id);
+  }, [vlog.id]);
 
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden safe-screen">

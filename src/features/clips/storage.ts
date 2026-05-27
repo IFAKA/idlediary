@@ -191,6 +191,64 @@ export async function deleteClip(id: string) {
   }
 }
 
+export async function deleteClips(ids: string[]) {
+  if (ids.length === 0) return;
+
+  try {
+    const db = await getDb();
+    const tx = db.transaction("clips", "readwrite");
+    const clipsStore = tx.objectStore("clips");
+
+    await Promise.all(ids.map((id) => clipsStore.delete(id)));
+    await tx.done;
+    addDebugEvent("clips-deleted", "storage", { clipCount: ids.length });
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-delete-failed",
+        area: "storage",
+        message: "Could not delete clips",
+        userMessage: "Those clips could not be deleted.",
+        cause,
+        context: { clipCount: ids.length },
+      }),
+    );
+  }
+}
+
+export async function clearClipsForSession(sessionId: string) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction(["clips", "sessions"], "readwrite");
+    const clipsStore = tx.objectStore("clips");
+    const clips = await clipsStore.index("by-session").getAll(sessionId);
+
+    await Promise.all(clips.map((clip) => clipsStore.delete(clip.id)));
+
+    const session = await tx.objectStore("sessions").get(sessionId);
+    if (session) {
+      await tx.objectStore("sessions").put({
+        ...session,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    await tx.done;
+    addDebugEvent("session-clips-cleared", "storage", { sessionId, clipCount: clips.length });
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-delete-failed",
+        area: "storage",
+        message: "Could not clear clips for session",
+        userMessage: "The draft clips could not be cleared.",
+        cause,
+        context: { sessionId },
+      }),
+    );
+  }
+}
+
 export async function saveVlog(vlog: VlogRecord) {
   try {
     const db = await getDb();

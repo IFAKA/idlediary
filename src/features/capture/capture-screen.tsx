@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useClips } from "@/features/clips/use-clips";
+import { releaseAllVlogObjectUrls } from "@/features/clips/media-cache";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
 import { generateVlog, type GenerationProgress } from "@/features/generation/generation";
@@ -178,9 +179,7 @@ export function CaptureScreen() {
   }, []);
 
   const clearDraft = async () => {
-    for (const clip of clips.clips) {
-      await clips.removeClip(clip.id);
-    }
+    await clips.clearClips();
   };
 
   const startNewRecording = async () => {
@@ -189,6 +188,7 @@ export function CaptureScreen() {
       if (clips.session) {
         await clearGeneratedVlogForSession(clips.session.id);
       }
+      releaseAllVlogObjectUrls();
       setVlog(null);
       await startCamera();
       showCapture("push");
@@ -328,28 +328,35 @@ export function CaptureScreen() {
                   if (clips.session) {
                     await clearGeneratedVlogForSession(clips.session.id);
                   }
+                  releaseAllVlogObjectUrls();
                   toast("Draft cleared");
+                  return true;
                 } catch (error) {
                   const appError = reportError(error);
                   toast.error(appError.userMessage);
+                  return false;
                 }
               }}
               onDeleteClip={async (id) => {
                 try {
                   await clips.removeClip(id);
                   toast("Clip deleted");
+                  return true;
                 } catch (error) {
                   const appError = reportError(error);
                   toast.error(appError.userMessage);
+                  return false;
                 }
               }}
               onMakeVideo={finish}
               onReorderClips={async (clipIds) => {
                 try {
                   await clips.reorderClips(clipIds);
+                  return true;
                 } catch (error) {
                   const appError = reportError(error);
                   toast.error(appError.userMessage);
+                  return false;
                 }
               }}
             />

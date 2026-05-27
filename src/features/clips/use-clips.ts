@@ -1,85 +1,210 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { reportError } from "@/features/errors/report-error";
-import { deleteClip, getOrCreateTodaySession, listClips, saveClip, saveClipOrder } from "./storage";
+import {
+  clearClipsForSession,
+  deleteClip,
+  getOrCreateTodaySession,
+  listClips,
+  saveClip,
+  saveClipOrder,
+} from "./storage";
+import {
+  releaseAllClipObjectUrls,
+  releaseClipObjectUrl,
+  retainClipObjectUrls,
+} from "./media-cache";
 import type { ClipRecord, SessionSummary } from "./types";
 
+type ClipState = {
+  session: SessionSummary | null;
+  clips: ClipRecord[];
+  loading: boolean;
+};
+
+type ClipAction =
+  | { type: "loaded"; session: SessionSummary; clips: ClipRecord[] }
+  | { type: "session"; session: SessionSummary }
+  | { type: "add"; clip: ClipRecord }
+  | { type: "remove"; id: string }
+  | { type: "reorder"; clipIds: string[] }
+  | { type: "clear" }
+  | { type: "loading-finished" };
+
+const initialState: ClipState = {
+  session: null,
+  clips: [],
+  loading: true,
+};
+
+function clipReducer(state: ClipState, action: ClipAction): ClipState {
+  if (action.type === "loaded") {
+    return {
+      session: action.session,
+      clips: action.clips,
+      loading: false,
+    };
+  }
+
+  if (action.type === "session") {
+    return {
+      ...state,
+      session: action.session,
+    };
+  }
+
+  if (action.type === "add") {
+    return {
+      ...state,
+      clips: [...state.clips, action.clip],
+    };
+  }
+
+  if (action.type === "remove") {
+    return {
+      ...state,
+      clips: state.clips.filter((clip) => clip.id !== action.id),
+    };
+  }
+
+  if (action.type === "reorder") {
+    const clipsById = new Map(state.clips.map((clip) => [clip.id, clip]));
+    const ordered = action.clipIds.reduce<ClipRecord[]>((nextClips, id, index) => {
+      const clip = clipsById.get(id);
+      if (clip) nextClips.push({ ...clip, order: index });
+      return nextClips;
+    }, []);
+    const knownIds = new Set(ordered.map((clip) => clip.id));
+    const remaining = state.clips.filter((clip) => !knownIds.has(clip.id));
+
+    return {
+      ...state,
+      clips: [...ordered, ...remaining],
+    };
+  }
+
+  if (action.type === "clear") {
+    return {
+      ...state,
+      clips: [],
+    };
+  }
+
+  if (action.type === "loading-finished") {
+    return {
+      ...state,
+      loading: false,
+    };
+  }
+
+  return state;
+}
+
 export function useClips() {
-  const [session, setSession] = useState<SessionSummary | null>(null);
-  const [clips, setClips] = useState<ClipRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [state, dispatch] = useReducer(clipReducer, initialState);
+  const stateRef = useRef(state);
+  const requestVersionRef = useRef(0);
+
+  useEffect(() => {
+    stateRef.current = state;
+    retainClipObjectUrls(state.clips.map((clip) => clip.id));
+  }, [state]);
 
   const refresh = useCallback(async (sessionId?: string) => {
-    const activeSession = sessionId ? { id: sessionId } : await getOrCreateTodaySession();
+    const requestVersion = ++requestVersionRef.current;
+    const activeSession = sessionId
+      ? stateRef.current.session?.id === sessionId
+        ? stateRef.current.session
+        : { id: sessionId, startedAt: "", updatedAt: "" }
+      : await getOrCreateTodaySession();
     const loaded = await listClips(activeSession.id);
-    setClips(loaded);
+
+    if (requestVersion !== requestVersionRef.current) return;
+    const currentSessionId = stateRef.current.session?.id;
+    if (currentSessionId && currentSessionId !== activeSession.id) return;
+
+    dispatch({ type: "loaded", session: activeSession, clips: loaded });
   }, []);
 
   useEffect(() => {
     let mounted = true;
+    const requestVersion = ++requestVersionRef.current;
+
     getOrCreateTodaySession()
       .then(async (created) => {
-        if (!mounted) return;
-        setSession(created);
-        setClips(await listClips(created.id));
+        const loaded = await listClips(created.id);
+        if (!mounted || requestVersion !== requestVersionRef.current) return;
+        dispatch({ type: "loaded", session: created, clips: loaded });
       })
       .catch((error) => reportError(error))
-      .finally(() => mounted && setLoading(false));
+      .finally(() => {
+        if (mounted && requestVersion === requestVersionRef.current) {
+          dispatch({ type: "loading-finished" });
+        }
+      });
+
     return () => {
       mounted = false;
     };
   }, []);
 
-  const addClip = useCallback(
-    async (blob: Blob, durationMs: number) => {
-      const activeSession = session ?? (await getOrCreateTodaySession());
-      setSession(activeSession);
-      const clip: ClipRecord = {
-        id: crypto.randomUUID(),
-        sessionId: activeSession.id,
-        blob,
-        mimeType: blob.type || "video/webm",
-        durationMs,
-        order: clips.length,
-        createdAt: new Date().toISOString(),
-        size: blob.size,
-      };
-      await saveClip(clip);
-      await refresh(activeSession.id);
-      return clip;
-    },
-    [clips.length, refresh, session],
-  );
+  const addClip = useCallback(async (blob: Blob, durationMs: number) => {
+    const activeSession = stateRef.current.session ?? (await getOrCreateTodaySession());
+    dispatch({ type: "session", session: activeSession });
+    const currentClips = stateRef.current.clips;
+    const clip: ClipRecord = {
+      id: crypto.randomUUID(),
+      sessionId: activeSession.id,
+      blob,
+      mimeType: blob.type || "video/webm",
+      durationMs,
+      order: currentClips.length,
+      createdAt: new Date().toISOString(),
+      size: blob.size,
+    };
 
-  const reorderClips = useCallback(
-    async (clipIds: string[]) => {
-      const activeSession = session ?? (await getOrCreateTodaySession());
-      setSession(activeSession);
-      await saveClipOrder(activeSession.id, clipIds);
-      await refresh(activeSession.id);
-    },
-    [refresh, session],
-  );
+    await saveClip(clip);
+    ++requestVersionRef.current;
+    dispatch({ type: "add", clip });
+    return clip;
+  }, []);
 
-  const removeClip = useCallback(
-    async (id: string) => {
-      await deleteClip(id);
-      await refresh(session?.id);
-    },
-    [refresh, session?.id],
-  );
+  const reorderClips = useCallback(async (clipIds: string[]) => {
+    const activeSession = stateRef.current.session ?? (await getOrCreateTodaySession());
+    dispatch({ type: "session", session: activeSession });
+
+    await saveClipOrder(activeSession.id, clipIds);
+    ++requestVersionRef.current;
+    dispatch({ type: "reorder", clipIds });
+  }, []);
+
+  const removeClip = useCallback(async (id: string) => {
+    await deleteClip(id);
+    ++requestVersionRef.current;
+    releaseClipObjectUrl(id);
+    dispatch({ type: "remove", id });
+  }, []);
+
+  const clearClips = useCallback(async () => {
+    const activeSession = stateRef.current.session ?? (await getOrCreateTodaySession());
+    await clearClipsForSession(activeSession.id);
+    ++requestVersionRef.current;
+    releaseAllClipObjectUrls();
+    dispatch({ type: "clear" });
+  }, []);
 
   return useMemo(
     () => ({
-      session,
-      clips,
-      loading,
+      session: state.session,
+      clips: state.clips,
+      loading: state.loading,
       addClip,
+      clearClips,
       reorderClips,
       removeClip,
       refresh,
     }),
-    [addClip, clips, loading, refresh, removeClip, reorderClips, session],
+    [addClip, clearClips, refresh, removeClip, reorderClips, state.clips, state.loading, state.session],
   );
 }

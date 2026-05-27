@@ -31,11 +31,11 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
+import { getObjectUrlForClip } from "@/features/clips/media-cache";
 import type { ClipRecord } from "@/features/clips/types";
-import { useObjectUrl } from "@/hooks/use-object-url";
 import { spring } from "@/lib/motion";
 
 const deleteZoneId = "clip-review-delete-zone";
@@ -44,10 +44,10 @@ type ClipReviewPanelProps = {
   clips: ClipRecord[];
   isFinishing: boolean;
   onBack: () => void;
-  onClearDraft: () => Promise<void>;
-  onDeleteClip: (id: string) => Promise<void>;
+  onClearDraft: () => Promise<boolean>;
+  onDeleteClip: (id: string) => Promise<boolean>;
   onMakeVideo: (clips: ClipRecord[]) => void;
-  onReorderClips: (clipIds: string[]) => Promise<void>;
+  onReorderClips: (clipIds: string[]) => Promise<boolean>;
 };
 
 export function ClipReviewPanel({
@@ -111,8 +111,8 @@ export function ClipReviewPanel({
     const currentOrder = orderedClipsRef.current;
     const hasCurrentOrderChanged =
       currentOrder.map((clip) => clip.id).join("|") !== clips.map((clip) => clip.id).join("|");
-    if (!hasCurrentOrderChanged) return;
-    await onReorderClips(currentOrder.map((clip) => clip.id));
+    if (!hasCurrentOrderChanged) return true;
+    return onReorderClips(currentOrder.map((clip) => clip.id));
   };
 
   const collisionDetection: CollisionDetection = (args) => {
@@ -154,15 +154,18 @@ export function ClipReviewPanel({
 
     if (event.active.id === overId) return;
 
-    setOrderedClips((current) => {
-      const fromIndex = current.findIndex((clip) => clip.id === event.active.id);
-      const toIndex = current.findIndex((clip) => clip.id === overId);
-      if (fromIndex < 0 || toIndex < 0) return current;
+    const current = orderedClipsRef.current;
+    const fromIndex = current.findIndex((clip) => clip.id === event.active.id);
+    const toIndex = current.findIndex((clip) => clip.id === overId);
+    if (fromIndex < 0 || toIndex < 0) return;
 
-      const next = arrayMove(current, fromIndex, toIndex);
-      orderedClipsRef.current = next;
-      void onReorderClips(next.map((clip) => clip.id));
-      return next;
+    const next = arrayMove(current, fromIndex, toIndex);
+    setOrderedClips(next);
+    orderedClipsRef.current = next;
+    void onReorderClips(next.map((clip) => clip.id)).then((saved) => {
+      if (saved) return;
+      setOrderedClips(current);
+      orderedClipsRef.current = current;
     });
   };
 
@@ -173,7 +176,8 @@ export function ClipReviewPanel({
   };
 
   const makeVideo = async () => {
-    await saveOrder();
+    const saved = await saveOrder();
+    if (!saved) return;
     onMakeVideo(visibleClips);
   };
 
@@ -253,10 +257,16 @@ export function ClipReviewPanel({
         title="Delete this clip?"
         onAction={async () => {
           if (!deleteTarget) return;
+          const previousClips = orderedClips;
           const nextClips = orderedClips.filter((clip) => clip.id !== deleteTarget.id);
           setOrderedClips(nextClips);
           orderedClipsRef.current = nextClips;
-          await onDeleteClip(deleteTarget.id);
+          const deleted = await onDeleteClip(deleteTarget.id);
+          if (!deleted) {
+            setOrderedClips(previousClips);
+            orderedClipsRef.current = previousClips;
+            return;
+          }
           setDeleteTarget(null);
           if (nextClips.length === 0) {
             onBack();
@@ -272,9 +282,15 @@ export function ClipReviewPanel({
         open={confirmClearDraft}
         title="Clear this draft?"
         onAction={async () => {
+          const previousClips = orderedClips;
           setOrderedClips([]);
           orderedClipsRef.current = [];
-          await onClearDraft();
+          const cleared = await onClearDraft();
+          if (!cleared) {
+            setOrderedClips(previousClips);
+            orderedClipsRef.current = previousClips;
+            return;
+          }
           setConfirmClearDraft(false);
           onBack();
         }}
@@ -360,7 +376,7 @@ function ClipPreview({
   listeners?: ReturnType<typeof useSortable>["listeners"];
   onOpen?: () => void;
 }) {
-  const src = useObjectUrl(clip.blob);
+  const src = useMemo(() => getObjectUrlForClip(clip), [clip]);
   const [canPlay, setCanPlay] = useState(false);
   const [hasError, setHasError] = useState(false);
 
@@ -390,7 +406,7 @@ function ClipPreview({
           className="h-full w-full object-cover"
           muted
           playsInline
-          preload="auto"
+          preload={isOverlay ? "none" : "metadata"}
           src={src ?? undefined}
           onCanPlay={() => setCanPlay(true)}
           onError={() => setHasError(true)}
@@ -513,7 +529,7 @@ function ReviewActionBar({
 }
 
 function FullscreenPreview({ clip, onClose }: { clip: ClipRecord; onClose: () => void }) {
-  const src = useObjectUrl(clip.blob);
+  const src = useMemo(() => getObjectUrlForClip(clip), [clip]);
   const [hasError, setHasError] = useState(false);
 
   return (
