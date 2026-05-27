@@ -23,10 +23,20 @@ const reassuranceDelayMs = 8_000;
 const stages: GenerationStage[] = [
   { id: "loading", label: "Opening your diary" },
   { id: "writing", label: "Gathering moments" },
-  { id: "normalizing", label: "Smoothing clips" },
+  { id: "normalizing", label: "Polishing video" },
   { id: "encoding", label: "Making playback ready" },
   { id: "saving", label: "Saving privately" },
 ];
+
+const statusLabels: Record<GenerationProgress["step"], string> = {
+  idle: "Preparing",
+  loading: "Starting editor",
+  writing: "Building timeline",
+  rendering: "Rendering video",
+  saving: "Saving video",
+  done: "Complete",
+  error: "Needs retry",
+};
 
 export function activeGenerationStage(progress: Pick<GenerationProgress, "step" | "label" | "value">) {
   if (progress.step === "done") return "saving";
@@ -153,7 +163,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
             This stays on your device.
           </p>
           <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-memory/80">
-            {progress.label}
+            {statusLabels[progress.step]}
           </p>
           <AnimatePresence initial={false}>
             {showReassurance ? (

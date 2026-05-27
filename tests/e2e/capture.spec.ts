@@ -350,7 +350,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Make video" })).toBeVisible();
   await expect(
     page
-      .getByRole("heading", { name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/ }),
+      .getByRole("heading", { name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/ }),
   ).not.toBeVisible();
   await expect
     .poll(
@@ -366,7 +366,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await page.getByRole("button", { name: "Make video" }).click();
 
   const generationHeading = page.getByRole("heading", {
-    name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
+    name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
   });
   await expect(generationHeading.first()).toBeVisible();
   await expect(generationHeading).toHaveCount(1);
@@ -795,7 +795,7 @@ test("reloading during generation returns to review with clips preserved", async
   await expect(
     page
       .getByRole("heading", {
-        name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
+        name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
       })
       .first(),
   ).toBeVisible();
@@ -807,7 +807,7 @@ test("reloading during generation returns to review with clips preserved", async
   await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview clip 1" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/ }),
+    page.getByRole("heading", { name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/ }),
   ).not.toBeVisible();
 });
 
@@ -894,7 +894,7 @@ test("gallery reorders clips and generation receives UI order", async ({ page })
   await expect(
     page
       .getByRole("heading", {
-        name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
+        name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
       })
       .first(),
   ).toBeVisible();

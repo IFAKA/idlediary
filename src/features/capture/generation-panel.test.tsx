@@ -83,10 +83,10 @@ describe("GenerationPanel", () => {
 
     expect(view.textContent).toContain("Opening your diary");
     expect(view.textContent).toContain("Gathering moments");
-    expect(view.textContent).toContain("Smoothing clips");
+    expect(view.textContent).toContain("Polishing video");
     expect(view.textContent).toContain("Making playback ready");
     expect(view.textContent).toContain("Saving privately");
-    expect(view.textContent).toContain("Softening audio");
+    expect(view.textContent).toContain("Rendering video");
     expect(view.textContent).toContain("This stays on your device.");
     expect(view.textContent).not.toContain("scale -> crop -> fps -> setsar -> format");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();

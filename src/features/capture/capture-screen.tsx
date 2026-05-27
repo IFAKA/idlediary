@@ -343,7 +343,7 @@ export function CaptureScreen() {
     if (mode === "generating") {
       return {
         eyebrow: "Finish",
-        title: generationProgress.label,
+        title: "Making video",
       };
     }
 
@@ -396,7 +396,7 @@ export function CaptureScreen() {
       eyebrow: "Today",
       title: "No pressure",
     };
-  }, [clips.clips.length, generationProgress.label, isFinishing, mode, showCapture, vlog]);
+  }, [clips.clips.length, isFinishing, mode, showCapture, vlog]);
 
   useAppHeader(headerConfig);
 
