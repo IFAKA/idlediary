@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Clapperboard, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft,
+  Clapperboard,
+  Clock3,
+  FileVideo,
+  HardDrive,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
@@ -20,13 +26,38 @@ type HomeState =
   | { status: "ready"; vlogs: VlogRecord[]; error?: never }
   | { status: "error"; vlogs: VlogRecord[]; error: string };
 
-function formatDate(value: string) {
+function formatSessionDate(value: string) {
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
+    year: "numeric",
+  }).format(parsed);
+}
+
+function formatDuration(clipCount: number) {
+  const seconds = clipCount * 2;
+  return `${seconds}s`;
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"] as const;
+  let value = bytes / 1024;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function formatMimeType(mimeType: string) {
+  return mimeType.split(";")[0]?.replace("video/", "").toUpperCase() || "VIDEO";
 }
 
 export function HomeScreen() {
@@ -93,7 +124,7 @@ export function HomeScreen() {
             </div>
           ) : state.vlogs.length > 0 ? (
             <div className="h-full overflow-y-auto overscroll-contain pr-1">
-              <div className="grid gap-4 pb-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 pb-4 xl:grid-cols-2">
                 {state.vlogs.map((vlog) => (
                   <VlogCard key={vlog.id} vlog={vlog} />
                 ))}
@@ -132,29 +163,49 @@ function VlogCard({ vlog }: { vlog: VlogRecord }) {
 
   return (
     <Link
-      className="group overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group grid h-36 grid-cols-[144px_minmax(0,1fr)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-40 sm:grid-cols-[160px_minmax(0,1fr)]"
       href={`/result?vlog=${encodeURIComponent(vlog.id)}`}
     >
-      <div className="relative aspect-[9/16] bg-black">
+      <div className="relative h-full w-full bg-black">
         <video
           aria-hidden="true"
           className="h-full w-full object-cover"
-          loop
           muted
           playsInline
           preload="metadata"
           src={src ?? undefined}
         />
-        <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-background/78 px-2 py-1 text-xs font-semibold text-memory backdrop-blur-sm">
-          <RefreshCw className="size-3" />
-          {vlog.clipCount} clips
-        </div>
       </div>
-      <div className="border-t border-memory/15 p-3">
-        <h2 className="line-clamp-2 text-base font-semibold leading-6">{vlog.title}</h2>
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <CalendarDays className="size-3.5" />
-          {formatDate(vlog.createdAt)}
+      <div className="flex min-w-0 flex-col border-l border-memory/15 p-3">
+        <div className="min-w-0">
+          <h2 className="line-clamp-1 text-base font-semibold leading-6">{vlog.title}</h2>
+        </div>
+
+        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Clapperboard className="size-3.5 shrink-0 text-memory" />
+            <dt className="sr-only">Clips</dt>
+            <dd className="truncate">{vlog.clipCount} clips</dd>
+          </div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Clock3 className="size-3.5 shrink-0 text-memory" />
+            <dt className="sr-only">Duration</dt>
+            <dd className="truncate">{formatDuration(vlog.clipCount)}</dd>
+          </div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <FileVideo className="size-3.5 shrink-0 text-memory" />
+            <dt className="sr-only">Format</dt>
+            <dd className="truncate">{formatMimeType(vlog.mimeType)}</dd>
+          </div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <HardDrive className="size-3.5 shrink-0 text-memory" />
+            <dt className="sr-only">File size</dt>
+            <dd className="truncate">{formatFileSize(vlog.blob.size)}</dd>
+          </div>
+        </dl>
+
+        <p className="mt-auto pt-3 text-xs text-muted-foreground">
+          Session {formatSessionDate(vlog.sessionId)}
         </p>
       </div>
     </Link>
