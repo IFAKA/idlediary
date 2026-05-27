@@ -368,7 +368,7 @@ export function CaptureScreen() {
       <AnimatePresence initial={false}>
         <motion.div
           key={mode === "capture" && camera.stream ? "camera-preview" : "processing-backdrop"}
-          className="absolute inset-0"
+          className="absolute inset-x-0 bottom-0 top-[var(--app-header-background-start)]"
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: mode === "capture" ? 1.015 : 1 }}
           initial={{ opacity: 0, scale: 1.01 }}

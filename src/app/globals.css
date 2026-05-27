@@ -30,6 +30,7 @@
   --input: 330 10% 24%;
   --ring: 346 62% 66%;
   --radius: 8px;
+  --app-header-background-start: max(80px, calc(env(safe-area-inset-top) + 64px));
 }
 
 @theme inline {
