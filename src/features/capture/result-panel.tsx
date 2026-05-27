@@ -1,9 +1,8 @@
 "use client";
 
-import { Download, RefreshCcw, Share2, X } from "lucide-react";
+import { Download, RefreshCcw, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { AppHeader } from "@/components/app-header";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import { getObjectUrlForVlog, retainVlogObjectUrl } from "@/features/clips/media-cache";
@@ -73,7 +72,7 @@ export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
 
       <AnimatePresence>
         {isPlayerOpen && src ? (
-          <FullscreenResultPlayer src={src} title={vlog.title} onClose={closePlayer} />
+          <FullscreenResultPlayer src={src} onClose={closePlayer} />
         ) : null}
       </AnimatePresence>
 
@@ -91,41 +90,22 @@ export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
 
 function FullscreenResultPlayer({
   src,
-  title,
   onClose,
 }: {
   src: string;
-  title: string;
   onClose: () => void;
 }) {
   useBodyScrollLock();
+  useEscapeClose(onClose);
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex h-[100svh] flex-col overflow-hidden bg-black safe-screen"
+      className="fixed inset-0 z-50 h-[100svh] overflow-hidden bg-black safe-screen"
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
     >
-      <AppHeader
-        className="relative z-[60]"
-        eyebrow="Preview"
-        title={title}
-        titleAs="h2"
-        trailing={
-          <Button
-            aria-label="Close generated video preview"
-            className="mr-14 shrink-0 bg-black/55 backdrop-blur"
-            size="icon"
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-          >
-            <X className="size-5" />
-          </Button>
-        }
-      />
-      <div className="relative mt-4 min-h-0 flex-1 overflow-hidden rounded-lg border bg-black">
+      <div className="relative h-full w-full overflow-hidden bg-black">
         <video
           aria-label="Fullscreen generated video preview"
           autoPlay
@@ -138,6 +118,18 @@ function FullscreenResultPlayer({
       </div>
     </motion.div>
   );
+}
+
+function useEscapeClose(onClose: () => void) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 }
 
 function useBodyScrollLock() {

@@ -22,10 +22,9 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Play, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import { Play, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AppHeader } from "@/components/app-header";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import { getObjectUrlForClip } from "@/features/clips/media-cache";
@@ -529,33 +528,18 @@ function FullscreenPreview({
   const src = useMemo(() => getObjectUrlForClip(clip), [clip]);
   const [hasError, setHasError] = useState(false);
 
+  useBodyScrollLock();
+  useEscapeClose(onClose);
+
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex h-[100svh] flex-col overflow-hidden bg-black safe-screen"
+      className="fixed inset-0 z-50 h-[100svh] overflow-hidden bg-black safe-screen"
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
     >
-      <AppHeader
-        className="relative z-[60]"
-        eyebrow="Preview"
-        title="Clip player"
-        titleAs="h2"
-        trailing={
-          <Button
-            aria-label="Close preview"
-            className="mr-14 shrink-0 bg-black/55 backdrop-blur"
-            size="icon"
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-          >
-            <X className="size-5" />
-          </Button>
-        }
-      />
       <motion.div
-        className="relative mt-4 min-h-0 flex-1 overflow-hidden rounded-lg border bg-black"
+        className="relative h-full w-full overflow-hidden bg-black"
         layoutId={`clip-preview-${clip.id}`}
         transition={spring}
       >
@@ -570,7 +554,7 @@ function FullscreenPreview({
           onError={() => setHasError(true)}
         />
         {hasError ? (
-          <div className="absolute inset-x-4 bottom-4 rounded-lg border bg-black/80 p-3 text-sm text-foreground">
+          <div className="absolute inset-x-4 bottom-4 bg-black/80 p-3 text-sm text-white">
             This clip can&apos;t be loaded by this browser. Record the next clip
             using the current recorder format.
           </div>
@@ -578,4 +562,27 @@ function FullscreenPreview({
       </motion.div>
     </motion.div>
   );
+}
+
+function useEscapeClose(onClose: () => void) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+}
+
+function useBodyScrollLock() {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 }
