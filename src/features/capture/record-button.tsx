@@ -155,36 +155,43 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
             ease: "easeOut",
           }}
         />
+        {recordingMarkerSeconds.map((second, index) => {
+          const isActivePulse = isRecording && activePulseSecond === second;
+
+          return (
+            <circle
+              key={`segment-pulse-${second}`}
+              className="record-segment-pulse"
+              data-record-segment-pulse={second}
+              data-record-segment-pulse-active={isActivePulse ? "true" : "false"}
+              cx="50"
+              cy="50"
+              fill="none"
+              r={markerRadius}
+              stroke="hsl(var(--primary))"
+              strokeDasharray={segmentDashPattern}
+              strokeDashoffset={-(segmentStep * index + segmentGap / 2)}
+              strokeLinecap="round"
+              strokeWidth="7"
+            />
+          );
+        })}
         {recordingMarkerSeconds.map((second) => {
           const isActivePulse = isRecording && activePulseSecond === second;
           const markerPoint = pointOnRing(second);
 
           return (
-            <motion.circle
+            <circle
               key={second}
+              className="record-marker-pulse"
               data-record-marker={second}
               data-record-marker-active={isActivePulse ? "true" : "false"}
               cx={markerPoint.x}
               cy={markerPoint.y}
               fill="hsl(var(--primary))"
-              r="3.5"
+              r="4.5"
               stroke="hsl(var(--primary))"
-              strokeWidth="2"
-              style={{
-                filter: isActivePulse
-                  ? "drop-shadow(0 0 12px hsl(var(--primary))) drop-shadow(0 0 22px hsl(var(--primary)))"
-                  : "none",
-                opacity: 0,
-                transformBox: "fill-box",
-                transformOrigin: "center",
-              }}
-              initial={false}
-              animate={{
-                opacity: isActivePulse ? 1 : 0,
-                scale: isActivePulse ? 2.2 : 0.75,
-                strokeWidth: isActivePulse ? 4 : 2,
-              }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              strokeWidth="3"
             />
           );
         })}

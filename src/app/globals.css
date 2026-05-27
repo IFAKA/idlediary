@@ -129,6 +129,70 @@ button {
   }
 }
 
+.record-segment-pulse,
+.record-marker-pulse {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.record-segment-pulse[data-record-segment-pulse-active="true"] {
+  animation: record-segment-pulse 420ms ease-out both;
+  filter:
+    drop-shadow(0 0 8px hsl(var(--primary)))
+    drop-shadow(0 0 18px hsl(var(--primary)));
+}
+
+.record-marker-pulse[data-record-marker-active="true"] {
+  animation: record-marker-pulse 420ms ease-out both;
+  filter:
+    drop-shadow(0 0 10px hsl(var(--primary)))
+    drop-shadow(0 0 22px hsl(var(--primary)));
+}
+
+@keyframes record-segment-pulse {
+  0% {
+    opacity: 0;
+    stroke-width: 7;
+  }
+
+  18% {
+    opacity: 1;
+    stroke-width: 10;
+  }
+
+  58% {
+    opacity: 0.9;
+    stroke-width: 12;
+  }
+
+  100% {
+    opacity: 0;
+    stroke-width: 13;
+  }
+}
+
+@keyframes record-marker-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+    stroke-width: 3;
+  }
+
+  18% {
+    opacity: 1;
+    transform: scale(2.55);
+    stroke-width: 5;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(3.1);
+    stroke-width: 6;
+  }
+}
+
 @keyframes local-orbit {
   0%,
   100% {

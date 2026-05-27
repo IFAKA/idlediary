@@ -33,6 +33,10 @@ describe("RecordButton", () => {
     return container.querySelector('[data-record-marker-active="true"]');
   }
 
+  function activeSegmentPulse() {
+    return container.querySelector('[data-record-segment-pulse-active="true"]');
+  }
+
   function recordSegments() {
     return container.querySelectorAll("[data-record-segment]");
   }
@@ -52,21 +56,25 @@ describe("RecordButton", () => {
       vi.advanceTimersByTime(1000);
     });
     expect(activeMarker()).toHaveAttribute("data-record-marker", "1");
+    expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "1");
 
     act(() => {
       vi.advanceTimersByTime(420);
     });
     expect(activeMarker()).toBeNull();
+    expect(activeSegmentPulse()).toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(580);
     });
     expect(activeMarker()).toHaveAttribute("data-record-marker", "2");
+    expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "2");
 
     act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(activeMarker()).toHaveAttribute("data-record-marker", "3");
+    expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "3");
   });
 
   it("clears pending marker pulses when recording stops", () => {
@@ -76,13 +84,16 @@ describe("RecordButton", () => {
       vi.advanceTimersByTime(1000);
     });
     expect(activeMarker()).toHaveAttribute("data-record-marker", "1");
+    expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "1");
 
     renderButton("idle");
     expect(activeMarker()).toBeNull();
+    expect(activeSegmentPulse()).toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(2000);
     });
     expect(activeMarker()).toBeNull();
+    expect(activeSegmentPulse()).toBeNull();
   });
 });
