@@ -110,9 +110,6 @@ function TypedDescription({
       </span>
       <span className="absolute inset-0 block" aria-hidden="true">
         {visibleText}
-        {!reducedMotion && visibleText.length < text.length ? (
-          <span className="ml-0.5 inline-block h-[1em] w-px translate-y-0.5 animate-pulse bg-current" />
-        ) : null}
       </span>
     </p>
   );
