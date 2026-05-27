@@ -580,7 +580,7 @@ export function CaptureScreen() {
                 <Link
                   aria-disabled={!canOpenVideos}
                   aria-label="Videos"
-                  className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 aria-disabled:pointer-events-none aria-disabled:cursor-default aria-disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border border-white/30 bg-black/52 text-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.38),0_12px_28px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.12)] outline-none transition hover:border-white/45 hover:bg-black/64 aria-disabled:pointer-events-none aria-disabled:cursor-default aria-disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   href="/videos"
                   tabIndex={canOpenVideos ? undefined : -1}
                   onClick={handleVideosEntry}
@@ -740,7 +740,7 @@ function LatestDraftButton({
     <motion.button
       aria-disabled={disabled}
       aria-label="Review draft clips"
-      className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border border-white/30 bg-black/52 text-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.38),0_12px_28px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.12)] outline-none transition hover:border-white/45 hover:bg-black/64 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       data-disabled={disabled}
       disabled={disabled}
       type="button"
