@@ -15,7 +15,6 @@ import {
   type AppHeaderConfig,
 } from "@/components/app-header-shell";
 import { ItemCountStack } from "@/components/item-counter";
-import { SupportLink } from "@/components/support-link";
 import { Button } from "@/components/ui/button";
 import {
   getThumbnailObjectUrlForVlog,
@@ -326,7 +325,6 @@ function EmptyHistory() {
           Back to recording
         </Link>
       </Button>
-      <SupportLink className="mt-3 border-transparent bg-transparent text-muted-foreground hover:border-memory/25 hover:text-foreground" />
     </div>
   );
 }
