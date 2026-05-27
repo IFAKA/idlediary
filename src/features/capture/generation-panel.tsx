@@ -34,16 +34,6 @@ const stages: GenerationStage[] = [
   { id: "saving", label: "Saving privately" },
 ];
 
-const statusLabels: Record<GenerationProgress["step"], string> = {
-  idle: "Preparing",
-  loading: "Starting editor",
-  writing: "Building timeline",
-  rendering: "Rendering video",
-  saving: "Saving video",
-  done: "Complete",
-  error: "Needs retry",
-};
-
 export function activeGenerationStage(progress: Pick<GenerationProgress, "step" | "label" | "value">) {
   if (progress.step === "done") return "saving";
   if (progress.step === "saving") return "saving";
@@ -154,9 +144,6 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
           <p className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-memory/85">
             <LockKeyhole className="size-3.5" aria-hidden="true" />
             Your clips and video stay private on this device.
-          </p>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-memory/80">
-            {statusLabels[progress.step]}
           </p>
         </motion.div>
       </motion.div>
