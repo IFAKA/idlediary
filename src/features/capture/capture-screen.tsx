@@ -255,7 +255,7 @@ export function CaptureScreen() {
 
     try {
       const blob = await recorder.record();
-      await clips.addClip(blob, 2000);
+      await clips.addClip(blob, 3000);
     } catch (error) {
       reportError(error);
     }

@@ -44,7 +44,7 @@ function makeClip(id: string, order: number): ClipRecord {
     sessionId: session.id,
     blob,
     mimeType: "video/webm",
-    durationMs: 2000,
+    durationMs: 3000,
     order,
     createdAt: `2026-05-27T10:00:0${order}.000Z`,
     size: blob.size,
@@ -157,7 +157,7 @@ describe("useClips", () => {
     await waitFor(() => expect(latest?.loading).toBe(false));
 
     await act(async () => {
-      await latest!.addClip(secondBlob, 2000);
+      await latest!.addClip(secondBlob, 3000);
     });
     expect(latest?.clips.map((clip) => clip.id)).toEqual(["clip-1", "clip-new"]);
     expect(mocks.listClips).toHaveBeenCalledTimes(1);

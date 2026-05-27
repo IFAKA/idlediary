@@ -23,7 +23,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
 
   return (
     <motion.button
-      aria-label={isRecording ? "Recording two second clip" : "Record two second clip"}
+      aria-label={isRecording ? "Recording three second clip" : "Record three second clip"}
       className={cn(
         "relative grid size-24 place-items-center rounded-full border border-white/18 bg-black/45 shadow-[0_20px_80px_rgba(0,0,0,0.45)] outline-none",
         "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",

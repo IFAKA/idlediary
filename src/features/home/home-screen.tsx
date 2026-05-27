@@ -114,7 +114,7 @@ function EmptyHistory() {
       </div>
       <h2 className="text-2xl font-semibold">No generated videos yet</h2>
       <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-        Record a few two-second clips, review the draft, then generate your first diary video.
+        Record a few three-second clips, review the draft, then generate your first diary video.
       </p>
     </div>
   );

@@ -17,7 +17,7 @@ function clip(id: string): ClipRecord {
     sessionId: "session-1",
     blob: new Blob(["clip"], { type: "video/webm" }),
     mimeType: "video/webm",
-    durationMs: 2_000,
+    durationMs: 3_000,
     createdAt: "2026-05-27T10:00:00.000Z",
     size: 4,
   };

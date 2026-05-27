@@ -18,7 +18,7 @@ type IntroStep = {
 const steps: IntroStep[] = [
   {
     icon: CircleDot,
-    title: "Capture 2 seconds",
+    title: "Capture 3 seconds",
     detail: "Hold one small moment from the day.",
   },
   {
@@ -62,7 +62,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
             <div>
               <h1 className="text-3xl font-semibold leading-none">IdleDiary</h1>
               <p className="mt-2 max-w-64 text-sm leading-6 text-muted-foreground">
-                A two-second diary that stays quiet until you ask it to make a video.
+                A three-second diary that stays quiet until you ask it to make a video.
               </p>
             </div>
           </div>

@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "IdleDiary",
-  description: "A no-pressure two-second vlogging PWA.",
+  description: "A no-pressure three-second vlogging PWA.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

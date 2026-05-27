@@ -10,5 +10,5 @@ export const easeOut = {
   ease: [0.16, 1, 0.3, 1],
 } as const;
 
-export const twoSecondRecordMs = 2000;
+export const twoSecondRecordMs = 3000;
 export const recorderSettleMs = 250;

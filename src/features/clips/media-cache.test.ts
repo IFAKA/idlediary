@@ -13,7 +13,7 @@ function makeClip(overrides: Partial<ClipRecord> = {}): ClipRecord {
     sessionId: "session-1",
     blob,
     mimeType: "video/webm",
-    durationMs: 2000,
+    durationMs: 3000,
     order: 0,
     createdAt: "2026-05-27T10:00:00.000Z",
     size: blob.size,

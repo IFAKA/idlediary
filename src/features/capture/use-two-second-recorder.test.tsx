@@ -78,7 +78,7 @@ describe("useTwoSecondRecorder", () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(3000);
     });
 
     expect(state()).toHaveTextContent("recording");

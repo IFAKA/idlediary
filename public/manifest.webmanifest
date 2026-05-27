@@ -1,7 +1,7 @@
 {
   "name": "IdleDiary",
   "short_name": "IdleDiary",
-  "description": "Tap once, record two seconds, generate a vertical diary vlog.",
+  "description": "Tap once, record three seconds, generate a vertical diary vlog.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
