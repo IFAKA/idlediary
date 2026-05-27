@@ -9,7 +9,11 @@ import { useClips } from "@/features/clips/use-clips";
 import { getObjectUrlForClip, releaseAllVlogObjectUrls } from "@/features/clips/media-cache";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
-import { generateVlog, type GenerationProgress } from "@/features/generation/generation";
+import {
+  generateVlog,
+  generationProgress as makeGenerationProgress,
+  type GenerationProgress,
+} from "@/features/generation/generation";
 import {
   clearGeneratedVlogForSession,
   getLatestVlogForSession,
@@ -87,8 +91,7 @@ export function CaptureScreen() {
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
-    step: "idle",
-    value: 0,
+    ...makeGenerationProgress("idle", 0),
   });
 
   const needsPermission = !camera.stream;
@@ -270,7 +273,7 @@ export function CaptureScreen() {
 
     try {
       setIsFinishing(true);
-      setGenerationProgress({ step: "idle", value: 0 });
+      setGenerationProgress(makeGenerationProgress("idle", 0));
       setMode("generating");
       await waitForPaint();
       camera.stop();
@@ -280,7 +283,7 @@ export function CaptureScreen() {
       showResult(nextVlog, "replace");
     } catch (error) {
       const appError = reportError(error);
-      setGenerationProgress({ step: "error", value: 0 });
+      setGenerationProgress(makeGenerationProgress("error", 0));
       showReview("replace");
       toast.error(appError.userMessage);
     } finally {

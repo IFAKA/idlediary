@@ -38,7 +38,12 @@ export async function mockMediaCapture(
     });
 
     class MockFFmpeg {
-      on() {}
+      private readonly handlers = new Map<string, Array<(event: unknown) => void>>();
+
+      on(event: string, handler: (event: unknown) => void) {
+        this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler]);
+      }
+
       async load() {}
       async writeFile(path: string) {
         const testWindow = window as typeof window & { __idleDiaryGeneratedInputs?: string[] };
@@ -49,11 +54,23 @@ export async function mockMediaCapture(
           ];
         }
       }
-      async exec() {
+      async exec(args: string[]) {
+        const testWindow = window as typeof window & { __idleDiaryFfmpegExecArgs?: string[] };
+        testWindow.__idleDiaryFfmpegExecArgs = args;
+        this.emit("log", { message: "scale -> crop -> fps -> setsar -> format" });
+        this.emit("progress", { progress: 0.64 });
+        this.emit("log", { message: "loudnorm AAC 48kHz stereo" });
+        this.emit("progress", { progress: 0.96 });
         await new Promise((resolve) => window.setTimeout(resolve, generationDelayMs));
       }
       async readFile() {
         return new Uint8Array(await generatedBlob.arrayBuffer());
+      }
+
+      private emit(event: string, payload: unknown) {
+        for (const handler of this.handlers.get(event) ?? []) {
+          handler(payload);
+        }
       }
     }
 

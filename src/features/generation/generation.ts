@@ -8,11 +8,166 @@ import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 export type GenerationProgress = {
   step: "idle" | "loading" | "writing" | "rendering" | "saving" | "done" | "error";
   value: number;
+  label: string;
+  detail: string;
+  technical: string;
+  logs: string[];
+};
+
+export const exportProfile = {
+  output: "vlog.mp4",
+  width: 720,
+  height: 1280,
+  fps: 30,
+  videoCodec: "libx264",
+  pixelFormat: "yuv420p",
+  audioCodec: "aac",
+  audioSampleRate: 48_000,
+  audioChannels: 2,
+  audioFilter: "loudnorm=I=-16:TP=-1.5:LRA=11",
+} as const;
+
+const maxLogLines = 8;
+const videoFilters = [
+  "scale=720:1280:force_original_aspect_ratio=increase",
+  "crop=720:1280",
+  "fps=30",
+  "setsar=1",
+  "format=yuv420p",
+];
+
+const technicalSummary = `${videoFilters.join(" -> ")} | H.264 MP4, AAC 48kHz stereo, faststart`;
+
+const progressCopy: Record<
+  GenerationProgress["step"],
+  Pick<GenerationProgress, "label" | "detail" | "technical">
+> = {
+  idle: {
+    label: "Preparing",
+    detail: "Setting up the local video renderer",
+    technical: technicalSummary,
+  },
+  loading: {
+    label: "Loading local editor",
+    detail: "Starting the on-device FFmpeg engine",
+    technical: `${technicalSummary} | @ffmpeg/ffmpeg wasm core`,
+  },
+  writing: {
+    label: "Collecting clips",
+    detail: "Copying today's clips into the local renderer",
+    technical: `${technicalSummary} | concat demuxer input list`,
+  },
+  rendering: {
+    label: "Normalizing clips",
+    detail: "Centering video, balancing audio, and encoding MP4",
+    technical: technicalSummary,
+  },
+  saving: {
+    label: "Saving result",
+    detail: "Storing the finished diary video locally",
+    technical: exportProfile.output,
+  },
+  done: {
+    label: "Done",
+    detail: "Your diary video is ready",
+    technical: exportProfile.output,
+  },
+  error: {
+    label: "Generation failed",
+    detail: "Your clips are still saved for another try",
+    technical: "ffmpeg error",
+  },
 };
 
 let ffmpegPromise: Promise<FFmpeg> | null = null;
+let activeProgressSink: ((progress: GenerationProgress) => void) | null = null;
+let recentFfmpegLogs: string[] = [];
+let activeRenderValue = 24;
 
-async function loadFfmpeg(onProgress: (progress: GenerationProgress) => void) {
+export function buildVideoFilter() {
+  return videoFilters.join(",");
+}
+
+export function buildFfmpegArgs() {
+  return [
+    "-fflags",
+    "+genpts",
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
+    "inputs.txt",
+    "-map",
+    "0:v:0",
+    "-map",
+    "0:a?",
+    "-vf",
+    buildVideoFilter(),
+    "-c:v",
+    exportProfile.videoCodec,
+    "-preset",
+    "veryfast",
+    "-r",
+    String(exportProfile.fps),
+    "-pix_fmt",
+    exportProfile.pixelFormat,
+    "-c:a",
+    exportProfile.audioCodec,
+    "-ar",
+    String(exportProfile.audioSampleRate),
+    "-ac",
+    String(exportProfile.audioChannels),
+    "-af",
+    exportProfile.audioFilter,
+    "-movflags",
+    "+faststart",
+    "-avoid_negative_ts",
+    "make_zero",
+    "-shortest",
+    exportProfile.output,
+  ];
+}
+
+export function recentGenerationLogs(logs: string[], nextLog: string) {
+  return [...logs, nextLog].slice(-maxLogLines);
+}
+
+export function generationProgress(
+  step: GenerationProgress["step"],
+  value: number,
+  overrides: Partial<Pick<GenerationProgress, "label" | "detail" | "technical" | "logs">> = {},
+): GenerationProgress {
+  return {
+    step,
+    value,
+    logs: [],
+    ...progressCopy[step],
+    ...overrides,
+  };
+}
+
+export function resetGenerationForTests() {
+  ffmpegPromise = null;
+  activeProgressSink = null;
+  recentFfmpegLogs = [];
+  activeRenderValue = 24;
+}
+
+function renderingLabelFor(value: number) {
+  if (value >= 78) return "Encoding MP4";
+  if (value >= 52) return "Balancing audio";
+  return "Normalizing clips";
+}
+
+function emitProgress(progress: GenerationProgress) {
+  activeProgressSink?.({
+    ...progress,
+    logs: progress.logs.length > 0 ? progress.logs : recentFfmpegLogs,
+  });
+}
+
+async function loadFfmpeg() {
   if (ffmpegPromise) return ffmpegPromise;
 
   ffmpegPromise = (async () => {
@@ -23,13 +178,25 @@ async function loadFfmpeg(onProgress: (progress: GenerationProgress) => void) {
         : undefined;
     const ffmpeg = MockFFmpeg ? new MockFFmpeg() : new FFmpeg();
     ffmpeg.on("log", ({ message }) => {
+      recentFfmpegLogs = recentGenerationLogs(recentFfmpegLogs, message);
       addDebugEvent("ffmpeg-log", "generation", { message });
+      emitProgress(
+        generationProgress("rendering", activeRenderValue, {
+          label: renderingLabelFor(activeRenderValue),
+          logs: recentFfmpegLogs,
+        }),
+      );
     });
     ffmpeg.on("progress", ({ progress }) => {
-      onProgress({ step: "rendering", value: Math.max(20, Math.round(progress * 88)) });
+      activeRenderValue = Math.max(24, Math.round(progress * 88));
+      emitProgress(
+        generationProgress("rendering", activeRenderValue, {
+          label: renderingLabelFor(activeRenderValue),
+        }),
+      );
     });
 
-    onProgress({ step: "loading", value: 8 });
+    emitProgress(generationProgress("loading", 8));
     if (MockFFmpeg) {
       await ffmpeg.load();
       addDebugEvent("ffmpeg-loaded", "generation", { mocked: true });
@@ -71,12 +238,15 @@ export async function generateVlog(
   }
 
   try {
+    activeProgressSink = onProgress;
+    recentFfmpegLogs = [];
+    activeRenderValue = 24;
     if (typeof window !== "undefined") {
       (window as typeof window & { __idleDiaryGenerationClipIds?: string[] })
         .__idleDiaryGenerationClipIds = clips.map((clip) => clip.id);
     }
-    const ffmpeg = await loadFfmpeg(onProgress);
-    onProgress({ step: "writing", value: 14 });
+    const ffmpeg = await loadFfmpeg();
+    emitProgress(generationProgress("writing", 14));
 
     const listLines: string[] = [];
     for (const [index, clip] of clips.entries()) {
@@ -90,31 +260,11 @@ export async function generateVlog(
       bytes: clips.reduce((total, clip) => total + clip.size, 0),
     });
 
-    onProgress({ step: "rendering", value: 24 });
-    await ffmpeg.exec([
-      "-f",
-      "concat",
-      "-safe",
-      "0",
-      "-i",
-      "inputs.txt",
-      "-vf",
-      "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1",
-      "-r",
-      "30",
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac",
-      "vlog.mp4",
-    ]);
+    emitProgress(generationProgress("rendering", 24));
+    await ffmpeg.exec(buildFfmpegArgs());
 
-    onProgress({ step: "saving", value: 92 });
-    const data = await ffmpeg.readFile("vlog.mp4");
+    emitProgress(generationProgress("saving", 92));
+    const data = await ffmpeg.readFile(exportProfile.output);
     const bytes =
       typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
     const output = bytes.buffer.slice(
@@ -132,7 +282,7 @@ export async function generateVlog(
       caption: suggestCaption(clips.length),
       createdAt: new Date().toISOString(),
     };
-    onProgress({ step: "done", value: 100 });
+    emitProgress(generationProgress("done", 100));
     addDebugEvent("vlog-generated", "generation", {
       vlogId: vlog.id,
       size: blob.size,

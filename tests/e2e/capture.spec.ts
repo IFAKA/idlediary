@@ -255,7 +255,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Make video" })).toBeVisible();
   await expect(
     page
-      .getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Making the vlog|Saving result|Done/ }),
+      .getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ }),
   ).not.toBeVisible();
   await expect
     .poll(
@@ -270,7 +270,31 @@ test("draft review stops the camera before generation", async ({ page }) => {
 
   await page.getByRole("button", { name: "Make video" }).click();
 
-  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Making the vlog|Saving result|Done/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ })).toBeVisible();
+  await expect(page.getByText("Centering video, balancing audio, and encoding MP4")).toBeVisible();
+  await expect(page.getByText("scale -> crop -> fps -> setsar -> format")).toBeVisible();
+  await expect(page.getByText("movflags +faststart")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryFfmpegExecArgs?: string[] })
+            .__idleDiaryFfmpegExecArgs ?? [],
+      ),
+    )
+    .toEqual(
+      expect.arrayContaining([
+        "-fflags",
+        "+genpts",
+        "-vf",
+        "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30,setsar=1,format=yuv420p",
+        "-af",
+        "loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-movflags",
+        "+faststart",
+        "vlog.mp4",
+      ]),
+    );
   await expect(page).toHaveURL("/draft");
   await expect(page.getByRole("heading", { name: "No pressure" })).not.toBeVisible();
   await expect
@@ -476,7 +500,7 @@ test("reloading during generation returns to review with clips preserved", async
   await page.getByRole("button", { name: "Review draft clips" }).click();
 
   await page.getByRole("button", { name: "Make video" }).click();
-  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Making the vlog|Saving result|Done/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ })).toBeVisible();
   await expect(page).toHaveURL("/draft");
 
   await page.reload();
@@ -485,7 +509,7 @@ test("reloading during generation returns to review with clips preserved", async
   await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview clip 1" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Making the vlog|Saving result|Done/ }),
+    page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ }),
   ).not.toBeVisible();
 });
 
@@ -554,7 +578,7 @@ test("gallery reorders clips and generation receives UI order", async ({ page })
   await expect(rows.nth(0)).toHaveAttribute("data-clip-id", originalSecondId ?? "");
 
   await page.getByRole("button", { name: "Make video" }).click();
-  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Making the vlog|Saving result|Done/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ })).toBeVisible();
   await expect
     .poll(() =>
       page.evaluate(
