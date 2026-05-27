@@ -707,6 +707,8 @@ function LatestDraftButton({
     useState(false);
   const previousClipCountRef = useRef(clipCount);
   const didLoadRef = useRef(false);
+  const shouldAnimateDraftMotion =
+    shouldAnimateDraftChange && !shouldReduceMotion;
 
   useEffect(() => {
     if (isLoading) {
@@ -743,7 +745,7 @@ function LatestDraftButton({
       disabled={disabled}
       type="button"
       animate={
-        shouldAnimateDraftChange && !shouldReduceMotion
+        shouldAnimateDraftMotion
           ? {
               boxShadow: [
                 "0 0 0 0 hsl(var(--memory) / 0)",
@@ -754,9 +756,9 @@ function LatestDraftButton({
           : { boxShadow: "0 0 0 0 hsl(var(--memory) / 0)" }
       }
       transition={
-        shouldAnimateDraftChange && !shouldReduceMotion
+        shouldAnimateDraftMotion
           ? { duration: 0.36, ease: "easeOut" }
-          : { duration: 0.16 }
+          : { duration: 0 }
       }
       onClick={onOpen}
     >
@@ -768,16 +770,19 @@ function LatestDraftButton({
             key={`draft-preview-${clip.id}`}
             animate={{ opacity: 1, scale: 1 }}
             exit={
-              shouldReduceMotion || !shouldAnimateDraftChange
+              !shouldAnimateDraftMotion
                 ? { opacity: 0 }
                 : { opacity: 0, scale: 0.96 }
             }
             initial={
-              shouldReduceMotion || !shouldAnimateDraftChange
+              !shouldAnimateDraftMotion
                 ? false
                 : { opacity: 0, scale: 1.08 }
             }
-            transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: "easeOut" }}
+            transition={{
+              duration: shouldAnimateDraftMotion ? 0.2 : 0,
+              ease: "easeOut",
+            }}
           >
             {thumbnailSrc ? (
               <img
@@ -801,22 +806,26 @@ function LatestDraftButton({
               <motion.span
                 className={`absolute inset-0 inline-flex items-center justify-center font-medium leading-none text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] ${draftCountTextSize}`}
                 key="draft-count"
-                layout
+                layout={shouldAnimateDraftMotion}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={
-                  shouldReduceMotion || !shouldAnimateDraftChange
+                  !shouldAnimateDraftMotion
                     ? { opacity: 0 }
                     : { scale: 0.78, opacity: 0, y: -2 }
                 }
                 initial={
-                  shouldReduceMotion || !shouldAnimateDraftChange
+                  !shouldAnimateDraftMotion
                     ? false
                     : { scale: 0.72, opacity: 0, y: -2 }
                 }
-                transition={draftBadgeTransition}
+                transition={
+                  shouldAnimateDraftMotion
+                    ? draftBadgeTransition
+                    : { duration: 0 }
+                }
               >
                 <AnimatedDraftCount
-                  animateChange={shouldAnimateDraftChange}
+                  animateChange={shouldAnimateDraftMotion}
                   count={clipCount}
                   reducedMotion={shouldReduceMotion}
                 />
@@ -830,16 +839,19 @@ function LatestDraftButton({
             key="draft-empty-icon"
             animate={{ opacity: 1, scale: 1 }}
             exit={
-              shouldReduceMotion || !shouldAnimateDraftChange
+              !shouldAnimateDraftMotion
                 ? { opacity: 0 }
                 : { opacity: 0, scale: 0.9 }
             }
             initial={
-              shouldReduceMotion || !shouldAnimateDraftChange
+              !shouldAnimateDraftMotion
                 ? false
                 : { opacity: 0, scale: 0.9 }
             }
-            transition={{ duration: shouldReduceMotion ? 0 : 0.16, ease: "easeOut" }}
+            transition={{
+              duration: shouldAnimateDraftMotion ? 0.16 : 0,
+              ease: "easeOut",
+            }}
           >
             <Layers2 className="size-6" />
           </motion.span>
@@ -874,7 +886,7 @@ function AnimatedDraftCount({
       <span aria-hidden="true">+</span>
       <motion.span
         className="inline-flex items-center"
-        layout
+        layout={animateChange}
         aria-hidden="true"
         initial={false}
         animate={
@@ -894,7 +906,7 @@ function AnimatedDraftCount({
             <motion.span
               className="relative inline-block h-[1em] w-[0.62em] overflow-hidden text-center"
               key={place}
-              layout
+              layout={animateChange}
             >
               <AnimatePresence initial={false} mode="popLayout">
                 <motion.span
@@ -902,7 +914,7 @@ function AnimatedDraftCount({
                   key={`${place}-${digit}`}
                   animate={{ opacity: 1, y: 0 }}
                   exit={
-                    reducedMotion
+                    reducedMotion || !animateChange
                       ? { opacity: 0 }
                       : {
                           opacity: 0,
@@ -911,15 +923,19 @@ function AnimatedDraftCount({
                         }
                   }
                   initial={
-                    reducedMotion
-                      ? { opacity: 0 }
+                    reducedMotion || !animateChange
+                      ? false
                       : {
                           opacity: 0,
                           scale: 1.12,
                           y: direction > 0 ? "72%" : "-72%",
-                        }
+                      }
                   }
-                  transition={reducedMotion ? { duration: 0 } : draftDigitTransition}
+                  transition={
+                    reducedMotion || !animateChange
+                      ? { duration: 0 }
+                      : draftDigitTransition
+                  }
                 >
                   {digit}
                 </motion.span>
