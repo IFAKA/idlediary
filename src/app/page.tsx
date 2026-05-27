@@ -1,5 +1,5 @@
-import { CaptureScreen } from "@/features/capture/capture-screen";
+import { HomeScreen } from "@/features/home/home-screen";
 
 export default function Home() {
-  return <CaptureScreen />;
+  return <HomeScreen />;
 }

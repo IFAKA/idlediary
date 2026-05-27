@@ -31,7 +31,7 @@ export function PermissionPanel({ permission, error, onStart }: PermissionPanelP
       </div>
       <Button className="h-14 w-full text-base" type="button" onClick={onStart}>
         <Camera className="size-5" />
-        {denied ? "Retry Access" : "Start Camera"}
+        {denied ? "Retry Access" : "Start recording"}
       </Button>
     </div>
   );

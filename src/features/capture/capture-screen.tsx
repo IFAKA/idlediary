@@ -12,6 +12,7 @@ import { generateVlog, type GenerationProgress } from "@/features/generation/gen
 import {
   clearGeneratedVlogForSession,
   getLatestVlogForSession,
+  getVlog,
   saveVlog,
 } from "@/features/clips/storage";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
@@ -41,6 +42,11 @@ function requestedViewFromUrl(): DurableView {
   return "capture";
 }
 
+function requestedVlogIdFromUrl() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("vlog");
+}
+
 function writeViewToUrl(view: DurableView, action: "push" | "replace") {
   if (typeof window === "undefined") return;
 
@@ -48,6 +54,7 @@ function writeViewToUrl(view: DurableView, action: "push" | "replace") {
   const nextPath = view === "capture" ? "/capture" : `/${view}`;
   url.pathname = nextPath;
   url.searchParams.delete("view");
+  url.searchParams.delete("vlog");
 
   const search = url.searchParams.toString();
   const next = `${url.pathname}${search ? `?${search}` : ""}${url.hash}`;
@@ -109,7 +116,10 @@ export function CaptureScreen() {
 
       if (requestedView === "result") {
         try {
-          const savedVlog = await getLatestVlogForSession(clips.session.id);
+          const requestedVlogId = requestedVlogIdFromUrl();
+          const savedVlog = requestedVlogId
+            ? await getVlog(requestedVlogId)
+            : await getLatestVlogForSession(clips.session.id);
           if (savedVlog) {
             setVlog(savedVlog);
             setMode("result");
