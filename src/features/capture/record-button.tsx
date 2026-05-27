@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Circle, Loader2 } from "lucide-react";
+import { Check, Circle, Loader2, X } from "lucide-react";
 import { motion } from "motion/react";
 import { spring, twoSecondRecordMs } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
 
   return (
     <motion.button
-      aria-label={isRecording ? "Recording three second clip" : "Record three second clip"}
+      aria-label={isRecording ? "Cancel recording" : "Record three second clip"}
       className={cn(
         "relative grid size-24 place-items-center rounded-full border border-white/18 bg-black/45 shadow-[0_20px_80px_rgba(0,0,0,0.45)] outline-none",
         "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -80,8 +80,10 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
           <Loader2 className="size-7 animate-spin" />
         ) : isSuccess ? (
           <Check className="size-8" />
+        ) : isRecording ? (
+          <X className="size-8" />
         ) : (
-          <Circle className={cn("size-8", isRecording && "fill-current")} />
+          <Circle className="size-8" />
         )}
       </motion.span>
     </motion.button>

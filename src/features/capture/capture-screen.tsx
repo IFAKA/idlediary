@@ -280,10 +280,21 @@ export function CaptureScreen() {
 
     try {
       const blob = await recorder.record();
-      await clips.addClip(blob, 3000);
+      if (blob !== null) {
+        await clips.addClip(blob, 3000);
+      }
     } catch (error) {
       reportError(error);
     }
+  };
+
+  const handleRecordButtonClick = () => {
+    if (recorder.state === "recording") {
+      recorder.cancel();
+      return;
+    }
+
+    void captureClip();
   };
 
   const openReview = () => {
@@ -505,13 +516,12 @@ export function CaptureScreen() {
                 <RecordButton
                   disabled={
                     needsPermission ||
-                    recorder.state === "recording" ||
                     recorder.state === "saving" ||
                     clipLimitReached
                   }
                   progress={recorder.progress}
                   state={recorder.state}
-                  onClick={captureClip}
+                  onClick={handleRecordButtonClick}
                 />
 
                 <LatestDraftButton

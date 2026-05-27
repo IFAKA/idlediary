@@ -307,6 +307,26 @@ test("mocked capture saves a three-second clip and enables draft review", async 
   await expect(page).toHaveURL("/");
 });
 
+test("record button cancels an active take without adding a draft clip", async ({ page }) => {
+  await mockMediaCapture(page);
+  await openRecord(page);
+
+  await page.getByRole("button", { name: "Record three second clip" }).click();
+  const cancel = page.getByRole("button", { name: "Cancel recording" });
+  await expect(cancel).toBeVisible();
+
+  await cancel.click();
+
+  await expect(page.getByRole("button", { name: "Record three second clip" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Review draft clips" }).getByText("+1"),
+  ).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Review draft clips" }).click();
+  await expect(page).toHaveURL("/draft");
+  await expect(page.getByRole("heading", { name: "No draft clips yet" })).toBeVisible();
+});
+
 test("record screen videos button navigates to videos", async ({ page }) => {
   await mockMediaCapture(page);
   await openRecord(page);

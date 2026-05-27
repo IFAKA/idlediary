@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportProfile } from "@/features/video/export-profile";
@@ -8,6 +8,8 @@ const recorderInstances: MockMediaRecorder[] = [];
 const stoppedCanvasTracks = vi.hoisted(() => ({
   stop: vi.fn(),
 }));
+let latestRecorder: ReturnType<typeof useTwoSecondRecorder> | null = null;
+let pendingRecording: Promise<Blob | null> | null = null;
 
 class MockMediaRecorder extends EventTarget {
   static isTypeSupported() {
@@ -53,9 +55,19 @@ function RecorderHarness() {
     getVideoTracks: () => [makeTrack("video")],
   } as unknown as MediaStream);
 
+  useEffect(() => {
+    latestRecorder = recorder;
+  }, [recorder]);
+
   return (
     <>
-      <button type="button" onClick={() => void recorder.record().catch(() => undefined)}>
+      <button
+        type="button"
+        onClick={() => {
+          pendingRecording = recorder.record();
+          void pendingRecording.catch(() => undefined);
+        }}
+      >
         Record
       </button>
       <output aria-label="state">{recorder.state}</output>
@@ -72,6 +84,8 @@ describe("useTwoSecondRecorder", () => {
     vi.useFakeTimers();
     recorderInstances.length = 0;
     stoppedCanvasTracks.stop.mockClear();
+    latestRecorder = null;
+    pendingRecording = null;
     vi.stubGlobal("MediaRecorder", MockMediaRecorder);
     vi.stubGlobal(
       "MediaStream",
@@ -172,6 +186,30 @@ describe("useTwoSecondRecorder", () => {
     expect(HTMLCanvasElement.prototype.captureStream).toHaveBeenCalledWith(exportProfile.fps);
     expect(recorderInstances[0]?.stream.getVideoTracks()).toHaveLength(1);
     expect(recorderInstances[0]?.stream.getAudioTracks()).toHaveLength(1);
+    expect(stoppedCanvasTracks.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels an active recording and resolves with no blob", async () => {
+    await act(async () => {
+      root.render(<RecorderHarness />);
+    });
+
+    await act(async () => {
+      container.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const recording = pendingRecording;
+    if (!recording) {
+      throw new Error("Expected recording promise");
+    }
+
+    await act(async () => {
+      latestRecorder?.cancel();
+    });
+
+    await expect(recording).resolves.toBeNull();
+    expect(container.querySelector('[aria-label="state"]')).toHaveTextContent("idle");
+    expect(container.querySelector('[aria-label="progress"]')).toHaveTextContent("0");
     expect(stoppedCanvasTracks.stop).toHaveBeenCalledTimes(1);
   });
 
