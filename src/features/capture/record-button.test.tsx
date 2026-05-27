@@ -33,6 +33,16 @@ describe("RecordButton", () => {
     return container.querySelector('[data-record-marker-active="true"]');
   }
 
+  function recordSegments() {
+    return container.querySelectorAll("[data-record-segment]");
+  }
+
+  it("renders three ring segments while recording", () => {
+    renderButton("recording");
+
+    expect(recordSegments()).toHaveLength(3);
+  });
+
   it("pulses each second marker during a three second recording", () => {
     renderButton("recording");
 
