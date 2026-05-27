@@ -41,10 +41,56 @@ type ScreenMode = "capture" | "review" | "generating" | "result";
 type DurableView = Exclude<ScreenMode, "generating">;
 
 const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 const routeSlideTransition = { duration: 0.24, ease: "easeOut" } as const;
 const draftBadgeTransition = { type: "spring", stiffness: 520, damping: 32, bounce: 0.12 } as const;
 const draftDigitTransition = { duration: 0.18, ease: "easeOut" } as const;
+const minimumProgressMilestoneMs = 380;
+
+function progressMilestone(progress: GenerationProgress) {
+  if (progress.step === "rendering") return `${progress.step}:${progress.label}`;
+  return progress.step;
+}
+
+function createProgressDisplayBuffer(
+  onProgress: (progress: GenerationProgress) => void,
+  now = () => performance.now(),
+) {
+  let queue = Promise.resolve();
+  let currentMilestone: string | null = null;
+  let lastMilestoneShownAt = 0;
+  let isCancelled = false;
+
+  return {
+    cancel: () => {
+      isCancelled = true;
+    },
+    flush: () => queue,
+    push: (progress: GenerationProgress) => {
+      queue = queue.then(async () => {
+        if (isCancelled) return;
+
+        const nextMilestone = progressMilestone(progress);
+        if (nextMilestone !== currentMilestone) {
+          const elapsed = now() - lastMilestoneShownAt;
+          const delay =
+            lastMilestoneShownAt === 0
+              ? 0
+              : Math.max(0, minimumProgressMilestoneMs - elapsed);
+          if (delay > 0) {
+            await wait(delay);
+          }
+          currentMilestone = nextMilestone;
+          lastMilestoneShownAt = now();
+        }
+
+        if (isCancelled) return;
+        onProgress(progress);
+      });
+    },
+  };
+}
 
 function requestedViewFromUrl(): DurableView {
   if (typeof window === "undefined") return "capture";
@@ -311,6 +357,8 @@ export function CaptureScreen() {
       return;
     }
 
+    const progressDisplay = createProgressDisplayBuffer(setGenerationProgress);
+
     try {
       setIsFinishing(true);
       setGenerationProgress(makeGenerationProgress("idle", 0));
@@ -318,7 +366,8 @@ export function CaptureScreen() {
       await waitForPaint();
       camera.stop();
       await waitForPaint();
-      const nextVlog = await generateVlog(selectedClips, clips.session.id, setGenerationProgress);
+      const nextVlog = await generateVlog(selectedClips, clips.session.id, progressDisplay.push);
+      await progressDisplay.flush();
       if (!nextVlog.thumbnailBlob) {
         try {
           Object.assign(nextVlog, await generateVideoThumbnail(nextVlog.blob, thumbnailSizes.vlog));
@@ -330,6 +379,7 @@ export function CaptureScreen() {
       clips.clearLocalClips();
       showResult(nextVlog, "replace");
     } catch (error) {
+      progressDisplay.cancel();
       reportError(error);
       setGenerationProgress(makeGenerationProgress("error", 0));
       showReview("replace");
@@ -589,6 +639,7 @@ function LatestDraftButton({
   );
   const shouldReduceMotion = useReducedMotion() === true;
   const showDraftAttention = clipCount > 0 && !disabled;
+  const hasPreview = Boolean(clip && (thumbnailSrc || src));
 
   return (
     <motion.button
@@ -616,46 +667,65 @@ function LatestDraftButton({
       }
       onClick={onOpen}
     >
-      {clip && (thumbnailSrc || src) ? (
-        <>
-          {thumbnailSrc ? (
-            <img
-              alt=""
-              className="absolute inset-0 h-full w-full rounded-[inherit] object-cover"
-              decoding="async"
-              loading="lazy"
-              src={thumbnailSrc}
-            />
-          ) : (
-            <video
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full rounded-[inherit] object-cover"
-              muted
-              playsInline
-              preload="metadata"
-              src={src ?? undefined}
-            />
-          )}
-          <span aria-hidden="true" className="absolute inset-0 rounded-[inherit] bg-black/18" />
-          <AnimatePresence initial={false}>
-            {clipCount > 0 ? (
-              <motion.span
-                className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground ring-2 ring-background"
-                key="draft-count"
-                layout
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.78, opacity: 0, y: -2 }}
-                initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.72, opacity: 0, y: -2 }}
-                transition={draftBadgeTransition}
-              >
-                <AnimatedDraftCount count={clipCount} reducedMotion={shouldReduceMotion} />
-              </motion.span>
-            ) : null}
-          </AnimatePresence>
-        </>
-      ) : (
-        <Layers2 className="size-6 text-muted-foreground" />
-      )}
+      <AnimatePresence initial={false} mode="wait">
+        {hasPreview && clip ? (
+          <motion.span
+            aria-hidden="true"
+            className="absolute inset-0 overflow-hidden rounded-[inherit]"
+            key={`draft-preview-${clip.id}`}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.08 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: "easeOut" }}
+          >
+            {thumbnailSrc ? (
+              <img
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+                decoding="async"
+                loading="lazy"
+                src={thumbnailSrc}
+              />
+            ) : (
+              <video
+                className="absolute inset-0 h-full w-full object-cover"
+                muted
+                playsInline
+                preload="metadata"
+                src={src ?? undefined}
+              />
+            )}
+            <span className="absolute inset-0 bg-black/18" />
+          </motion.span>
+        ) : (
+          <motion.span
+            aria-hidden="true"
+            className="inline-flex size-6 items-center justify-center text-muted-foreground"
+            key="draft-empty-icon"
+            animate={{ opacity: 1, scale: 1 }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.16, ease: "easeOut" }}
+          >
+            <Layers2 className="size-6" />
+          </motion.span>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {hasPreview && clipCount > 0 ? (
+          <motion.span
+            className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground ring-2 ring-background"
+            key="draft-count"
+            layout
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.78, opacity: 0, y: -2 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.72, opacity: 0, y: -2 }}
+            transition={draftBadgeTransition}
+          >
+            <AnimatedDraftCount count={clipCount} reducedMotion={shouldReduceMotion} />
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
     </motion.button>
   );
 }
