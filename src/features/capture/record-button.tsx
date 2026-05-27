@@ -16,7 +16,7 @@ type RecordButtonProps = {
 };
 
 const recordingMarkerSeconds = [1, 2, 3] as const;
-const markerPulseMs = 420;
+const markerPulseMs = 640;
 const ringCircumference = 282.743;
 const segmentGap = 10;
 const segmentStep = ringCircumference / recordingMarkerSeconds.length;

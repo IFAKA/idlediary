@@ -123,65 +123,74 @@ button {
 }
 
 .record-segment-pulse[data-record-segment-pulse-active="true"] {
-  animation: record-segment-pulse 460ms ease-out both;
+  animation: record-segment-pulse 620ms cubic-bezier(0.16, 0.78, 0.3, 1) both;
   filter:
-    drop-shadow(0 0 5px hsl(var(--primary)))
-    drop-shadow(0 0 12px hsl(var(--primary)));
+    blur(0.35px)
+    drop-shadow(0 0 8px hsl(var(--primary) / 0.7))
+    drop-shadow(0 0 18px hsl(var(--primary) / 0.48));
 }
 
 .record-marker-pulse[data-record-marker-active="true"] {
-  animation: record-marker-pulse 460ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  animation: record-marker-pulse 620ms cubic-bezier(0.16, 0.78, 0.3, 1) both;
   filter:
-    drop-shadow(0 0 7px hsl(var(--primary)))
-    drop-shadow(0 0 16px rgba(235, 214, 255, 0.72));
+    blur(0.2px)
+    drop-shadow(0 0 8px hsl(var(--primary) / 0.7))
+    drop-shadow(0 0 18px rgba(235, 214, 255, 0.58));
 }
 
 .record-poof-particle[data-record-poof-particle-active="true"] {
-  animation: record-poof-particle 520ms cubic-bezier(0.16, 0.84, 0.28, 1) both;
+  animation: record-poof-particle 620ms cubic-bezier(0.18, 0.82, 0.32, 1) both;
   animation-delay: var(--poof-delay);
   filter:
-    drop-shadow(0 0 5px hsl(var(--primary)))
-    drop-shadow(0 0 10px rgba(235, 214, 255, 0.68));
+    blur(0.15px)
+    drop-shadow(0 0 6px hsl(var(--primary) / 0.62))
+    drop-shadow(0 0 12px rgba(235, 214, 255, 0.54));
 }
 
 @keyframes record-segment-pulse {
   0% {
     opacity: 0;
-    stroke-width: 6.5;
+    stroke-width: 5.75;
   }
 
-  18% {
-    opacity: 0.34;
-    stroke-width: 7.5;
+  24% {
+    opacity: 0.18;
+    stroke-width: 8.2;
   }
 
-  58% {
-    opacity: 0.22;
-    stroke-width: 8.25;
+  62% {
+    opacity: 0.12;
+    stroke-width: 10.4;
   }
 
   100% {
     opacity: 0;
-    stroke-width: 8.5;
+    stroke-width: 12.2;
   }
 }
 
 @keyframes record-marker-pulse {
   0% {
     opacity: 0;
-    transform: scale(0.65);
+    transform: scale(0.78);
     stroke-width: 1;
   }
 
-  16% {
-    opacity: 0.72;
-    transform: scale(1.45);
-    stroke-width: 1.5;
+  24% {
+    opacity: 0.46;
+    transform: scale(1.22);
+    stroke-width: 1.2;
+  }
+
+  68% {
+    opacity: 0.2;
+    transform: scale(1.72);
+    stroke-width: 1.7;
   }
 
   100% {
     opacity: 0;
-    transform: scale(1.95);
+    transform: scale(2.2);
     stroke-width: 2;
   }
 }
@@ -189,20 +198,20 @@ button {
 @keyframes record-poof-particle {
   0% {
     opacity: 0;
-    transform: translate(0, 0) scale(0.45);
+    transform: translate(0, 0) scale(0.22);
   }
 
-  14% {
-    opacity: 0.9;
+  22% {
+    opacity: 0.62;
   }
 
-  72% {
-    opacity: 0.42;
+  70% {
+    opacity: 0.28;
   }
 
   100% {
     opacity: 0;
-    transform: translate(var(--poof-x), var(--poof-y)) scale(0.08);
+    transform: translate(var(--poof-x), var(--poof-y)) scale(0.18);
   }
 }
 
