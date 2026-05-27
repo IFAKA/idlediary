@@ -488,7 +488,7 @@ function ReviewActionBar({
         ) : (
           <motion.div
             key="actions"
-            className="flex items-center justify-end gap-2"
+            className="grid grid-cols-2 gap-2"
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             initial={{ opacity: 0, y: -6 }}
