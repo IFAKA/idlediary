@@ -698,6 +698,11 @@ test("opening the videos list clears the videos button badge before video detail
   await page.getByRole("link", { name: "Videos" }).click();
   await expect(page.getByText("Needs action")).toHaveCount(0);
 
+  await page.getByRole("link", { name: "Back to camera" }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByTestId("videos-needs-action-badge")).toHaveCount(0);
+  await page.getByRole("link", { name: "Videos" }).click();
+
   await page.goto("/");
   await expect(page.getByTestId("videos-needs-action-badge")).toHaveCount(0);
   await page.getByRole("link", { name: "Videos" }).click();

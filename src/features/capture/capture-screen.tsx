@@ -22,6 +22,7 @@ import {
 import {
   clearGeneratedVlogForSession,
   hasNeedsActionVlog as checkHasNeedsActionVlog,
+  markNeedsActionVlogsHandled,
   markVlogHandled,
   saveVlogAndClearSessionDraft,
 } from "@/features/clips/storage";
@@ -121,6 +122,15 @@ export function CaptureScreen() {
       reportError(error);
     }
   }, []);
+
+  const handleVideosEntry = useCallback(() => {
+    setSlideDirection("left");
+    setHasNeedsActionVlog(false);
+    void markNeedsActionVlogsHandled().catch((error) => {
+      reportError(error);
+      void refreshNeedsActionBadge();
+    });
+  }, [refreshNeedsActionBadge]);
 
   const restoreRequestedView = useCallback(
     async (requestedView = requestedViewFromUrl()) => {
@@ -480,7 +490,7 @@ export function CaptureScreen() {
                   aria-label="Videos"
                   className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   href="/videos"
-                  onClick={() => setSlideDirection("left")}
+                  onClick={handleVideosEntry}
                 >
                   <Clapperboard className="size-6 text-memory" />
                   {hasNeedsActionVlog ? (

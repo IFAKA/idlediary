@@ -8,6 +8,7 @@ import {
   hasNeedsActionVlog,
   listClips,
   listVlogSummaries,
+  markNeedsActionVlogsHandled,
   resetStorageForTests,
   saveClip,
   saveClipThumbnail,
@@ -163,6 +164,23 @@ describe("storage media split", () => {
     expect(rawMetadata?.blob).toBeUndefined();
     const rawMedia = await getRawStoreRecord<Record<string, unknown>>("vlog-media", saved.id);
     expect(rawMedia?.blob).toBeDefined();
+  });
+
+  it("marks every saved video that needs action as handled", async () => {
+    const first = vlog("vlog-1", "2026-05-27T11:00:00.000Z");
+    const second = vlog("vlog-2", "2026-05-27T12:00:00.000Z");
+    const alreadyHandled = { ...vlog("vlog-3", "2026-05-27T13:00:00.000Z"), needsAction: false };
+    await saveVlog(first);
+    await saveVlog(second);
+    await saveVlog(alreadyHandled);
+
+    const handled = await markNeedsActionVlogsHandled();
+
+    expect(handled.map((entry) => entry.id).sort()).toEqual(["vlog-1", "vlog-2"]);
+    expect(await hasNeedsActionVlog()).toBe(false);
+    await expect(getVlog(first.id)).resolves.toMatchObject({ needsAction: false });
+    await expect(getVlog(second.id)).resolves.toMatchObject({ needsAction: false });
+    await expect(getVlog(alreadyHandled.id)).resolves.toMatchObject({ needsAction: false });
   });
 
   it("updates only clip metadata and thumbnail stores when saving thumbnails", async () => {

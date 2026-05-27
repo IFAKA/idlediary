@@ -823,6 +823,39 @@ export async function markVlogHandled(id: string) {
   }
 }
 
+export async function markNeedsActionVlogsHandled() {
+  try {
+    const db = await getDb();
+    const tx = db.transaction(["vlogs", "vlog-thumbnails"], "readwrite");
+    const vlogsStore = tx.objectStore("vlogs");
+    const needsActionVlogs = await vlogsStore.index("by-needs-action").getAll("true");
+
+    const handledVlogs = await Promise.all(
+      needsActionVlogs.map(async (vlog) => {
+        const handledVlog = vlogMetadata({ ...vlog, needsAction: false });
+        await vlogsStore.put(handledVlog);
+        return hydrateVlogSummary(tx, handledVlog);
+      }),
+    );
+
+    await tx.done;
+    if (handledVlogs.length > 0) {
+      addDebugEvent("vlogs-handled", "storage", { count: handledVlogs.length });
+    }
+    return handledVlogs;
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-write-failed",
+        area: "storage",
+        message: "Could not mark generated vlogs handled",
+        userMessage: "The saved video status could not be updated.",
+        cause,
+      }),
+    );
+  }
+}
+
 export async function getVlogSummary(id: string) {
   try {
     const db = await getDb();

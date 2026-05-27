@@ -19,7 +19,7 @@ import {
 import {
   getVlog,
   listVlogSummaries,
-  markVlogHandled,
+  markNeedsActionVlogsHandled,
   saveVlogThumbnail,
   sortVlogsNewestFirst,
 } from "@/features/clips/storage";
@@ -97,19 +97,16 @@ export function HomeScreen() {
     listVlogSummaries()
       .then(async (vlogs) => {
         const sortedVlogs = sortVlogsNewestFirst(vlogs);
-        const needsActionVlogs = sortedVlogs.filter((vlog) => vlog.needsAction === true);
         const handledVlogs = new Map<string, VlogSummary>();
 
-        await Promise.all(
-          needsActionVlogs.map(async (vlog) => {
-            try {
-              const handledVlog = await markVlogHandled(vlog.id);
-              if (handledVlog) handledVlogs.set(vlog.id, handledVlog);
-            } catch (error) {
-              reportError(error);
-            }
-          }),
-        );
+        try {
+          const handled = await markNeedsActionVlogsHandled();
+          for (const handledVlog of handled) {
+            handledVlogs.set(handledVlog.id, handledVlog);
+          }
+        } catch (error) {
+          reportError(error);
+        }
 
         const readyVlogs =
           handledVlogs.size > 0
