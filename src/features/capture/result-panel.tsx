@@ -2,7 +2,8 @@
 
 import { Download, RefreshCcw, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import { getObjectUrlForVlog, retainVlogObjectUrl } from "@/features/clips/media-cache";
@@ -70,11 +71,13 @@ export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
         </div>
       </div>
 
-      <AnimatePresence>
-        {isPlayerOpen && src ? (
-          <FullscreenResultPlayer src={src} onClose={closePlayer} />
-        ) : null}
-      </AnimatePresence>
+      <BodyPortal>
+        <AnimatePresence>
+          {isPlayerOpen && src ? (
+            <FullscreenResultPlayer src={src} onClose={closePlayer} />
+          ) : null}
+        </AnimatePresence>
+      </BodyPortal>
 
       <ResponsiveConfirm
         actionLabel="New recording"
@@ -100,7 +103,7 @@ function FullscreenResultPlayer({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 h-[100svh] overflow-hidden bg-black safe-screen"
+      className="fixed inset-0 z-[100] h-[100svh] overflow-hidden bg-black safe-screen"
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
@@ -141,4 +144,10 @@ function useBodyScrollLock() {
       document.body.style.overflow = previousOverflow;
     };
   }, []);
+}
+
+function BodyPortal({ children }: { children: ReactNode }) {
+  if (typeof document === "undefined") return null;
+
+  return createPortal(children, document.body);
 }

@@ -26,6 +26,29 @@ async function expectMobileDrawer(page: Page, name: string) {
     .toBeLessThanOrEqual(4);
 }
 
+async function expectControlNotTopHitTarget(
+  page: Page,
+  control: ReturnType<Page["getByLabel"]>,
+  label: string,
+) {
+  await expect(control).toBeVisible();
+  const box = await control.boundingBox();
+  expect(box).not.toBeNull();
+
+  const topHitLabel = await page.evaluate(
+    ({ x, y }) => {
+      const element = document.elementFromPoint(x, y);
+      return element?.closest("button,a")?.getAttribute("aria-label") ?? null;
+    },
+    {
+      x: box!.x + box!.width / 2,
+      y: box!.y + box!.height / 2,
+    },
+  );
+
+  expect(topHitLabel).not.toBe(label);
+}
+
 async function holdDrag(page: Page, source: ReturnType<Page["getByRole"]>, target: { x: number; y: number }) {
   const sourceBox = await source.boundingBox();
   expect(sourceBox).not.toBeNull();
@@ -349,6 +372,7 @@ test("preview opens a fullscreen media player", async ({ page }) => {
   await page.getByRole("button", { name: "Review draft clips" }).click();
   await page.getByRole("button", { name: "Preview clip 1" }).click();
   await expect(page.getByLabel("Fullscreen clip preview")).toBeVisible();
+  await expectControlNotTopHitTarget(page, page.getByLabel("Back to camera"), "Back to camera");
   await expect(page.getByRole("heading", { name: "Clip player" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Close preview" })).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -389,6 +413,7 @@ test("generated video preview opens fullscreen and result screen does not scroll
 
   await page.getByRole("button", { name: "Open generated video fullscreen" }).click();
   await expect(page.getByLabel("Fullscreen generated video preview")).toBeVisible();
+  await expectControlNotTopHitTarget(page, page.getByLabel("Back to recording"), "Back to recording");
   await expect(page.getByRole("button", { name: "Close generated video preview" })).toHaveCount(0);
   await expect(page.locator("header").getByText("Preview")).toHaveCount(0);
   await page.keyboard.press("Escape");

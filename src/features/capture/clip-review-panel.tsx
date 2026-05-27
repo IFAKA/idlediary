@@ -24,7 +24,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Play, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import { getObjectUrlForClip } from "@/features/clips/media-cache";
@@ -296,14 +297,16 @@ export function ClipReviewPanel({
         onOpenChange={setConfirmClearDraft}
       />
 
-      <AnimatePresence>
-        {previewClip ? (
-          <FullscreenPreview
-            clip={previewClip}
-            onClose={closePreview}
-          />
-        ) : null}
-      </AnimatePresence>
+      <BodyPortal>
+        <AnimatePresence>
+          {previewClip ? (
+            <FullscreenPreview
+              clip={previewClip}
+              onClose={closePreview}
+            />
+          ) : null}
+        </AnimatePresence>
+      </BodyPortal>
     </motion.div>
   );
 }
@@ -533,7 +536,7 @@ function FullscreenPreview({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 h-[100svh] overflow-hidden bg-black safe-screen"
+      className="fixed inset-0 z-[100] h-[100svh] overflow-hidden bg-black safe-screen"
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
@@ -585,4 +588,10 @@ function useBodyScrollLock() {
       document.body.style.overflow = previousOverflow;
     };
   }, []);
+}
+
+function BodyPortal({ children }: { children: ReactNode }) {
+  if (typeof document === "undefined") return null;
+
+  return createPortal(children, document.body);
 }
