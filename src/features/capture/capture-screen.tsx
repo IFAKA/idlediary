@@ -52,6 +52,7 @@ const draftBadgeTransition = { type: "spring", stiffness: 520, damping: 32, boun
 const draftDigitTransition = { duration: 0.18, ease: "easeOut" } as const;
 const minimumVisibleGenerationStepMs = 450;
 const minimumVisibleSavingStepMs = 500;
+const minimumVisibleDoneStepMs = 900;
 const introGenerationProgress = [
   makeGenerationProgress("loading", 8),
   makeGenerationProgress("writing", 14),
@@ -384,6 +385,9 @@ export function CaptureScreen() {
       if (remainingSavingTime > 0) {
         await wait(remainingSavingTime);
       }
+
+      setGenerationProgress(makeGenerationProgress("done", 100));
+      await wait(minimumVisibleDoneStepMs);
 
       const nextVlog = generationResult.value;
       if (!nextVlog.thumbnailBlob) {

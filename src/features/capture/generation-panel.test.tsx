@@ -87,13 +87,13 @@ describe("GenerationPanel", () => {
     expect(view.textContent).toContain("Making playback ready");
     expect(view.textContent).toContain("Saving privately");
     expect(view.textContent).toContain("Rendering video");
-    expect(view.textContent).toContain("This stays on your device.");
+    expect(view.textContent).toContain("Your clips and video stay private on this device.");
     expect(view.textContent).not.toContain("scale -> crop -> fps -> setsar -> format");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();
     expect(view.querySelector('[class*="motion-reduce:animate-none"]')).not.toBeNull();
   });
 
-  it("shows the local safety reassurance after a long wait", () => {
+  it("does not show the removed long-wait reassurance", () => {
     vi.useFakeTimers();
     const view = renderPanel(generationProgress("loading", 8));
 
@@ -103,6 +103,6 @@ describe("GenerationPanel", () => {
       vi.advanceTimersByTime(8_000);
     });
 
-    expect(view.textContent).toContain("Still working privately. Your clips are safe.");
+    expect(view.textContent).not.toContain("Still working privately. Your clips are safe.");
   });
 });

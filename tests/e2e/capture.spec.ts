@@ -374,8 +374,8 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Draft clips" })).not.toBeVisible();
   await expect(page.getByRole("link", { name: "Back to camera" })).toHaveCount(0);
   await expect(page.locator("header").getByText(/^\d+ clips$/)).toHaveCount(0);
-  await expect(page.getByText("Making your clips feel smooth")).toBeVisible();
-  await expect(page.getByText("This stays on your device.")).toBeVisible();
+  await expect(page.getByText("Making your clips feel smooth")).toHaveCount(0);
+  await expect(page.getByText("Your clips and video stay private on this device.")).toBeVisible();
   await expect(page.getByText("scale -> crop -> fps -> setsar -> format")).toHaveCount(0);
   await expect
     .poll(() =>
@@ -811,7 +811,7 @@ test("reloading during generation returns to review with clips preserved", async
   ).not.toBeVisible();
 });
 
-test("long-running generation shows local safety reassurance", async ({ page }) => {
+test("long-running generation keeps the local privacy note visible", async ({ page }) => {
   await mockMediaCapture(page, { generationDelayMs: 12_000 });
   await openRecord(page);
   await page.getByRole("button", { name: "Record three second clip" }).click();
@@ -820,9 +820,10 @@ test("long-running generation shows local safety reassurance", async ({ page }) 
 
   await page.getByRole("button", { name: "Make video" }).click();
 
-  await expect(page.getByText("Still working privately. Your clips are safe.")).toBeVisible({
+  await expect(page.getByText("Your clips and video stay private on this device.")).toBeVisible({
     timeout: 10_000,
   });
+  await expect(page.getByText("Still working privately. Your clips are safe.")).toHaveCount(0);
   await expect(page.getByRole("progressbar")).toBeVisible();
 });
 

@@ -50,7 +50,7 @@ const progressCopy: Record<
   },
   rendering: {
     label: "Smoothing clips",
-    detail: "Making your clips feel smooth",
+    detail: "Preparing smooth playback privately",
     technical: technicalSummary,
   },
   saving: {

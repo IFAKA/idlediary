@@ -1,8 +1,7 @@
 "use client";
 
 import { BookOpen, Check, Circle, Film, LockKeyhole, Sparkles, WandSparkles } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import { Progress } from "@/components/ui/progress";
 import type { GenerationProgress } from "@/features/generation/generation";
 import { spring } from "@/lib/motion";
@@ -17,8 +16,6 @@ type GenerationStage = {
   id: GenerationStageId;
   label: string;
 };
-
-const reassuranceDelayMs = 8_000;
 
 const stages: GenerationStage[] = [
   { id: "loading", label: "Opening your diary" },
@@ -67,21 +64,6 @@ export function completedGenerationStages(
 export function GenerationPanel({ progress }: GenerationPanelProps) {
   const activeStage = activeGenerationStage(progress);
   const completedStages = completedGenerationStages(progress);
-  const [reassuranceStep, setReassuranceStep] = useState<GenerationProgress["step"] | null>(null);
-  const showReassurance =
-    reassuranceStep === progress.step && progress.step !== "done" && progress.step !== "error";
-
-  useEffect(() => {
-    if (progress.step === "done" || progress.step === "error") {
-      return;
-    }
-
-    const timer = window.setTimeout(
-      () => setReassuranceStep(progress.step),
-      reassuranceDelayMs,
-    );
-    return () => window.clearTimeout(timer);
-  }, [progress.step]);
 
   return (
     <div className="relative z-10 flex h-[100svh] flex-col justify-end overflow-hidden top-level-screen">
@@ -155,29 +137,13 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
         </ol>
 
         <motion.div aria-live="polite" layout transition={spring}>
-          <p className="text-sm leading-6 text-muted-foreground">
-            {progress.detail}
-          </p>
           <p className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-memory/85">
             <LockKeyhole className="size-3.5" aria-hidden="true" />
-            This stays on your device.
+            Your clips and video stay private on this device.
           </p>
           <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-memory/80">
             {statusLabels[progress.step]}
           </p>
-          <AnimatePresence initial={false}>
-            {showReassurance ? (
-              <motion.p
-                className="mt-3 overflow-hidden rounded-lg border border-memory/20 bg-black/25 px-3 py-2 text-xs leading-5 text-muted-foreground"
-                animate={{ height: "auto", opacity: 1, y: 0 }}
-                exit={{ height: 0, opacity: 0, y: -4 }}
-                initial={{ height: 0, opacity: 0, y: -4 }}
-                transition={spring}
-              >
-                Still working privately. Your clips are safe.
-              </motion.p>
-            ) : null}
-          </AnimatePresence>
         </motion.div>
       </motion.div>
       <Progress
