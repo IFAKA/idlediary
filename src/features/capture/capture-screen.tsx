@@ -69,6 +69,29 @@ const introGenerationProgress = [
   makeGenerationProgress("writing", 14),
   makeGenerationProgress("rendering", 24),
 ];
+const generationProgressOrder: Record<GenerationProgress["step"], number> = {
+  idle: 0,
+  loading: 1,
+  writing: 2,
+  rendering: 3,
+  saving: 4,
+  done: 5,
+  error: 6,
+};
+
+export function shouldPublishGenerationProgress(
+  currentProgress: Pick<GenerationProgress, "step" | "value">,
+  nextProgress: Pick<GenerationProgress, "step" | "value">,
+) {
+  const currentOrder = generationProgressOrder[currentProgress.step];
+  const nextOrder = generationProgressOrder[nextProgress.step];
+
+  if (nextOrder !== currentOrder) {
+    return nextOrder > currentOrder;
+  }
+
+  return nextProgress.value >= currentProgress.value;
+}
 
 function requestedViewFromUrl(): DurableView {
   if (typeof window === "undefined") return "capture";
@@ -442,7 +465,16 @@ export function CaptureScreen() {
       await waitForPaint();
       let realtimeProgressEnabled = false;
       let latestProgress = makeGenerationProgress("idle", 0);
+      let displayedProgress = makeGenerationProgress("idle", 0);
       let savingShownAt: number | null = null;
+      const publishDisplayedProgress = (nextProgress: GenerationProgress) => {
+        if (!shouldPublishGenerationProgress(displayedProgress, nextProgress)) {
+          return;
+        }
+
+        displayedProgress = nextProgress;
+        setGenerationProgress(nextProgress);
+      };
       const publishGenerationProgress = (nextProgress: GenerationProgress) => {
         latestProgress = nextProgress;
 
@@ -454,7 +486,7 @@ export function CaptureScreen() {
           savingShownAt ??= performance.now();
         }
 
-        setGenerationProgress(nextProgress);
+        publishDisplayedProgress(nextProgress);
       };
       const generationResultPromise = generateVlog(
         selectedClips,
@@ -466,7 +498,7 @@ export function CaptureScreen() {
       );
 
       for (const introProgress of introGenerationProgress) {
-        setGenerationProgress(introProgress);
+        publishDisplayedProgress(introProgress);
         await wait(minimumVisibleGenerationStepMs);
       }
 
@@ -476,7 +508,7 @@ export function CaptureScreen() {
           savingShownAt ??= performance.now();
         }
 
-        setGenerationProgress(latestProgress);
+        publishDisplayedProgress(latestProgress);
       }
 
       const generationResult = await generationResultPromise;
