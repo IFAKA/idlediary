@@ -385,6 +385,9 @@ function VlogCard({
               <h2 className="line-clamp-1 text-base font-semibold leading-6">
                 {vlog.title}
               </h2>
+              <p className="mt-0.5 line-clamp-1 text-xs leading-5 text-muted-foreground">
+                Done {formatCompletedAt(vlog.createdAt)}
+              </p>
             </div>
 
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
@@ -409,10 +412,6 @@ function VlogCard({
                 <dd className="truncate">{formatFileSize(vlog.size)}</dd>
               </div>
             </dl>
-
-            <p className="mt-auto pt-3 text-xs text-muted-foreground">
-              Done {formatCompletedAt(vlog.createdAt)}
-            </p>
           </div>
         </article>
       </Link>

@@ -204,8 +204,10 @@ describe("thumbnail rendering", () => {
     const cards = container.querySelectorAll('a[aria-label^="Open "]');
     expect(cards[0]?.querySelector("img")).toHaveAttribute("src", "blob:vlog-thumb");
     expect(cards[0]?.querySelector("video")).not.toBeInTheDocument();
+    expect(cards[0]).toHaveTextContent("Done May 27, 2026");
     expect(cards[1]?.querySelector("img")).not.toBeInTheDocument();
     expect(cards[1]?.querySelector("video")).not.toBeInTheDocument();
+    expect(cards[1]).toHaveTextContent("Done May 26, 2026");
   });
 
   it("highlights saved video cards that were still marked new on entry", async () => {
@@ -228,11 +230,11 @@ describe("thumbnail rendering", () => {
     });
 
     await waitFor(() => {
-      expect(container.querySelector('a[aria-label="Open Two Seconds Today"]')).toHaveClass(
+      expect(container.querySelector('a[aria-label="Open Two Seconds Today"]')?.parentElement).toHaveClass(
         "new-video-card-highlight",
       );
     });
-    expect(container.querySelector('a[aria-label="Open Yesterday"]')).not.toHaveClass(
+    expect(container.querySelector('a[aria-label="Open Yesterday"]')?.parentElement).not.toHaveClass(
       "new-video-card-highlight",
     );
   });
