@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, Clapperboard, Layers2, RotateCcw } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,8 @@ type DurableView = Exclude<ScreenMode, "generating">;
 const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 
 const routeSlideTransition = { duration: 0.24, ease: "easeOut" } as const;
+const draftBadgeTransition = { type: "spring", stiffness: 520, damping: 32, bounce: 0.12 } as const;
+const draftDigitTransition = { duration: 0.18, ease: "easeOut" } as const;
 
 function requestedViewFromUrl(): DurableView {
   if (typeof window === "undefined") return "capture";
@@ -585,15 +587,33 @@ function LatestDraftButton({
     () => (clip && !thumbnailSrc ? getObjectUrlForClip(clip) : null),
     [clip, thumbnailSrc],
   );
+  const shouldReduceMotion = useReducedMotion() === true;
+  const showDraftAttention = clipCount > 0 && !disabled;
 
   return (
-    <button
+    <motion.button
       aria-disabled={disabled}
       aria-label="Review draft clips"
       className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       data-disabled={disabled}
       disabled={disabled}
       type="button"
+      animate={
+        showDraftAttention && !shouldReduceMotion
+          ? {
+              boxShadow: [
+                "0 0 0 0 hsl(var(--memory) / 0)",
+                "0 0 0 4px hsl(var(--memory) / 0.24)",
+                "0 0 0 0 hsl(var(--memory) / 0)",
+              ],
+            }
+          : { boxShadow: "0 0 0 0 hsl(var(--memory) / 0)" }
+      }
+      transition={
+        showDraftAttention && !shouldReduceMotion
+          ? { duration: 2.8, repeat: Infinity, repeatDelay: 1.4, ease: "easeInOut" }
+          : { duration: 0.16 }
+      }
       onClick={onOpen}
     >
       {clip && (thumbnailSrc || src) ? (
@@ -617,13 +637,91 @@ function LatestDraftButton({
             />
           )}
           <span aria-hidden="true" className="absolute inset-0 rounded-[inherit] bg-black/18" />
-          <span className="absolute -right-1.5 -top-1.5 rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground ring-2 ring-background">
-            +{clipCount}
-          </span>
+          <AnimatePresence initial={false}>
+            {clipCount > 0 ? (
+              <motion.span
+                className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground ring-2 ring-background"
+                key="draft-count"
+                layout
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.78, opacity: 0, y: -2 }}
+                initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.72, opacity: 0, y: -2 }}
+                transition={draftBadgeTransition}
+              >
+                <AnimatedDraftCount count={clipCount} reducedMotion={shouldReduceMotion} />
+              </motion.span>
+            ) : null}
+          </AnimatePresence>
         </>
       ) : (
         <Layers2 className="size-6 text-muted-foreground" />
       )}
-    </button>
+    </motion.button>
+  );
+}
+
+function AnimatedDraftCount({
+  count,
+  reducedMotion,
+}: {
+  count: number;
+  reducedMotion: boolean;
+}) {
+  const previousCount = useRef(count);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const digits = String(count).split("");
+
+  useEffect(() => {
+    if (count === previousCount.current) return;
+
+    setDirection(count > previousCount.current ? 1 : -1);
+    previousCount.current = count;
+  }, [count]);
+
+  return (
+    <span className="inline-flex items-center tabular-nums" aria-label={`+${count}`}>
+      <span aria-hidden="true">+</span>
+      <motion.span className="inline-flex items-center" layout aria-hidden="true">
+        {digits.map((digit, index) => {
+          const place = digits.length - index - 1;
+
+          return (
+            <motion.span
+              className="relative inline-block h-[1em] w-[0.62em] overflow-hidden text-center"
+              key={place}
+              layout
+            >
+              <AnimatePresence custom={direction} initial={false} mode="popLayout">
+                <motion.span
+                  className="absolute inset-0"
+                  key={`${place}-${digit}`}
+                  custom={direction}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={
+                    reducedMotion
+                      ? { opacity: 0 }
+                      : (customDirection: 1 | -1) => ({
+                          opacity: 0,
+                          y: customDirection > 0 ? "-100%" : "100%",
+                        })
+                  }
+                  initial={
+                    reducedMotion
+                      ? { opacity: 0 }
+                      : (customDirection: 1 | -1) => ({
+                          opacity: 0,
+                          y: customDirection > 0 ? "100%" : "-100%",
+                        })
+                  }
+                  transition={reducedMotion ? { duration: 0 } : draftDigitTransition}
+                >
+                  {digit}
+                </motion.span>
+              </AnimatePresence>
+            </motion.span>
+          );
+        })}
+      </motion.span>
+    </span>
   );
 }
