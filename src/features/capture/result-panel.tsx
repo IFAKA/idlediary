@@ -120,22 +120,24 @@ function FullscreenResultPlayer({
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
     >
-      <div className="shrink-0 pr-14">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-          Preview
-        </p>
-        <h2 className="mt-1 text-xl font-semibold">{title}</h2>
+      <div className="relative z-[60] flex shrink-0 items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            Preview
+          </p>
+          <h2 className="mt-1 text-xl font-semibold leading-tight">{title}</h2>
+        </div>
+        <Button
+          aria-label="Close generated video preview"
+          className="mr-14 shrink-0 bg-black/55 backdrop-blur"
+          size="icon"
+          type="button"
+          variant="ghost"
+          onClick={onClose}
+        >
+          <X className="size-5" />
+        </Button>
       </div>
-      <Button
-        aria-label="Close generated video preview"
-        className="fixed right-4 top-24 z-[60] bg-black/55 backdrop-blur"
-        size="icon"
-        type="button"
-        variant="ghost"
-        onClick={onClose}
-      >
-        <X className="size-5" />
-      </Button>
       <div className="relative mt-4 min-h-0 flex-1 overflow-hidden rounded-lg border bg-black">
         <video
           aria-label="Fullscreen generated video preview"
