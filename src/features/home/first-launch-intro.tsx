@@ -62,7 +62,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
         aria-hidden="true"
       />
 
-      <div className="relative flex h-full flex-1 flex-col px-5 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-[calc(env(safe-area-inset-top)+1.1rem)]">
+      <div className="relative flex h-full flex-1 flex-col px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-[calc(env(safe-area-inset-top)+1.1rem)]">
         <motion.header
           className="mx-auto flex min-h-0 w-full max-w-sm flex-1 flex-col items-center justify-center pb-4 pt-1 text-center min-[390px]:pb-6"
           animate={{ opacity: 1, y: 0 }}
@@ -157,7 +157,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
         </motion.header>
 
         <section
-          className="mx-auto grid w-full max-w-sm shrink-0 gap-2.5 pb-4 min-[390px]:gap-3 min-[390px]:pb-5"
+          className="mx-auto grid w-full max-w-sm shrink-0 gap-2.5 pb-3.5 min-[390px]:gap-3 min-[390px]:pb-4"
           aria-label="How IdleDiary works"
         >
           {steps.map((step, index) => {
