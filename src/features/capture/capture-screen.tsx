@@ -17,6 +17,7 @@ import {
 } from "@/features/generation/generation";
 import {
   clearGeneratedVlogForSession,
+  listVlogs,
   markVlogHandled,
   saveVlogAndClearSessionDraft,
 } from "@/features/clips/storage";
@@ -83,6 +84,7 @@ export function CaptureScreen() {
   const [vlog, setVlog] = useState<VlogRecord | null>(null);
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [resultExitDirection, setResultExitDirection] = useState<"up" | "bottom">("up");
+  const [hasNeedsActionVlog, setHasNeedsActionVlog] = useState(false);
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
@@ -107,6 +109,15 @@ export function CaptureScreen() {
       reportError(error);
     }
   }, [camera]);
+
+  const refreshNeedsActionBadge = useCallback(async () => {
+    try {
+      const vlogs = await listVlogs();
+      setHasNeedsActionVlog(vlogs.some((savedVlog) => savedVlog.needsAction === true));
+    } catch (error) {
+      reportError(error);
+    }
+  }, []);
 
   const restoreRequestedView = useCallback(
     async (requestedView = requestedViewFromUrl()) => {
@@ -165,6 +176,25 @@ export function CaptureScreen() {
   }, [clips.loading, clips.session, restoreRequestedView]);
 
   useEffect(() => {
+    if (!initialViewReady || mode !== "capture") return;
+    let mounted = true;
+
+    listVlogs()
+      .then((vlogs) => {
+        if (mounted) {
+          setHasNeedsActionVlog(vlogs.some((savedVlog) => savedVlog.needsAction === true));
+        }
+      })
+      .catch((error) => {
+        reportError(error);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [initialViewReady, mode]);
+
+  useEffect(() => {
     const onPopState = () => {
       if (mode === "result" && vlog && window.location.pathname === "/result") {
         return;
@@ -208,6 +238,7 @@ export function CaptureScreen() {
     try {
       await markVlogHandled(vlog.id);
       setVlog({ ...vlog, needsAction: false });
+      await refreshNeedsActionBadge();
       await shareVlog(vlog);
     } catch (error) {
       reportError(error);
@@ -219,6 +250,7 @@ export function CaptureScreen() {
 
     try {
       await markVlogHandled(vlog.id);
+      await refreshNeedsActionBadge();
     } catch (error) {
       reportError(error);
     } finally {
@@ -436,11 +468,18 @@ export function CaptureScreen() {
               <div className="mb-5 flex items-center justify-between gap-3">
                 <Link
                   aria-label="Videos"
-                  className="inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   href="/videos"
                   onClick={() => setSlideDirection("left")}
                 >
                   <Clapperboard className="size-5 text-memory" />
+                  {hasNeedsActionVlog ? (
+                    <span
+                      aria-hidden="true"
+                      className="absolute right-1.5 top-1.5 size-3 rounded-full bg-primary ring-2 ring-background"
+                      data-testid="videos-needs-action-badge"
+                    />
+                  ) : null}
                 </Link>
 
                 <RecordButton

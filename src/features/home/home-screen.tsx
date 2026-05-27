@@ -182,16 +182,7 @@ function VlogCard({ vlog }: { vlog: VlogRecord }) {
           className="min-w-0 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           href={`/videos/${encodeURIComponent(vlog.id)}`}
         >
-          <div className="flex min-w-0 items-start gap-2">
-            <h2 className="line-clamp-1 min-w-0 flex-1 text-base font-semibold leading-6">
-              {vlog.title}
-            </h2>
-            {vlog.needsAction ? (
-              <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold leading-5 text-primary">
-                Needs action
-              </span>
-            ) : null}
-          </div>
+          <h2 className="line-clamp-1 text-base font-semibold leading-6">{vlog.title}</h2>
         </Link>
 
         <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">

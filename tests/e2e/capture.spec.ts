@@ -558,10 +558,10 @@ test("done after generation returns home and clears the needs action badge", asy
     "aria-disabled",
     "true",
   );
+  await expect(page.getByTestId("videos-needs-action-badge")).toHaveCount(0);
 
   await page.getByRole("link", { name: "Videos" }).click();
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
-  await expect(page.getByText("Needs action")).toHaveCount(0);
 });
 
 test("success page has no header close button", async ({ page }) => {
@@ -658,10 +658,11 @@ test("generated result reload returns home and leaves the saved video needing ac
 
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
+  await expect(page.getByTestId("videos-needs-action-badge")).toBeVisible();
   await page.getByRole("link", { name: "Videos" }).click();
   await expect(page).toHaveURL("/videos");
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
-  await expect(page.getByText("Needs action")).toBeVisible();
+  await expect(page.getByText("Needs action")).toHaveCount(0);
 });
 
 test("export on result keeps the result open and clears the needs action badge", async ({ page }) => {
@@ -672,18 +673,20 @@ test("export on result keeps the result open and clears the needs action badge",
   await expect(page).toHaveURL("/result");
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
 
-  await page.goto("/videos");
+  await page.goto("/");
+  await expect(page.getByTestId("videos-needs-action-badge")).toHaveCount(0);
+  await page.getByRole("link", { name: "Videos" }).click();
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
-  await expect(page.getByText("Needs action")).toHaveCount(0);
 });
 
-test("opening a needs action saved video detail clears the badge", async ({ page }) => {
+test("opening a needs action saved video detail clears the videos button badge", async ({ page }) => {
   await generateOneVideo(page);
   await page.reload();
   await expect(page).toHaveURL("/");
+  await expect(page.getByTestId("videos-needs-action-badge")).toBeVisible();
 
   await page.getByRole("link", { name: "Videos" }).click();
-  await expect(page.getByText("Needs action")).toBeVisible();
+  await expect(page.getByText("Needs action")).toHaveCount(0);
 
   await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
   await expect(page).toHaveURL(/\/videos\/[^/]+$/);
@@ -692,6 +695,9 @@ test("opening a needs action saved video detail clears the badge", async ({ page
   await page.getByRole("link", { name: "Back to videos" }).click();
   await expect(page).toHaveURL("/videos");
   await expect(page.getByText("Needs action")).toHaveCount(0);
+
+  await page.goto("/");
+  await expect(page.getByTestId("videos-needs-action-badge")).toHaveCount(0);
 });
 
 test("successful generation clears draft clips without starting a new recording", async ({ page }) => {
