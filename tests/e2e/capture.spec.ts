@@ -442,6 +442,29 @@ test("new recording after generation clears the old draft", async ({ page }) => 
   );
 });
 
+test("result close returns to recording without clearing the draft", async ({ page }) => {
+  await mockMediaCapture(page);
+  await openRecord(page);
+
+  await page.getByRole("button", { name: "Record two second clip" }).click();
+  await expectClipRecorded(page, 1);
+
+  await page.getByRole("button", { name: "Review draft clips" }).click();
+  await page.getByRole("button", { name: "Make video" }).click();
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible({
+    timeout: 8_000,
+  });
+
+  await page.getByRole("button", { name: "Back to recording" }).click();
+
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review draft clips" })).not.toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+});
+
 test("recording a clip opens review, reloads on review, and keeps a named button", async ({ page }) => {
   await recordOneClipAndOpenReview(page);
 

@@ -11,10 +11,11 @@ import { downloadVlog, shareVlog } from "@/features/share/share";
 
 type ResultPanelProps = {
   vlog: VlogRecord;
+  onClose: () => void;
   onReset: () => void;
 };
 
-export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
+export function ResultPanel({ vlog, onClose, onReset }: ResultPanelProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const src = useMemo(() => getObjectUrlForVlog(vlog), [vlog]);
@@ -25,13 +26,23 @@ export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
 
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden safe-screen">
-      <div className="shrink-0">
-        <div>
+      <div className="relative z-[60] flex shrink-0 items-start justify-between gap-4">
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             Ready
           </p>
-          <h1 className="mt-1 text-2xl font-semibold">{vlog.title}</h1>
+          <h1 className="mt-1 text-2xl font-semibold leading-tight">{vlog.title}</h1>
         </div>
+        <Button
+          aria-label="Back to recording"
+          className="mr-14 shrink-0 bg-black/35 backdrop-blur hover:bg-black/50"
+          size="icon"
+          type="button"
+          variant="ghost"
+          onClick={onClose}
+        >
+          <X className="size-5" />
+        </Button>
       </div>
 
       <div className="mt-5 flex min-h-0 flex-1 items-center justify-center">

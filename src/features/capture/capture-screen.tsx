@@ -87,6 +87,7 @@ export function CaptureScreen() {
   const [isFinishing, setIsFinishing] = useState(false);
   const [vlog, setVlog] = useState<VlogRecord | null>(null);
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
+  const [resultExitDirection, setResultExitDirection] = useState<"up" | "bottom">("up");
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
@@ -207,12 +208,14 @@ export function CaptureScreen() {
 
   const showReview = useCallback((action: "push" | "replace" = "push") => {
     setSlideDirection("right");
+    setResultExitDirection("up");
     setVlog(null);
     setMode("review");
     writeViewToUrl("review", action);
   }, []);
 
   const showResult = useCallback((nextVlog: VlogRecord, action: "push" | "replace" = "replace") => {
+    setResultExitDirection("up");
     setVlog(nextVlog);
     setMode("result");
     writeViewToUrl("result", action);
@@ -224,6 +227,7 @@ export function CaptureScreen() {
 
   const startNewRecording = async () => {
     try {
+      setResultExitDirection("up");
       await clearDraft();
       if (clips.session) {
         await clearGeneratedVlogForSession(clips.session.id);
@@ -236,6 +240,11 @@ export function CaptureScreen() {
       setVlog(null);
       showCapture("push");
     }
+  };
+
+  const closeResult = () => {
+    setResultExitDirection("bottom");
+    showCapture("push");
   };
 
   const captureClip = async () => {
@@ -311,12 +320,17 @@ export function CaptureScreen() {
           <motion.div
             key="result"
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
+            exit={
+              resultExitDirection === "bottom"
+                ? { opacity: 1, y: "100%" }
+                : { opacity: 0, y: -12 }
+            }
             initial={{ opacity: 0, y: 12 }}
             transition={{ duration: 0.24, ease: "easeOut" }}
           >
             <ResultPanel
               vlog={vlog}
+              onClose={closeResult}
               onReset={() => void startNewRecording()}
             />
           </motion.div>
