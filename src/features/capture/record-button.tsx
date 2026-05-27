@@ -63,6 +63,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
   const isSaving = state === "saving";
   const isSuccess = state === "success";
   const isInactive = state === "idle" || state === "error";
+  const shouldHideRing = isSaving || isSuccess;
 
   const clearPulseTimers = useCallback(() => {
     for (const timer of pulseTimersRef.current) {
@@ -124,7 +125,14 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
       transition={spring}
       onClick={onClick}
     >
-      <svg className="absolute inset-1 -rotate-90 overflow-visible" viewBox="0 0 100 100" aria-hidden="true">
+      <motion.svg
+        className="absolute inset-1 -rotate-90 overflow-visible"
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+        data-record-ring-hidden={shouldHideRing ? "true" : "false"}
+        animate={{ opacity: shouldHideRing ? 0 : 1 }}
+        transition={{ duration: shouldHideRing ? 0.22 : 0.16, ease: "easeOut" }}
+      >
         {recordingMarkerSeconds.map((second, index) => (
           <circle
             key={second}
@@ -245,7 +253,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
             </g>
           );
         })}
-      </svg>
+      </motion.svg>
       <motion.span
         className={cn(
           "grid size-16 place-items-center rounded-full",

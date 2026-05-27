@@ -45,6 +45,10 @@ describe("RecordButton", () => {
     return container.querySelectorAll("[data-record-progress-segment]");
   }
 
+  function recordRing() {
+    return container.querySelector("[data-record-ring-hidden]");
+  }
+
   it("renders three ring segments while recording", () => {
     renderButton("recording");
 
@@ -64,6 +68,12 @@ describe("RecordButton", () => {
         baseSegments[index]?.getAttribute("stroke-dashoffset"),
       );
     }
+  });
+
+  it("fades out the whole ring after recording completes", () => {
+    renderButton("success", 100);
+
+    expect(recordRing()).toHaveAttribute("data-record-ring-hidden", "true");
   });
 
   it("pulses each second marker during a three second recording", () => {
