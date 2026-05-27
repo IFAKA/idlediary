@@ -260,7 +260,7 @@ export function HomeScreen() {
               Loading entries...
             </div>
           ) : state.vlogs.length > 0 ? (
-            <div className="h-full overflow-y-auto overscroll-contain">
+            <div className="saved-videos-scroll h-full overflow-y-auto overscroll-contain">
               <div className="grid gap-5 p-5 pb-10 xl:grid-cols-2">
                 {state.vlogs.map((vlog) => (
                   <VlogCard
