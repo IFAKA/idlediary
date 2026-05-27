@@ -260,8 +260,8 @@ export function HomeScreen() {
               Loading entries...
             </div>
           ) : state.vlogs.length > 0 ? (
-            <div className="h-full overflow-y-auto overscroll-contain pr-1">
-              <div className="grid gap-3 pb-4 xl:grid-cols-2">
+            <div className="h-full overflow-y-auto overscroll-contain">
+              <div className="grid gap-5 p-5 pb-10 xl:grid-cols-2">
                 {state.vlogs.map((vlog) => (
                   <VlogCard
                     key={vlog.id}
@@ -320,66 +320,66 @@ function VlogCard({
   }, [vlog.id]);
 
   return (
-    <div className={`relative rounded-lg ${isNew ? "new-video-card-highlight" : ""}`}>
-      <Link
-        aria-label={`Open ${vlog.title}`}
-        className="group relative z-10 grid h-36 grid-cols-[144px_minmax(0,1fr)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-40 sm:grid-cols-[160px_minmax(0,1fr)]"
-        href={`/videos/${encodeURIComponent(vlog.id)}`}
-      >
-        <article className="contents">
-          <div className="relative h-full w-full bg-black">
-            {thumbnailSrc && !thumbnailFailed ? (
-              <img
-                alt=""
-                className="h-full w-full object-cover"
-                decoding="async"
-                loading="lazy"
-                src={thumbnailSrc}
-                onError={() => {
-                  setFailedThumbnailSrc(thumbnailSrc);
-                  onThumbnailError(vlog.id);
-                }}
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-black text-white/60">
-                <FileVideo className="size-8" />
-              </div>
-            )}
-          </div>
-          <div className="flex min-w-0 flex-col border-l border-memory/15 p-3">
-            <div className="min-w-0">
-              <h2 className="line-clamp-1 text-base font-semibold leading-6">{vlog.title}</h2>
+    <Link
+      aria-label={`Open ${vlog.title}`}
+      className={`group grid h-36 grid-cols-[144px_minmax(0,1fr)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-40 sm:grid-cols-[160px_minmax(0,1fr)] ${
+        isNew ? "new-video-card-highlight" : ""
+      }`}
+      href={`/videos/${encodeURIComponent(vlog.id)}`}
+    >
+      <article className="contents">
+        <div className="relative h-full w-full bg-black">
+          {thumbnailSrc && !thumbnailFailed ? (
+            <img
+              alt=""
+              className="h-full w-full object-cover"
+              decoding="async"
+              loading="lazy"
+              src={thumbnailSrc}
+              onError={() => {
+                setFailedThumbnailSrc(thumbnailSrc);
+                onThumbnailError(vlog.id);
+              }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-black text-white/60">
+              <FileVideo className="size-8" />
             </div>
-
-            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <Clapperboard className="size-3.5 shrink-0 text-memory" />
-                <dt className="sr-only">Clips</dt>
-                <dd className="truncate">{vlog.clipCount} clips</dd>
-              </div>
-              <div className="flex min-w-0 items-center gap-1.5">
-                <Clock3 className="size-3.5 shrink-0 text-memory" />
-                <dt className="sr-only">Duration</dt>
-                <dd className="truncate">{formatDuration(vlog.clipCount)}</dd>
-              </div>
-              <div className="flex min-w-0 items-center gap-1.5">
-                <FileVideo className="size-3.5 shrink-0 text-memory" />
-                <dt className="sr-only">Format</dt>
-                <dd className="truncate">{formatMimeType(vlog.mimeType)}</dd>
-              </div>
-              <div className="flex min-w-0 items-center gap-1.5">
-                <HardDrive className="size-3.5 shrink-0 text-memory" />
-                <dt className="sr-only">File size</dt>
-                <dd className="truncate">{formatFileSize(vlog.size)}</dd>
-              </div>
-            </dl>
-
-            <p className="mt-auto pt-3 text-xs text-muted-foreground">
-              Done {formatCompletedAt(vlog.createdAt)}
-            </p>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-col border-l border-memory/15 p-3">
+          <div className="min-w-0">
+            <h2 className="line-clamp-1 text-base font-semibold leading-6">{vlog.title}</h2>
           </div>
-        </article>
-      </Link>
-    </div>
+
+          <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Clapperboard className="size-3.5 shrink-0 text-memory" />
+              <dt className="sr-only">Clips</dt>
+              <dd className="truncate">{vlog.clipCount} clips</dd>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Clock3 className="size-3.5 shrink-0 text-memory" />
+              <dt className="sr-only">Duration</dt>
+              <dd className="truncate">{formatDuration(vlog.clipCount)}</dd>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <FileVideo className="size-3.5 shrink-0 text-memory" />
+              <dt className="sr-only">Format</dt>
+              <dd className="truncate">{formatMimeType(vlog.mimeType)}</dd>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <HardDrive className="size-3.5 shrink-0 text-memory" />
+              <dt className="sr-only">File size</dt>
+              <dd className="truncate">{formatFileSize(vlog.size)}</dd>
+            </div>
+          </dl>
+
+          <p className="mt-auto pt-3 text-xs text-muted-foreground">
+            Done {formatCompletedAt(vlog.createdAt)}
+          </p>
+        </div>
+      </article>
+    </Link>
   );
 }

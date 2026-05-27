@@ -262,42 +262,36 @@ button {
 
 @keyframes new-video-card-glow {
   0% {
-    opacity: 0;
-    transform: scale(0.985);
+    border-color: hsl(var(--primary) / 0.5);
     box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
   }
 
   42% {
-    opacity: 1;
+    border-color: hsl(var(--primary) / 0.95);
     box-shadow:
-      0 0 0 4px hsl(var(--primary) / 0.3),
-      0 0 26px 3px hsl(var(--primary) / 0.38);
-    transform: scale(1.018);
+      0 0 0 4px hsl(var(--primary) / 0.34),
+      0 0 18px 4px hsl(var(--primary) / 0.62),
+      0 0 34px 8px hsl(var(--primary) / 0.34);
   }
 
   100% {
-    opacity: 0;
-    box-shadow: 0 0 0 12px hsl(var(--primary) / 0);
-    transform: scale(1.04);
+    border-color: hsl(var(--memory) / 0.2);
+    box-shadow: 0 0 0 13px hsl(var(--primary) / 0);
   }
 }
 
-.new-video-card-highlight::before {
-  pointer-events: none;
-  content: "";
-  position: absolute;
-  inset: -5px;
-  border: 1px solid hsl(var(--primary) / 0.55);
-  border-radius: calc(0.5rem + 5px);
-  animation: new-video-card-glow 2.4s ease-out 3;
-  will-change: opacity, box-shadow, transform;
+.new-video-card-highlight {
+  animation: new-video-card-glow 1.85s ease-out infinite;
+  will-change: border-color, box-shadow;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .new-video-card-highlight::before {
+  .new-video-card-highlight {
     animation: none;
-    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.22);
-    opacity: 1;
+    border-color: hsl(var(--primary) / 0.8);
+    box-shadow:
+      0 0 0 4px hsl(var(--primary) / 0.3),
+      0 0 24px 4px hsl(var(--primary) / 0.45);
     will-change: auto;
   }
 }

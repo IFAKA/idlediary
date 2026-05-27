@@ -228,13 +228,13 @@ describe("thumbnail rendering", () => {
     });
 
     await waitFor(() => {
-      expect(
-        container.querySelector('a[aria-label="Open Two Seconds Today"]')?.parentElement,
-      ).toHaveClass("new-video-card-highlight");
+      expect(container.querySelector('a[aria-label="Open Two Seconds Today"]')).toHaveClass(
+        "new-video-card-highlight",
+      );
     });
-    expect(
-      container.querySelector('a[aria-label="Open Yesterday"]')?.parentElement,
-    ).not.toHaveClass("new-video-card-highlight");
+    expect(container.querySelector('a[aria-label="Open Yesterday"]')).not.toHaveClass(
+      "new-video-card-highlight",
+    );
   });
 
   it("does not publish a zero saved video count while loading history", async () => {
@@ -258,7 +258,7 @@ describe("thumbnail rendering", () => {
     });
 
     await waitFor(() => {
-      expect(container).toHaveTextContent("1 video");
+      expect(container).toHaveTextContent(/1\s*video/);
     });
   });
 
