@@ -8,8 +8,10 @@ import {
   getOrCreateTodaySession,
   listClips,
   saveClip,
+  saveClipThumbnail,
   saveClipOrder,
 } from "./storage";
+import { generateVideoThumbnail, thumbnailSizes } from "./thumbnail";
 import {
   releaseAllClipObjectUrls,
   releaseClipObjectUrl,
@@ -27,6 +29,7 @@ type ClipAction =
   | { type: "loaded"; session: SessionSummary; clips: ClipRecord[] }
   | { type: "session"; session: SessionSummary }
   | { type: "add"; clip: ClipRecord }
+  | { type: "update"; clip: ClipRecord }
   | { type: "remove"; id: string }
   | { type: "reorder"; clipIds: string[] }
   | { type: "clear" }
@@ -58,6 +61,13 @@ function clipReducer(state: ClipState, action: ClipAction): ClipState {
     return {
       ...state,
       clips: [...state.clips, action.clip],
+    };
+  }
+
+  if (action.type === "update") {
+    return {
+      ...state,
+      clips: state.clips.map((clip) => (clip.id === action.clip.id ? action.clip : clip)),
     };
   }
 
@@ -105,11 +115,30 @@ export function useClips() {
   const [state, dispatch] = useReducer(clipReducer, initialState);
   const stateRef = useRef(state);
   const requestVersionRef = useRef(0);
+  const thumbnailBackfillsRef = useRef(new Set<string>());
 
   useEffect(() => {
     stateRef.current = state;
     retainClipObjectUrls(state.clips.map((clip) => clip.id));
   }, [state]);
+
+  useEffect(() => {
+    for (const clip of state.clips) {
+      if (clip.thumbnailBlob || thumbnailBackfillsRef.current.has(clip.id)) continue;
+
+      thumbnailBackfillsRef.current.add(clip.id);
+      void generateVideoThumbnail(clip.blob, thumbnailSizes.clip)
+        .then((thumbnail) => saveClipThumbnail(clip.id, thumbnail))
+        .then((updatedClip) => {
+          if (!updatedClip) return;
+          dispatch({ type: "update", clip: updatedClip });
+        })
+        .catch((error) => reportError(error))
+        .finally(() => {
+          thumbnailBackfillsRef.current.delete(clip.id);
+        });
+    }
+  }, [state.clips]);
 
   const refresh = useCallback(async (sessionId?: string) => {
     const requestVersion = ++requestVersionRef.current;
@@ -163,6 +192,12 @@ export function useClips() {
       createdAt: new Date().toISOString(),
       size: blob.size,
     };
+
+    try {
+      Object.assign(clip, await generateVideoThumbnail(blob, thumbnailSizes.clip));
+    } catch (error) {
+      reportError(error);
+    }
 
     await saveClip(clip);
     ++requestVersionRef.current;

@@ -39,4 +39,20 @@ describe("sortVlogsNewestFirst", () => {
       ),
     ).toEqual(["video-b", "video-a"]);
   });
+
+  it("sorts videos regardless of optional thumbnail fields", () => {
+    const withThumbnail = {
+      ...vlog("with-thumbnail", "2026-05-27T08:00:00.000Z"),
+      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 360,
+      thumbnailHeight: 640,
+    };
+    const withoutThumbnail = vlog("without-thumbnail", "2026-05-26T08:00:00.000Z");
+
+    expect(sortVlogsNewestFirst([withoutThumbnail, withThumbnail]).map((item) => item.id)).toEqual([
+      "with-thumbnail",
+      "without-thumbnail",
+    ]);
+  });
 });

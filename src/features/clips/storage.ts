@@ -2,6 +2,7 @@ import { openDB, type DBSchema } from "idb";
 import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
+import type { ThumbnailResult } from "./thumbnail";
 import type { ClipRecord, SessionSummary, VlogRecord } from "./types";
 
 interface IdleDiaryDb extends DBSchema {
@@ -138,6 +139,40 @@ export async function saveClip(clip: ClipRecord) {
         userMessage: "This clip could not be saved. Check local storage space.",
         cause,
         context: { sessionId: clip.sessionId, clipId: clip.id, size: clip.size },
+      }),
+    );
+  }
+}
+
+export async function saveClipThumbnail(id: string, thumbnail: ThumbnailResult) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction("clips", "readwrite");
+    const clipsStore = tx.objectStore("clips");
+    const clip = await clipsStore.get(id);
+    if (!clip) {
+      await tx.done;
+      return null;
+    }
+
+    const updated: ClipRecord = { ...clip, ...thumbnail };
+    await clipsStore.put(updated);
+    await tx.done;
+    addDebugEvent("clip-thumbnail-saved", "storage", {
+      clipId: id,
+      thumbnailBytes: thumbnail.thumbnailBlob.size,
+      thumbnailMimeType: thumbnail.thumbnailMimeType,
+    });
+    return updated;
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-write-failed",
+        area: "storage",
+        message: "Could not save clip thumbnail",
+        userMessage: "This clip thumbnail could not be saved.",
+        cause,
+        context: { clipId: id },
       }),
     );
   }
@@ -287,6 +322,40 @@ export async function saveVlog(vlog: VlogRecord) {
         userMessage: "The vlog was created but could not be saved locally.",
         cause,
         context: { vlogId: vlog.id, sessionId: vlog.sessionId },
+      }),
+    );
+  }
+}
+
+export async function saveVlogThumbnail(id: string, thumbnail: ThumbnailResult) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction("vlogs", "readwrite");
+    const vlogsStore = tx.objectStore("vlogs");
+    const vlog = await vlogsStore.get(id);
+    if (!vlog) {
+      await tx.done;
+      return null;
+    }
+
+    const updated: VlogRecord = { ...vlog, ...thumbnail };
+    await vlogsStore.put(updated);
+    await tx.done;
+    addDebugEvent("vlog-thumbnail-saved", "storage", {
+      vlogId: id,
+      thumbnailBytes: thumbnail.thumbnailBlob.size,
+      thumbnailMimeType: thumbnail.thumbnailMimeType,
+    });
+    return updated;
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-write-failed",
+        area: "storage",
+        message: "Could not save saved-video thumbnail",
+        userMessage: "This saved video thumbnail could not be saved.",
+        cause,
+        context: { vlogId: id },
       }),
     );
   }

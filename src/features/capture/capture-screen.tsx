@@ -7,7 +7,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { Button } from "@/components/ui/button";
 import { useClips } from "@/features/clips/use-clips";
-import { getObjectUrlForClip, releaseAllVlogObjectUrls } from "@/features/clips/media-cache";
+import {
+  getObjectUrlForClip,
+  getThumbnailObjectUrlForClip,
+  releaseAllVlogObjectUrls,
+} from "@/features/clips/media-cache";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
 import {
@@ -546,7 +550,14 @@ function LatestDraftButton({
   disabled: boolean;
   onOpen: () => void;
 }) {
-  const src = useMemo(() => (clip ? getObjectUrlForClip(clip) : null), [clip]);
+  const thumbnailSrc = useMemo(
+    () => (clip ? getThumbnailObjectUrlForClip(clip) : null),
+    [clip],
+  );
+  const src = useMemo(
+    () => (clip && !thumbnailSrc ? getObjectUrlForClip(clip) : null),
+    [clip, thumbnailSrc],
+  );
 
   return (
     <button
@@ -558,16 +569,26 @@ function LatestDraftButton({
       type="button"
       onClick={onOpen}
     >
-      {clip && src ? (
+      {clip && (thumbnailSrc || src) ? (
         <>
-          <video
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full rounded-[inherit] object-cover"
-            muted
-            playsInline
-            preload="metadata"
-            src={src}
-          />
+          {thumbnailSrc ? (
+            <img
+              alt=""
+              className="absolute inset-0 h-full w-full rounded-[inherit] object-cover"
+              decoding="async"
+              loading="lazy"
+              src={thumbnailSrc}
+            />
+          ) : (
+            <video
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full rounded-[inherit] object-cover"
+              muted
+              playsInline
+              preload="metadata"
+              src={src ?? undefined}
+            />
+          )}
           <span aria-hidden="true" className="absolute inset-0 rounded-[inherit] bg-black/18" />
           <span className="absolute -right-1.5 -top-1.5 rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground ring-2 ring-background">
             +{clipCount}

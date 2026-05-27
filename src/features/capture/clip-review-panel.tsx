@@ -35,7 +35,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
-import { getObjectUrlForClip } from "@/features/clips/media-cache";
+import {
+  getObjectUrlForClip,
+  getThumbnailObjectUrlForClip,
+} from "@/features/clips/media-cache";
 import type { ClipRecord } from "@/features/clips/types";
 import { useHistoryOverlay } from "@/hooks/use-history-overlay";
 import { spring } from "@/lib/motion";
@@ -414,7 +417,11 @@ function ClipPreview({
   listeners?: ReturnType<typeof useSortable>["listeners"];
   onOpen?: () => void;
 }) {
-  const src = useMemo(() => getObjectUrlForClip(clip), [clip]);
+  const thumbnailSrc = useMemo(() => getThumbnailObjectUrlForClip(clip), [clip]);
+  const src = useMemo(
+    () => (thumbnailSrc ? null : getObjectUrlForClip(clip)),
+    [clip, thumbnailSrc],
+  );
   const [canPlay, setCanPlay] = useState(false);
   const [hasError, setHasError] = useState(false);
 
@@ -441,16 +448,26 @@ function ClipPreview({
         type="button"
         onClick={onOpen}
       >
-        <video
-          aria-hidden="true"
-          className="h-full w-full object-cover"
-          muted
-          playsInline
-          preload={isOverlay ? "none" : "metadata"}
-          src={src ?? undefined}
-          onCanPlay={() => setCanPlay(true)}
-          onError={() => setHasError(true)}
-        />
+        {thumbnailSrc ? (
+          <img
+            alt=""
+            className="h-full w-full object-cover"
+            decoding="async"
+            loading="lazy"
+            src={thumbnailSrc}
+          />
+        ) : (
+          <video
+            aria-hidden="true"
+            className="h-full w-full object-cover"
+            muted
+            playsInline
+            preload={isOverlay ? "none" : "metadata"}
+            src={src ?? undefined}
+            onCanPlay={() => setCanPlay(true)}
+            onError={() => setHasError(true)}
+          />
+        )}
       </button>
       {hasError ? (
         <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center text-[10px] font-semibold text-destructive">
@@ -462,7 +479,7 @@ function ClipPreview({
       </span>
       <Play
         className={`pointer-events-none absolute bottom-2 left-2 size-7 rounded-full bg-black/60 p-1.5 text-white ${
-          canPlay ? "opacity-100" : "opacity-60"
+          canPlay || thumbnailSrc ? "opacity-100" : "opacity-60"
         }`}
       />
     </motion.div>

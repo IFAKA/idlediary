@@ -3,6 +3,10 @@ export type ClipRecord = {
   sessionId: string;
   blob: Blob;
   mimeType: string;
+  thumbnailBlob?: Blob;
+  thumbnailMimeType?: string;
+  thumbnailWidth?: number;
+  thumbnailHeight?: number;
   durationMs: number;
   order?: number;
   createdAt: string;
@@ -14,6 +18,10 @@ export type VlogRecord = {
   sessionId: string;
   blob: Blob;
   mimeType: string;
+  thumbnailBlob?: Blob;
+  thumbnailMimeType?: string;
+  thumbnailWidth?: number;
+  thumbnailHeight?: number;
   clipCount: number;
   title: string;
   caption: string;

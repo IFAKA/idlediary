@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
   getOrCreateTodaySession: vi.fn(),
   listClips: vi.fn(),
   saveClip: vi.fn(),
+  saveClipThumbnail: vi.fn(),
   saveClipOrder: vi.fn(),
+  generateVideoThumbnail: vi.fn(),
   releaseAllClipObjectUrls: vi.fn(),
   releaseClipObjectUrl: vi.fn(),
   retainClipObjectUrls: vi.fn(),
@@ -22,7 +24,16 @@ vi.mock("./storage", () => ({
   getOrCreateTodaySession: mocks.getOrCreateTodaySession,
   listClips: mocks.listClips,
   saveClip: mocks.saveClip,
+  saveClipThumbnail: mocks.saveClipThumbnail,
   saveClipOrder: mocks.saveClipOrder,
+}));
+
+vi.mock("./thumbnail", () => ({
+  generateVideoThumbnail: mocks.generateVideoThumbnail,
+  thumbnailSizes: {
+    clip: { width: 256, height: 256 },
+    vlog: { width: 360, height: 640 },
+  },
 }));
 
 vi.mock("./media-cache", () => ({
@@ -100,7 +111,14 @@ describe("useClips", () => {
     mocks.getOrCreateTodaySession.mockResolvedValue(session);
     mocks.listClips.mockResolvedValue([]);
     mocks.saveClip.mockResolvedValue(undefined);
+    mocks.saveClipThumbnail.mockResolvedValue(null);
     mocks.saveClipOrder.mockResolvedValue(undefined);
+    mocks.generateVideoThumbnail.mockResolvedValue({
+      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 256,
+      thumbnailHeight: 256,
+    });
     mocks.deleteClip.mockResolvedValue(undefined);
     mocks.clearClipsForSession.mockResolvedValue(undefined);
     container = document.createElement("div");
@@ -160,6 +178,14 @@ describe("useClips", () => {
       await latest!.addClip(secondBlob, 3000);
     });
     expect(latest?.clips.map((clip) => clip.id)).toEqual(["clip-1", "clip-new"]);
+    expect(mocks.saveClip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "clip-new",
+        thumbnailMimeType: "image/webp",
+        thumbnailWidth: 256,
+        thumbnailHeight: 256,
+      }),
+    );
     expect(mocks.listClips).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -174,6 +200,27 @@ describe("useClips", () => {
     expect(latest?.clips).toEqual([]);
     expect(mocks.clearClipsForSession).toHaveBeenCalledWith(session.id);
     expect(mocks.releaseAllClipObjectUrls).toHaveBeenCalled();
+  });
+
+  it("backfills thumbnails for loaded clips that do not have one", async () => {
+    const clip = makeClip("clip-1", 0);
+    const updatedClip = {
+      ...clip,
+      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 256,
+      thumbnailHeight: 256,
+    };
+    mocks.listClips.mockResolvedValueOnce([clip]);
+    mocks.saveClipThumbnail.mockResolvedValueOnce(updatedClip);
+
+    renderUseClips();
+
+    await waitFor(() => expect(latest?.clips[0]?.thumbnailBlob).toBeDefined());
+    expect(mocks.saveClipThumbnail).toHaveBeenCalledWith(
+      clip.id,
+      expect.objectContaining({ thumbnailMimeType: "image/webp" }),
+    );
   });
 
   it("keeps state unchanged when a mutation fails", async () => {

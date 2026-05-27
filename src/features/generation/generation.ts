@@ -272,11 +272,20 @@ export async function generateVlog(
       bytes.byteOffset + bytes.byteLength,
     ) as ArrayBuffer;
     const blob = new Blob([output], { type: "video/mp4" });
+    const firstThumbnailClip = clips.find((clip) => clip.thumbnailBlob);
     const vlog: VlogRecord = {
       id: crypto.randomUUID(),
       sessionId,
       blob,
       mimeType: "video/mp4",
+      ...(firstThumbnailClip
+        ? {
+            thumbnailBlob: firstThumbnailClip.thumbnailBlob,
+            thumbnailMimeType: firstThumbnailClip.thumbnailMimeType,
+            thumbnailWidth: firstThumbnailClip.thumbnailWidth,
+            thumbnailHeight: firstThumbnailClip.thumbnailHeight,
+          }
+        : {}),
       clipCount: clips.length,
       title: suggestTitle(clips.length),
       caption: suggestCaption(clips.length),

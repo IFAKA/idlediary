@@ -14,9 +14,16 @@ import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shel
 import { Button } from "@/components/ui/button";
 import {
   getObjectUrlForVlog,
+  getThumbnailObjectUrlForVlog,
   releaseVlogObjectUrl,
 } from "@/features/clips/media-cache";
-import { listVlogs, markVlogHandled, sortVlogsNewestFirst } from "@/features/clips/storage";
+import {
+  listVlogs,
+  markVlogHandled,
+  saveVlogThumbnail,
+  sortVlogsNewestFirst,
+} from "@/features/clips/storage";
+import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbnail";
 import type { VlogRecord } from "@/features/clips/types";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
@@ -83,6 +90,7 @@ export function HomeScreen() {
 
   useEffect(() => {
     let mounted = true;
+    const backfills = new Set<string>();
 
     listVlogs()
       .then(async (vlogs) => {
@@ -106,7 +114,35 @@ export function HomeScreen() {
             ? sortedVlogs.map((vlog) => handledVlogs.get(vlog.id) ?? vlog)
             : sortedVlogs;
 
-        if (mounted) setState({ status: "ready", vlogs: readyVlogs });
+        if (!mounted) return;
+        setState({ status: "ready", vlogs: readyVlogs });
+
+        readyVlogs
+          .filter((vlog) => !vlog.thumbnailBlob)
+          .forEach((vlog) => {
+            if (backfills.has(vlog.id)) return;
+            backfills.add(vlog.id);
+            void generateVideoThumbnail(vlog.blob, thumbnailSizes.vlog)
+              .then((thumbnail) => saveVlogThumbnail(vlog.id, thumbnail))
+              .then((updatedVlog) => {
+                if (!mounted || !updatedVlog) return;
+                setState((current) => {
+                  if (current.status !== "ready") return current;
+                  return {
+                    status: "ready",
+                    vlogs: sortVlogsNewestFirst(
+                      current.vlogs.map((item) =>
+                        item.id === updatedVlog.id ? updatedVlog : item,
+                      ),
+                    ),
+                  };
+                });
+              })
+              .catch((error) => reportError(error))
+              .finally(() => {
+                backfills.delete(vlog.id);
+              });
+          });
       })
       .catch((error) => {
         const appError = reportError(error);
@@ -183,7 +219,11 @@ function EmptyHistory() {
 }
 
 function VlogCard({ vlog }: { vlog: VlogRecord }) {
-  const src = useMemo(() => getObjectUrlForVlog(vlog), [vlog]);
+  const thumbnailSrc = useMemo(() => getThumbnailObjectUrlForVlog(vlog), [vlog]);
+  const src = useMemo(
+    () => (thumbnailSrc ? null : getObjectUrlForVlog(vlog)),
+    [thumbnailSrc, vlog],
+  );
 
   useEffect(() => {
     return () => releaseVlogObjectUrl(vlog.id);
@@ -197,14 +237,24 @@ function VlogCard({ vlog }: { vlog: VlogRecord }) {
     >
       <article className="contents">
         <div className="relative h-full w-full bg-black">
-          <video
-            aria-hidden="true"
-            className="h-full w-full object-cover"
-            muted
-            playsInline
-            preload="metadata"
-            src={src ?? undefined}
-          />
+          {thumbnailSrc ? (
+            <img
+              alt=""
+              className="h-full w-full object-cover"
+              decoding="async"
+              loading="lazy"
+              src={thumbnailSrc}
+            />
+          ) : (
+            <video
+              aria-hidden="true"
+              className="h-full w-full object-cover"
+              muted
+              playsInline
+              preload="metadata"
+              src={src ?? undefined}
+            />
+          )}
         </div>
         <div className="flex min-w-0 flex-col border-l border-memory/15 p-3">
           <div className="min-w-0">

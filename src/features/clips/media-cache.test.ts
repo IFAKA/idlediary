@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getObjectUrlForClip,
+  getThumbnailObjectUrlForClip,
   releaseAllClipObjectUrls,
   releaseClipObjectUrl,
 } from "./media-cache";
@@ -73,5 +74,41 @@ describe("media cache", () => {
 
     releaseAllClipObjectUrls();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-1");
+  });
+
+  it("caches thumbnail URLs separately from video URLs and revokes both on delete", () => {
+    const clip = makeClip({
+      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 256,
+      thumbnailHeight: 256,
+    });
+
+    expect(getObjectUrlForClip(clip)).toBe("blob:mock-0");
+    expect(getThumbnailObjectUrlForClip(clip)).toBe("blob:mock-1");
+    expect(getThumbnailObjectUrlForClip(clip)).toBe("blob:mock-1");
+
+    releaseClipObjectUrl(clip.id);
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-0");
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-1");
+  });
+
+  it("refreshes a thumbnail URL when the thumbnail version changes", () => {
+    const clip = makeClip({
+      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 256,
+      thumbnailHeight: 256,
+    });
+    const updated = {
+      ...clip,
+      thumbnailBlob: new Blob(["new-thumb"], { type: "image/webp" }),
+    };
+
+    expect(getThumbnailObjectUrlForClip(clip)).toBe("blob:mock-0");
+    expect(getThumbnailObjectUrlForClip(updated)).toBe("blob:mock-1");
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-0");
   });
 });
