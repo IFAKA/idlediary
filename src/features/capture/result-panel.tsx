@@ -3,6 +3,7 @@
 import confetti from "canvas-confetti";
 import { Check, Share2 } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { SupportLink } from "@/components/support-link";
 import { Button } from "@/components/ui/button";
 import type { VlogRecord } from "@/features/clips/types";
 import { VlogPlayer } from "@/features/clips/vlog-player";
@@ -36,6 +37,7 @@ export function ResultPanel({ vlog, onDone, onExport }: ResultPanelProps) {
           <Check className="size-4" />
           Done
         </Button>
+        <SupportLink className="justify-self-center border-transparent bg-transparent text-muted-foreground hover:border-memory/25 hover:text-foreground" />
       </div>
     </div>
   );

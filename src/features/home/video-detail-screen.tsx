@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
+import { SupportLink } from "@/components/support-link";
 import { Button } from "@/components/ui/button";
 import { releaseVlogObjectUrl } from "@/features/clips/media-cache";
 import { deleteVlog, getVlog, markVlogHandled } from "@/features/clips/storage";
@@ -174,6 +175,7 @@ function SavedVideoDetail({
             Delete
           </Button>
         </div>
+        <SupportLink className="justify-self-center border-transparent bg-transparent text-muted-foreground hover:border-memory/25 hover:text-foreground" />
       </div>
     </div>
   );
