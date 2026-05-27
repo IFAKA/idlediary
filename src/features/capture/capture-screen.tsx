@@ -471,7 +471,7 @@ export function CaptureScreen() {
                   href="/videos"
                   onClick={() => setSlideDirection("left")}
                 >
-                  <Clapperboard className="size-5 text-primary" />
+                  <Clapperboard className="size-5 text-memory" />
                 </Link>
 
                 <RecordButton
@@ -495,7 +495,7 @@ export function CaptureScreen() {
               </div>
 
               {camera.error ? (
-                <div className="mb-3 rounded-lg border bg-black/50 p-3">
+                <div className="mb-3 rounded-lg border bg-surface-soft/82 p-3">
                   <p className="text-sm font-semibold">Camera is blocked</p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     {camera.error.userMessage}
@@ -515,7 +515,7 @@ export function CaptureScreen() {
               ) : null}
 
               {clipLimitReached ? (
-                <p className="mb-3 rounded-lg border bg-black/50 p-3 text-sm font-semibold">
+                <p className="mb-3 rounded-lg border bg-surface-soft/82 p-3 text-sm font-semibold">
                   Session limit reached for v1.
                 </p>
               ) : null}
@@ -562,7 +562,7 @@ function LatestDraftButton({
             src={src}
           />
           <span aria-hidden="true" className="absolute inset-0 bg-black/18" />
-          <span className="absolute right-1 top-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
+          <span className="absolute right-1 top-1 rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground">
             +{clipCount}
           </span>
         </>

@@ -389,10 +389,10 @@ function ClipPreview({
         scale: isPulledToDelete ? 0.9 : isOverlay ? 1.05 : 1,
         y: isPulledToDelete ? 8 : 0,
       }}
-      className={`relative aspect-square overflow-hidden rounded-lg border bg-black shadow-lg ${
+      className={`relative aspect-square overflow-hidden rounded-lg border bg-surface-soft shadow-lg ${
         isOverlay
-          ? "w-[7.25rem] border-primary/80 shadow-2xl"
-          : "w-full border-border"
+          ? "w-[7.25rem] border-memory/80 shadow-2xl"
+          : "w-full border-memory/20"
       }`}
       layoutId={isOverlay ? undefined : `clip-preview-${clip.id}`}
       transition={spring}

@@ -13,6 +13,8 @@ type IntroStep = {
   icon: LucideIcon;
   title: string;
   detail: string;
+  iconClassName: string;
+  cardClassName: string;
 };
 
 const steps: IntroStep[] = [
@@ -20,16 +22,22 @@ const steps: IntroStep[] = [
     icon: CircleDot,
     title: "Capture 3 seconds",
     detail: "Hold one small moment from the day.",
+    iconClassName: "bg-accent/15 text-accent",
+    cardClassName: "border-accent/20 bg-surface-soft/72",
   },
   {
     icon: LockKeyhole,
     title: "Keep it local",
     detail: "Camera and microphone access begins only when you record.",
+    iconClassName: "bg-primary/15 text-primary",
+    cardClassName: "border-primary/20 bg-surface-soft/72",
   },
   {
     icon: Sparkles,
     title: "Generate the diary",
     detail: "Turn the saved clips into a short video entry.",
+    iconClassName: "bg-memory/15 text-memory",
+    cardClassName: "border-memory/25 bg-surface-soft/72",
   },
 ];
 
@@ -43,7 +51,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden safe-screen">
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 border-b border-white/10 bg-[linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:28px_28px]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 border-b border-memory/15 bg-[linear-gradient(90deg,hsl(var(--memory)/0.14)_1px,transparent_1px),linear-gradient(180deg,hsl(var(--foreground)/0.06)_1px,transparent_1px)] bg-[size:28px_28px]"
         aria-hidden="true"
       />
 
@@ -55,9 +63,9 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
           transition={{ duration: 0.42, ease: "easeOut" }}
         >
           <div className="flex items-center gap-3">
-            <div className="relative flex size-14 items-center justify-center rounded-lg border border-primary/45 bg-primary/12 text-primary shadow-[0_0_42px_rgba(73,207,151,0.22)]">
+            <div className="relative flex size-14 items-center justify-center rounded-lg border border-primary/45 bg-primary/15 text-primary shadow-[0_0_42px_hsl(var(--primary)/0.2)]">
               <Camera className="size-7" />
-              <BookOpenText className="absolute -bottom-1 -right-1 size-5 rounded-md bg-background p-0.5 text-accent" />
+              <BookOpenText className="absolute -bottom-1 -right-1 size-5 rounded-md bg-background p-0.5 text-memory" />
             </div>
             <div>
               <h1 className="text-3xl font-semibold leading-none">IdleDiary</h1>
@@ -74,7 +82,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
 
             return (
               <motion.div
-                className="grid grid-cols-[3rem_1fr] items-start gap-4 rounded-lg border bg-black/38 p-3 backdrop-blur-sm"
+                className={`grid grid-cols-[3rem_1fr] items-start gap-4 rounded-lg border p-3 backdrop-blur-sm ${step.cardClassName}`}
                 key={step.title}
                 animate={{ opacity: 1, x: 0 }}
                 initial={shouldReduceMotion ? false : { opacity: 0, x: index % 2 === 0 ? -18 : 18 }}
@@ -84,7 +92,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                   delay: motionDelay(index, shouldReduceMotion),
                 }}
               >
-                <div className="flex size-12 items-center justify-center rounded-md bg-white/8 text-primary">
+                <div className={`flex size-12 items-center justify-center rounded-md ${step.iconClassName}`}>
                   <Icon className="size-5" />
                 </div>
                 <div className="min-w-0">

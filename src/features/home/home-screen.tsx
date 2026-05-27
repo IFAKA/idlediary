@@ -34,7 +34,7 @@ export function HomeScreen() {
   const headerConfig = useMemo<AppHeaderConfig>(
     () => ({
       eyebrow: "IdleDiary",
-      title: "Generated videos",
+      title: "Saved entries",
       leading: (
         <Button asChild size="icon" variant="outline" aria-label="Back to camera">
           <Link href="/">
@@ -89,7 +89,7 @@ export function HomeScreen() {
         <section className="mt-8 min-h-0 flex-1 overflow-hidden">
           {state.status === "loading" ? (
             <div className="flex h-full min-h-80 items-center justify-center text-sm text-muted-foreground">
-              Loading videos...
+              Loading entries...
             </div>
           ) : state.vlogs.length > 0 ? (
             <div className="h-full overflow-y-auto overscroll-contain pr-1">
@@ -112,10 +112,10 @@ export function HomeScreen() {
 function EmptyHistory() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
-      <div className="mb-6 inline-flex size-14 items-center justify-center rounded-full border bg-black/35 text-primary">
+      <div className="mb-6 inline-flex size-14 items-center justify-center rounded-full border border-memory/35 bg-memory/15 text-memory">
         <Clapperboard className="size-7" />
       </div>
-      <h2 className="text-2xl font-semibold">No generated videos yet</h2>
+      <h2 className="text-2xl font-semibold">No diary entries yet</h2>
       <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
         Record a few three-second clips, review the draft, then generate your first diary video.
       </p>
@@ -132,7 +132,7 @@ function VlogCard({ vlog }: { vlog: VlogRecord }) {
 
   return (
     <Link
-      className="group overflow-hidden rounded-lg border bg-card text-card-foreground outline-none transition hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       href={`/result?vlog=${encodeURIComponent(vlog.id)}`}
     >
       <div className="relative aspect-[9/16] bg-black">
@@ -145,12 +145,12 @@ function VlogCard({ vlog }: { vlog: VlogRecord }) {
           preload="metadata"
           src={src ?? undefined}
         />
-        <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-black/65 px-2 py-1 text-xs font-semibold text-white">
+        <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-background/78 px-2 py-1 text-xs font-semibold text-memory backdrop-blur-sm">
           <RefreshCw className="size-3" />
           {vlog.clipCount} clips
         </div>
       </div>
-      <div className="p-3">
+      <div className="border-t border-memory/15 p-3">
         <h2 className="line-clamp-2 text-base font-semibold leading-6">{vlog.title}</h2>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <CalendarDays className="size-3.5" />

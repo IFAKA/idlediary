@@ -191,8 +191,8 @@ test("videos route shows generated videos entry point", async ({ page }) => {
   await page.goto("/videos");
   await page.waitForLoadState("networkidle");
 
-  await expect(page.getByRole("heading", { exact: true, name: "Generated videos" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "No generated videos yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { exact: true, name: "Saved entries" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No diary entries yet" })).toBeVisible();
   const start = page.getByRole("link", { name: "Back to camera" });
   await expect(start).toBeVisible();
 
@@ -248,7 +248,7 @@ test("record screen videos button navigates to videos", async ({ page }) => {
 
   await page.getByRole("link", { name: "Videos" }).click();
   await expect(page).toHaveURL("/videos");
-  await expect(page.getByRole("heading", { exact: true, name: "Generated videos" })).toBeVisible();
+  await expect(page.getByRole("heading", { exact: true, name: "Saved entries" })).toBeVisible();
 });
 
 test("draft review stops the camera before generation", async ({ page }) => {
@@ -283,7 +283,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   const generationHeading = page.getByRole("heading", {
     name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/,
   });
-  await expect(generationHeading).toBeVisible();
+  await expect(generationHeading.first()).toBeVisible();
   await expect(generationHeading).toHaveCount(1);
   await expect(page.locator("header").getByText("Finish", { exact: true })).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Draft clips" })).not.toBeVisible();

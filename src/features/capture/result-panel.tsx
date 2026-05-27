@@ -35,7 +35,7 @@ export function ResultPanel({ vlog, onReset }: ResultPanelProps) {
       <div className="flex min-h-0 flex-1 items-center justify-center">
         <button
           aria-label="Open generated video fullscreen"
-          className="relative aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-lg border bg-black outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="relative aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-lg border border-memory/30 bg-black outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           type="button"
           onClick={() => setIsPlayerOpen(true)}
         >
