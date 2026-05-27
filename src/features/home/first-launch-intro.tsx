@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { BookOpenText, Camera, CircleDot, LockKeyhole, Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
@@ -41,8 +42,80 @@ const steps: IntroStep[] = [
   },
 ];
 
-function motionDelay(index: number, reducedMotion: boolean) {
-  return reducedMotion ? 0 : 0.42 + index * 0.58;
+const heroDescription = "A three-second diary that stays quiet until you ask it to make a video.";
+const mountDuration = 0.42;
+const cardMountDuration = 0.46;
+const typingSpeed = 0.024;
+const sequenceGap = 0.12;
+
+function typingDuration(text: string) {
+  return text.length * typingSpeed;
+}
+
+function stepMountDelay(index: number) {
+  let delay = mountDuration + typingDuration(heroDescription) + sequenceGap;
+
+  for (let currentIndex = 0; currentIndex < index; currentIndex += 1) {
+    delay += cardMountDuration + typingDuration(steps[currentIndex].detail) + sequenceGap;
+  }
+
+  return delay;
+}
+
+function buttonMountDelay() {
+  const finalStep = steps[steps.length - 1];
+  return stepMountDelay(steps.length - 1) + cardMountDuration + typingDuration(finalStep.detail) + sequenceGap;
+}
+
+function TypedDescription({
+  className,
+  delay,
+  reducedMotion,
+  text,
+}: {
+  className?: string;
+  delay: number;
+  reducedMotion: boolean;
+  text: string;
+}) {
+  const [typedText, setTypedText] = useState("");
+  const visibleText = reducedMotion ? text : typedText;
+
+  useEffect(() => {
+    if (reducedMotion) return;
+
+    let currentIndex = 0;
+    let interval: number | undefined;
+    const timeout = window.setTimeout(() => {
+      interval = window.setInterval(() => {
+        currentIndex += 1;
+        setTypedText(text.slice(0, currentIndex));
+
+        if (currentIndex >= text.length && interval !== undefined) {
+          window.clearInterval(interval);
+        }
+      }, typingSpeed * 1000);
+    }, delay * 1000);
+
+    return () => {
+      window.clearTimeout(timeout);
+      if (interval !== undefined) window.clearInterval(interval);
+    };
+  }, [delay, reducedMotion, text]);
+
+  return (
+    <p className={`relative ${className ?? ""}`} aria-label={text}>
+      <span className="invisible block" aria-hidden="true">
+        {text}
+      </span>
+      <span className="absolute inset-0 block" aria-hidden="true">
+        {visibleText}
+        {!reducedMotion && visibleText.length < text.length ? (
+          <span className="ml-0.5 inline-block h-[1em] w-px translate-y-0.5 animate-pulse bg-current" />
+        ) : null}
+      </span>
+    </p>
+  );
 }
 
 export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
@@ -60,7 +133,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
           className="pt-5"
           animate={{ opacity: 1, y: 0 }}
           initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
-          transition={{ duration: 0.42, ease: "easeOut" }}
+          transition={{ duration: shouldReduceMotion ? 0 : mountDuration, ease: "easeOut" }}
         >
           <div className="flex items-center gap-3">
             <div className="relative flex size-14 items-center justify-center rounded-lg border border-primary/45 bg-primary/15 text-primary shadow-[0_0_42px_hsl(var(--primary)/0.2)]">
@@ -69,9 +142,12 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
             </div>
             <div>
               <h1 className="text-3xl font-semibold leading-none">IdleDiary</h1>
-              <p className="mt-2 max-w-64 text-sm leading-6 text-muted-foreground">
-                A three-second diary that stays quiet until you ask it to make a video.
-              </p>
+              <TypedDescription
+                className="mt-2 max-w-64 text-sm leading-6 text-muted-foreground"
+                delay={shouldReduceMotion ? 0 : mountDuration}
+                reducedMotion={shouldReduceMotion}
+                text={heroDescription}
+              />
             </div>
           </div>
         </motion.header>
@@ -79,6 +155,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
         <section className="grid min-h-0 flex-1 content-center gap-4 py-4" aria-label="How IdleDiary works">
           {steps.map((step, index) => {
             const Icon = step.icon;
+            const mountDelay = shouldReduceMotion ? 0 : stepMountDelay(index);
 
             return (
               <motion.div
@@ -87,9 +164,9 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                 animate={{ opacity: 1, x: 0 }}
                 initial={shouldReduceMotion ? false : { opacity: 0, x: index % 2 === 0 ? -18 : 18 }}
                 transition={{
-                  duration: shouldReduceMotion ? 0 : 0.46,
+                  duration: shouldReduceMotion ? 0 : cardMountDuration,
                   ease: "easeOut",
-                  delay: motionDelay(index, shouldReduceMotion),
+                  delay: mountDelay,
                 }}
               >
                 <div className={`flex size-12 items-center justify-center rounded-md ${step.iconClassName}`}>
@@ -97,7 +174,12 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg font-semibold leading-6">{step.title}</h2>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{step.detail}</p>
+                  <TypedDescription
+                    className="mt-1 text-sm leading-6 text-muted-foreground"
+                    delay={mountDelay + cardMountDuration}
+                    reducedMotion={shouldReduceMotion}
+                    text={step.detail}
+                  />
                 </div>
               </motion.div>
             );
@@ -110,7 +192,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
           transition={{
             duration: shouldReduceMotion ? 0 : 0.42,
             ease: "easeOut",
-            delay: shouldReduceMotion ? 0 : 2.35,
+            delay: shouldReduceMotion ? 0 : buttonMountDelay(),
           }}
         >
           <Button className="h-14 w-full text-base" type="button" onClick={onStart}>
