@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { MouseEvent } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Camera, CircleDot, LockKeyhole, Sparkles } from "lucide-react";
 import {
@@ -57,6 +58,10 @@ const blinkDelay = buttonMountDelay + 0.58;
 const blinkDuration = 0.34;
 const blinkEase = [0.25, 1, 0.5, 1] as const;
 const pupilTravel = 22;
+
+function clampImpact(value: number) {
+  return Math.max(-1, Math.min(1, value));
+}
 
 export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
   const shouldReduceMotion = useReducedMotion() === true;
@@ -132,8 +137,55 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
     });
   }
 
+  function playHurtReaction(event: MouseEvent<HTMLButtonElement>) {
+    if (shouldReduceMotion) return;
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const hasPointerPosition = event.clientX !== 0 || event.clientY !== 0;
+    const impactX = hasPointerPosition
+      ? clampImpact((event.clientX - (bounds.left + bounds.width / 2)) / (bounds.width / 2))
+      : 0;
+    const impactY = hasPointerPosition
+      ? clampImpact((event.clientY - (bounds.top + bounds.height / 2)) / (bounds.height / 2))
+      : 0;
+    const recoilX = -impactX * 6;
+    const recoilY = -impactY * 5;
+    const tilt = impactX * 4 - impactY * 1.5;
+
+    setIsPupilAwake(true);
+    pupilX.set(256 - impactX * 26);
+    pupilY.set(256 - impactY * 22);
+    void iconControls.start({
+      rotate: [0, tilt, -tilt * 0.58, tilt * 0.24, 0],
+      scale: [1, 0.965, 1.025, 0.995, 1],
+      x: [0, recoilX, -recoilX * 0.55, recoilX * 0.22, 0],
+      y: [0, recoilY, -recoilY * 0.42, recoilY * 0.16, 0],
+      transition: { duration: 0.46, ease: [0.34, 1.56, 0.64, 1] },
+    });
+    void blinkControls.start({
+      scaleY: [0, 0.88, 0.28, 0.52, 0],
+      transition: {
+        duration: 0.46,
+        ease: [0.34, 1.56, 0.64, 1],
+        times: [0, 0.24, 0.48, 0.68, 1],
+      },
+    });
+    window.setTimeout(() => {
+      pupilX.set(256);
+      pupilY.set(256);
+    }, 260);
+  }
+
+  function handleIntroClick(event: MouseEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest("[data-intro-no-blink]") !== null) return;
+    replayBlink();
+  }
+
   return (
-    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden">
+    <div
+      className="relative z-10 flex h-[100svh] flex-col overflow-hidden"
+      onClick={handleIntroClick}
+    >
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_7%,hsl(var(--primary)/0.2),transparent_34%),radial-gradient(circle_at_15%_22%,hsl(var(--memory)/0.14),transparent_28%),linear-gradient(180deg,hsl(var(--surface-soft)/0.44),transparent_46%)]"
         aria-hidden="true"
@@ -159,8 +211,12 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
               ref={iconRef}
               className="relative flex size-28 cursor-pointer items-center justify-center rounded-[1.85rem] border border-primary/30 bg-background/88 p-1.5 shadow-[0_24px_80px_hsl(var(--primary)/0.24)] outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-[390px]:size-32"
               animate={shouldReduceMotion ? undefined : iconControls}
-              onClick={replayBlink}
-              aria-label="Replay icon blink"
+              onClick={(event) => {
+                event.stopPropagation();
+                playHurtReaction(event);
+              }}
+              aria-label="Nudge app icon"
+              data-intro-no-blink
               type="button"
               whileHover={shouldReduceMotion ? undefined : { scale: 1.015 }}
               whileTap={shouldReduceMotion ? undefined : { scale: 0.985 }}
@@ -272,6 +328,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
         >
           <Button
             className="h-[3.25rem] w-full rounded-lg text-base shadow-[0_18px_54px_hsl(var(--primary)/0.28)]"
+            data-intro-no-blink
             type="button"
             onClick={onStart}
           >
