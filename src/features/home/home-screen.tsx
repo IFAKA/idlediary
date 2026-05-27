@@ -320,14 +320,15 @@ function VlogCard({
   }, [vlog.id]);
 
   return (
-    <Link
-      aria-label={`Open ${vlog.title}`}
-      className={`group grid h-36 grid-cols-[144px_minmax(0,1fr)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-40 sm:grid-cols-[160px_minmax(0,1fr)] ${
-        isNew ? "new-video-card-highlight" : ""
-      }`}
-      href={`/videos/${encodeURIComponent(vlog.id)}`}
+    <div
+      className={`relative rounded-lg ${isNew ? "new-video-card-highlight" : ""}`}
     >
-      <article className="contents">
+      <Link
+        aria-label={`Open ${vlog.title}`}
+        className="group grid h-36 grid-cols-[144px_minmax(0,1fr)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-40 sm:grid-cols-[160px_minmax(0,1fr)]"
+        href={`/videos/${encodeURIComponent(vlog.id)}`}
+      >
+        <article className="contents">
         <div className="relative h-full w-full bg-black">
           {thumbnailSrc && !thumbnailFailed ? (
             <img
@@ -379,7 +380,8 @@ function VlogCard({
             Done {formatCompletedAt(vlog.createdAt)}
           </p>
         </div>
-      </article>
-    </Link>
+        </article>
+      </Link>
+    </div>
   );
 }
