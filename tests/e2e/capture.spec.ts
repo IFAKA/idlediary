@@ -344,6 +344,13 @@ test("preview opens a fullscreen media player", async ({ page }) => {
   await expect(page.getByLabel("Fullscreen clip preview")).toBeVisible();
   await page.getByRole("button", { name: "Close preview" }).click();
   await expect(page.getByRole("heading", { name: "Clip player" })).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Preview clip 1" }).click();
+  await expect(page.getByLabel("Fullscreen clip preview")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByLabel("Fullscreen clip preview")).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
+  await expect(page).toHaveURL(/\/draft$/);
 });
 
 test("generated video preview opens fullscreen and result screen does not scroll", async ({ page }) => {
@@ -372,6 +379,10 @@ test("generated video preview opens fullscreen and result screen does not scroll
   await page.getByRole("button", { name: "Open generated video fullscreen" }).click();
   await expect(page.getByLabel("Fullscreen generated video preview")).toBeVisible();
   await expect(page.getByRole("button", { name: "Close generated video preview" })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByLabel("Fullscreen generated video preview")).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
+  await expect(page).toHaveURL(/\/result$/);
 });
 
 test("deleting the final clip returns to capture", async ({ page }) => {

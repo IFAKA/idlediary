@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { getObjectUrlForVlog, retainVlogObjectUrl } from "@/features/clips/media-cache";
 import type { VlogRecord } from "@/features/clips/types";
 import { downloadVlog, shareVlog } from "@/features/share/share";
+import { useHistoryOverlay } from "@/hooks/use-history-overlay";
 
 type ResultPanelProps = {
   vlog: VlogRecord;
@@ -20,6 +21,11 @@ export function ResultPanel({ vlog, onClose, onReset }: ResultPanelProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const src = useMemo(() => getObjectUrlForVlog(vlog), [vlog]);
+  const closePlayer = useHistoryOverlay({
+    isOpen: isPlayerOpen,
+    name: "result-preview",
+    onClose: () => setIsPlayerOpen(false),
+  });
 
   useEffect(() => {
     retainVlogObjectUrl(vlog.id);
@@ -86,7 +92,7 @@ export function ResultPanel({ vlog, onClose, onReset }: ResultPanelProps) {
 
       <AnimatePresence>
         {isPlayerOpen && src ? (
-          <FullscreenResultPlayer src={src} title={vlog.title} onClose={() => setIsPlayerOpen(false)} />
+          <FullscreenResultPlayer src={src} title={vlog.title} onClose={closePlayer} />
         ) : null}
       </AnimatePresence>
 

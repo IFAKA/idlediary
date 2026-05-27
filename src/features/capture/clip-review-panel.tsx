@@ -30,6 +30,7 @@ import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import { getObjectUrlForClip } from "@/features/clips/media-cache";
 import type { ClipRecord } from "@/features/clips/types";
+import { useHistoryOverlay } from "@/hooks/use-history-overlay";
 import { spring } from "@/lib/motion";
 
 const deleteZoneId = "clip-review-delete-zone";
@@ -181,6 +182,12 @@ export function ClipReviewPanel({
     onMakeVideo(visibleClips);
   };
 
+  const closePreview = useHistoryOverlay({
+    isOpen: previewClip !== null,
+    name: "clip-preview",
+    onClose: () => setPreviewClip(null),
+  });
+
   return (
     <motion.div
       className="relative z-10 flex h-[100svh] flex-col safe-screen"
@@ -305,7 +312,7 @@ export function ClipReviewPanel({
         {previewClip ? (
           <FullscreenPreview
             clip={previewClip}
-            onClose={() => setPreviewClip(null)}
+            onClose={closePreview}
           />
         ) : null}
       </AnimatePresence>
