@@ -699,6 +699,8 @@ function LatestDraftButton({
   const shouldReduceMotion = useReducedMotion() === true;
   const showDraftAttention = clipCount > 0 && !disabled;
   const hasPreview = Boolean(clip && (thumbnailSrc || src));
+  const draftCountTextSize =
+    clipCount >= 100 ? "text-xl" : clipCount >= 10 ? "text-2xl" : "text-3xl";
 
   return (
     <motion.button
@@ -754,7 +756,31 @@ function LatestDraftButton({
                 src={src ?? undefined}
               />
             )}
-            <span className="absolute inset-0 bg-black/18" />
+            <span className="absolute inset-0 bg-black/42" />
+            {clipCount > 0 ? (
+              <motion.span
+                className={`absolute inset-0 inline-flex items-center justify-center font-bold leading-none text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] ${draftCountTextSize}`}
+                key="draft-count"
+                layout
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={
+                  shouldReduceMotion
+                    ? { opacity: 0 }
+                    : { scale: 0.78, opacity: 0, y: -2 }
+                }
+                initial={
+                  shouldReduceMotion
+                    ? { opacity: 0 }
+                    : { scale: 0.72, opacity: 0, y: -2 }
+                }
+                transition={draftBadgeTransition}
+              >
+                <AnimatedDraftCount
+                  count={clipCount}
+                  reducedMotion={shouldReduceMotion}
+                />
+              </motion.span>
+            ) : null}
           </motion.span>
         ) : (
           <motion.span
@@ -769,21 +795,6 @@ function LatestDraftButton({
             <Layers2 className="size-6" />
           </motion.span>
         )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {hasPreview && clipCount > 0 ? (
-          <motion.span
-            className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground ring-2 ring-background"
-            key="draft-count"
-            layout
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.78, opacity: 0, y: -2 }}
-            initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.72, opacity: 0, y: -2 }}
-            transition={draftBadgeTransition}
-          >
-            <AnimatedDraftCount count={clipCount} reducedMotion={shouldReduceMotion} />
-          </motion.span>
-        ) : null}
       </AnimatePresence>
     </motion.button>
   );
