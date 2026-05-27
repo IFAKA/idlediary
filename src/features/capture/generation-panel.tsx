@@ -7,7 +7,6 @@ import {
   Film,
   LoaderCircle,
   LockKeyhole,
-  Sparkles,
   WandSparkles,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -84,11 +83,6 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
       />
 
       <motion.div className="relative mb-6 w-full max-w-sm" layout transition={spring}>
-        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-memory/20 bg-black/24 px-3 py-2 text-xs font-semibold text-memory shadow-[0_12px_30px_hsl(var(--memory)/0.12)]">
-          <Sparkles className="size-4 animate-[sparkle-breathe_1.9s_ease-in-out_infinite] motion-reduce:animate-none" aria-hidden="true" />
-          <span>Private diary magic</span>
-        </div>
-
         <ol className="relative mb-5 grid gap-2">
           {stages.map((stage) => {
             const isActive = stage.id === activeStage;
