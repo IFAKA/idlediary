@@ -1,9 +1,11 @@
 "use client";
 
 import { BookOpen, Check, Circle, Film, LockKeyhole, Sparkles, WandSparkles } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import type { GenerationProgress } from "@/features/generation/generation";
+import { spring } from "@/lib/motion";
 
 type GenerationPanelProps = {
   progress: GenerationProgress;
@@ -90,7 +92,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
         className="absolute inset-x-5 bottom-28 h-px bg-gradient-to-r from-transparent via-memory/28 to-transparent"
       />
 
-      <div className="relative mb-6 w-full max-w-sm">
+      <motion.div className="relative mb-6 w-full max-w-sm" layout transition={spring}>
         <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-memory/20 bg-black/24 px-3 py-2 text-xs font-semibold text-memory shadow-[0_12px_30px_hsl(var(--memory)/0.12)]">
           <Sparkles className="size-4 animate-[sparkle-breathe_1.9s_ease-in-out_infinite] motion-reduce:animate-none" aria-hidden="true" />
           <span>Private diary magic</span>
@@ -142,7 +144,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
           })}
         </ol>
 
-        <div aria-live="polite">
+        <motion.div aria-live="polite" layout transition={spring}>
           <p className="text-sm leading-6 text-muted-foreground">
             {progress.detail}
           </p>
@@ -153,13 +155,21 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
           <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-memory/80">
             {progress.label}
           </p>
-          {showReassurance ? (
-            <p className="mt-3 rounded-lg border border-memory/20 bg-black/25 px-3 py-2 text-xs leading-5 text-muted-foreground">
-              Still working privately. Your clips are safe.
-            </p>
-          ) : null}
-        </div>
-      </div>
+          <AnimatePresence initial={false}>
+            {showReassurance ? (
+              <motion.p
+                className="mt-3 overflow-hidden rounded-lg border border-memory/20 bg-black/25 px-3 py-2 text-xs leading-5 text-muted-foreground"
+                animate={{ height: "auto", opacity: 1, y: 0 }}
+                exit={{ height: 0, opacity: 0, y: -4 }}
+                initial={{ height: 0, opacity: 0, y: -4 }}
+                transition={spring}
+              >
+                Still working privately. Your clips are safe.
+              </motion.p>
+            ) : null}
+          </AnimatePresence>
+        </motion.div>
+      </motion.div>
       <Progress
         className="bg-memory/22"
         indicatorClassName="bg-gradient-to-r from-primary via-memory to-accent"
