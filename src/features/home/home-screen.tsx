@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CalendarDays, Film, Plus, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   getObjectUrlForVlog,
@@ -13,36 +12,11 @@ import { listVlogs } from "@/features/clips/storage";
 import type { VlogRecord } from "@/features/clips/types";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
-import { FirstLaunchIntro } from "./first-launch-intro";
 
 type HomeState =
-  | { status: "checking"; vlogs: VlogRecord[]; error?: never }
   | { status: "loading"; vlogs: VlogRecord[]; error?: never }
   | { status: "ready"; vlogs: VlogRecord[]; error?: never }
   | { status: "error"; vlogs: VlogRecord[]; error: string };
-
-const INTRO_SEEN_KEY = "idlediary:intro-seen";
-const INTRO_SEEN_CHANGE_EVENT = "idlediary:intro-seen-change";
-
-function introSeenSnapshot() {
-  if (typeof window === "undefined") return true;
-  return window.localStorage.getItem(INTRO_SEEN_KEY) === "true";
-}
-
-function subscribeToIntroSeen(listener: () => void) {
-  window.addEventListener("storage", listener);
-  window.addEventListener(INTRO_SEEN_CHANGE_EVENT, listener);
-
-  return () => {
-    window.removeEventListener("storage", listener);
-    window.removeEventListener(INTRO_SEEN_CHANGE_EVENT, listener);
-  };
-}
-
-function markIntroSeen() {
-  window.localStorage.setItem(INTRO_SEEN_KEY, "true");
-  window.dispatchEvent(new Event(INTRO_SEEN_CHANGE_EVENT));
-}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -54,22 +28,10 @@ function formatDate(value: string) {
 }
 
 export function HomeScreen() {
-  const router = useRouter();
-  const introSeen = useSyncExternalStore(
-    subscribeToIntroSeen,
-    introSeenSnapshot,
-    () => true,
-  );
-  const [state, setState] = useState<HomeState>({ status: "checking", vlogs: [] });
+  const [state, setState] = useState<HomeState>({ status: "loading", vlogs: [] });
 
   useEffect(() => {
     let mounted = true;
-
-    if (!introSeen) {
-      return () => {
-        mounted = false;
-      };
-    }
 
     listVlogs()
       .then((vlogs) => {
@@ -89,21 +51,7 @@ export function HomeScreen() {
     return () => {
       mounted = false;
     };
-  }, [introSeen]);
-
-  if (!introSeen) {
-    return (
-      <main className="relative isolate h-[100svh] overflow-hidden bg-background">
-        <FirstLaunchIntro
-          onStart={() => {
-            markIntroSeen();
-            router.push("/capture");
-          }}
-        />
-        <DebugDrawer />
-      </main>
-    );
-  }
+  }, []);
 
   return (
     <main className="relative isolate h-[100svh] overflow-hidden bg-background safe-screen">
@@ -116,7 +64,7 @@ export function HomeScreen() {
             <h1 className="mt-1 text-3xl font-semibold leading-tight">Generated videos</h1>
           </div>
           <Button asChild size="icon" aria-label="Start recording">
-            <Link href="/capture">
+            <Link href="/">
               <Plus className="size-5" />
             </Link>
           </Button>
@@ -129,7 +77,7 @@ export function HomeScreen() {
         ) : null}
 
         <section className="mt-8 min-h-0 flex-1 overflow-hidden">
-          {state.status === "checking" || state.status === "loading" ? (
+          {state.status === "loading" ? (
             <div className="flex h-full min-h-80 items-center justify-center text-sm text-muted-foreground">
               Loading videos...
             </div>
@@ -162,7 +110,7 @@ function EmptyHistory() {
         Record a few two-second clips, review the draft, then generate your first diary video.
       </p>
       <Button asChild className="mt-7 h-14 px-6 text-base">
-        <Link href="/capture">
+        <Link href="/">
           <Plus className="size-5" />
           Start recording
         </Link>

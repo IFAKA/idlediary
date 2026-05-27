@@ -1,5 +1,5 @@
-import { HomeScreen } from "@/features/home/home-screen";
+import { RecordRootScreen } from "@/features/home/record-root-screen";
 
 export default function Home() {
-  return <HomeScreen />;
+  return <RecordRootScreen />;
 }

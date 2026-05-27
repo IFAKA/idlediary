@@ -2,7 +2,7 @@
   "name": "IdleDiary",
   "short_name": "IdleDiary",
   "description": "Tap once, record two seconds, generate a vertical diary vlog.",
-  "start_url": "/capture",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

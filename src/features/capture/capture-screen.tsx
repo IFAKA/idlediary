@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { Film, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useClips } from "@/features/clips/use-clips";
-import { releaseAllVlogObjectUrls } from "@/features/clips/media-cache";
+import { getObjectUrlForClip, releaseAllVlogObjectUrls } from "@/features/clips/media-cache";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
 import { generateVlog, type GenerationProgress } from "@/features/generation/generation";
@@ -32,12 +33,9 @@ const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimatio
 function requestedViewFromUrl(): DurableView {
   if (typeof window === "undefined") return "capture";
 
-  if (window.location.pathname === "/review") return "review";
+  if (window.location.pathname === "/draft") return "review";
   if (window.location.pathname === "/result") return "result";
-  if (window.location.pathname === "/" || window.location.pathname === "/capture") return "capture";
-
-  const view = new URLSearchParams(window.location.search).get("view");
-  if (view === "review" || view === "result") return view;
+  if (window.location.pathname === "/") return "capture";
   return "capture";
 }
 
@@ -50,10 +48,11 @@ function writeViewToUrl(view: DurableView, action: "push" | "replace") {
   if (typeof window === "undefined") return;
 
   const url = new URL(window.location.href);
-  const nextPath = view === "capture" ? "/capture" : `/${view}`;
+  const nextPath = view === "capture" ? "/" : view === "review" ? "/draft" : "/result";
   url.pathname = nextPath;
-  url.searchParams.delete("view");
-  url.searchParams.delete("vlog");
+  if (view !== "result") {
+    url.searchParams.delete("vlog");
+  }
 
   const search = url.searchParams.toString();
   const next = `${url.pathname}${search ? `?${search}` : ""}${url.hash}`;
@@ -99,6 +98,7 @@ export function CaptureScreen() {
     recorder.state !== "recording" &&
     recorder.state !== "saving";
   const clipLimitReached = clips.clips.length >= 20;
+  const latestClip = clips.clips.length > 0 ? clips.clips[clips.clips.length - 1] : null;
 
   const startCamera = useCallback(async () => {
     try {
@@ -158,7 +158,7 @@ export function CaptureScreen() {
 
       setVlog(null);
       setMode("capture");
-      if (window.location.pathname !== "/" && window.location.pathname !== "/capture") {
+      if (window.location.pathname !== "/") {
         writeViewToUrl("capture", "replace");
       }
     },
@@ -400,7 +400,13 @@ export function CaptureScreen() {
 
             <div className="mt-auto">
               <div className="mb-5 flex items-center justify-between gap-3">
-                <div className="size-11" aria-hidden="true" />
+                <Link
+                  aria-label="Videos"
+                  className="inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  href="/videos"
+                >
+                  <Film className="size-5 text-primary" />
+                </Link>
 
                 <RecordButton
                   disabled={
@@ -415,7 +421,12 @@ export function CaptureScreen() {
                   onClick={captureClip}
                 />
 
-                <div className="size-11" aria-hidden="true" />
+                <LatestDraftButton
+                  clip={latestClip}
+                  clipCount={clips.clips.length}
+                  disabled={!canReview}
+                  onOpen={openReview}
+                />
               </div>
 
               {needsPermission ? (
@@ -442,39 +453,61 @@ export function CaptureScreen() {
                 </div>
               ) : null}
 
-              <motion.button
-                aria-label="Review draft clips"
-                aria-disabled={!canReview}
-                className="grid min-h-20 w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-3 rounded-lg border bg-black/50 p-3 text-left transition hover:bg-black/60 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45"
-                data-disabled={!canReview}
-                disabled={!canReview}
-                layoutId="draft-card"
-                type="button"
-                onClick={openReview}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <Film className="size-4 text-primary" />
-                    <span>{Math.min(clips.clips.length, 20) * 2}s draft</span>
-                  </div>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {clips.clips.length >= 20
-                      ? "Session limit reached for v1."
-                      : "Tap the circle whenever there is a moment."}
-                  </p>
-                </div>
-                <span
-                  aria-hidden="true"
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_8px_30px_rgba(73,205,151,0.18)]"
-                >
-                  Review
-                </span>
-              </motion.button>
+              {clipLimitReached ? (
+                <p className="mb-3 rounded-lg border bg-black/50 p-3 text-sm font-semibold">
+                  Session limit reached for v1.
+                </p>
+              ) : null}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
       <DebugDrawer />
     </main>
+  );
+}
+
+function LatestDraftButton({
+  clip,
+  clipCount,
+  disabled,
+  onOpen,
+}: {
+  clip: ClipRecord | null;
+  clipCount: number;
+  disabled: boolean;
+  onOpen: () => void;
+}) {
+  const src = useMemo(() => (clip ? getObjectUrlForClip(clip) : null), [clip]);
+
+  return (
+    <button
+      aria-disabled={disabled}
+      aria-label="Review draft clips"
+      className="relative inline-flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      data-disabled={disabled}
+      disabled={disabled}
+      type="button"
+      onClick={onOpen}
+    >
+      {clip && src ? (
+        <>
+          <video
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+            src={src}
+          />
+          <span aria-hidden="true" className="absolute inset-0 bg-black/18" />
+          <span className="absolute right-1 top-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
+            +{clipCount}
+          </span>
+        </>
+      ) : (
+        <Film className="size-5 text-muted-foreground" />
+      )}
+    </button>
   );
 }
