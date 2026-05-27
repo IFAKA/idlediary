@@ -80,12 +80,12 @@ function MorphingAppHeader({ config }: { config: AppHeaderConfig | null }) {
       className="pointer-events-none fixed inset-x-0 top-0 z-40 px-[max(16px,env(safe-area-inset-left))] pt-[max(16px,env(safe-area-inset-top))]"
     >
       <motion.header
-        className="mx-auto flex min-h-16 w-full max-w-5xl items-start gap-4"
+        className="mx-auto flex min-h-16 w-full max-w-5xl items-start"
         layout
         layoutRoot
         transition={easeOut}
       >
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={false}>
           {config?.leading ? (
             <HeaderActionSlot
               key={nodeKey(config.leading, "leading")}
@@ -94,7 +94,7 @@ function MorphingAppHeader({ config }: { config: AppHeaderConfig | null }) {
             />
           ) : null}
         </AnimatePresence>
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={false}>
           {config ? (
             <motion.div
               key="title"
@@ -123,7 +123,7 @@ function MorphingAppHeader({ config }: { config: AppHeaderConfig | null }) {
             </motion.div>
           ) : null}
         </AnimatePresence>
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={false}>
           {config?.trailing ? (
             <HeaderActionSlot
               key={nodeKey(config.trailing, "trailing")}
@@ -156,14 +156,31 @@ function HeaderActionSlot({
 }) {
   return (
     <motion.div
-      animate={{ opacity: 1, scale: 1 }}
+      animate={{
+        marginLeft: side === "trailing" ? 16 : 0,
+        marginRight: side === "leading" ? 16 : 0,
+        opacity: 1,
+        scale: 1,
+        width: 56,
+      }}
       className={cn(
-        "pointer-events-auto flex size-14 shrink-0 items-start",
+        "pointer-events-auto flex h-14 shrink-0 items-start overflow-hidden",
         side === "leading" ? "justify-start" : "justify-end",
       )}
-      exit={{ opacity: 0, scale: 0.96 }}
-      initial={{ opacity: 0, scale: 0.96 }}
-      layout
+      exit={{
+        marginLeft: 0,
+        marginRight: 0,
+        opacity: 0,
+        scale: 0.96,
+        width: 0,
+      }}
+      initial={{
+        marginLeft: 0,
+        marginRight: 0,
+        opacity: 0,
+        scale: 0.96,
+        width: 0,
+      }}
       transition={easeOut}
     >
       {action}
