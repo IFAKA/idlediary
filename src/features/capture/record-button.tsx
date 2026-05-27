@@ -2,6 +2,7 @@
 
 import { Check, Circle, Loader2, X } from "lucide-react";
 import { motion } from "motion/react";
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { spring, twoSecondRecordMs } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,19 @@ const segmentLength = segmentStep - segmentGap;
 const segmentedDashPattern = `${segmentLength} ${segmentGap}`;
 const segmentDashPattern = `${segmentLength} ${ringCircumference - segmentLength}`;
 const markerRadius = 45;
+const poofParticles = [
+  { dx: 0, dy: -13, r: 1.3, delay: 0 },
+  { dx: 9, dy: -8, r: 1.05, delay: 34 },
+  { dx: 13, dy: 2, r: 0.95, delay: 62 },
+  { dx: -8, dy: -7, r: 0.9, delay: 48 },
+  { dx: -12, dy: 3, r: 0.8, delay: 82 },
+] as const;
+
+type PoofParticleStyle = CSSProperties & {
+  "--poof-x": string;
+  "--poof-y": string;
+  "--poof-delay": string;
+};
 
 function pointOnRing(second: number) {
   const angle = (360 / recordingMarkerSeconds.length) * second;
@@ -90,7 +104,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
     <motion.button
       aria-label={isRecording ? "Cancel recording" : "Record three second clip"}
       className={cn(
-        "relative grid size-24 place-items-center rounded-full border border-white/18 bg-black/45 shadow-[0_20px_80px_rgba(0,0,0,0.45)] outline-none",
+        "relative grid size-24 place-items-center overflow-visible rounded-full border border-white/18 bg-black/45 shadow-[0_20px_80px_rgba(0,0,0,0.45)] outline-none",
         "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         disabled && "pointer-events-none opacity-45",
       )}
@@ -100,7 +114,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
       transition={spring}
       onClick={onClick}
     >
-      <svg className="absolute inset-1 -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+      <svg className="absolute inset-1 -rotate-90 overflow-visible" viewBox="0 0 100 100" aria-hidden="true">
         <defs>
           <mask id={segmentedRingMaskId}>
             <circle
@@ -181,18 +195,40 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
           const markerPoint = pointOnRing(second);
 
           return (
-            <circle
-              key={second}
-              className="record-marker-pulse"
-              data-record-marker={second}
-              data-record-marker-active={isActivePulse ? "true" : "false"}
-              cx={markerPoint.x}
-              cy={markerPoint.y}
-              fill="hsl(var(--primary))"
-              r="4.5"
-              stroke="hsl(var(--primary))"
-              strokeWidth="3"
-            />
+            <g key={second} data-record-poof={second}>
+              <circle
+                className="record-marker-pulse"
+                data-record-marker={second}
+                data-record-marker-active={isActivePulse ? "true" : "false"}
+                cx={markerPoint.x}
+                cy={markerPoint.y}
+                fill="hsl(var(--primary))"
+                r="3.1"
+                stroke="rgba(255,255,255,0.52)"
+                strokeWidth="1"
+              />
+              {poofParticles.map((particle, particleIndex) => {
+                const particleStyle: PoofParticleStyle = {
+                  "--poof-x": `${particle.dx}px`,
+                  "--poof-y": `${particle.dy}px`,
+                  "--poof-delay": `${particle.delay}ms`,
+                };
+
+                return (
+                  <circle
+                    key={`${second}-${particleIndex}`}
+                    className="record-poof-particle"
+                    data-record-poof-particle={second}
+                    data-record-poof-particle-active={isActivePulse ? "true" : "false"}
+                    cx={markerPoint.x}
+                    cy={markerPoint.y}
+                    fill={particleIndex % 2 === 0 ? "hsl(var(--primary))" : "rgba(235,214,255,0.94)"}
+                    r={particle.r}
+                    style={particleStyle}
+                  />
+                );
+              })}
+            </g>
           );
         })}
       </svg>
