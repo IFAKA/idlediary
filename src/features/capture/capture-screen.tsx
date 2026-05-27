@@ -23,7 +23,6 @@ import {
 import {
   clearGeneratedVlogForSession,
   hasNeedsActionVlog as checkHasNeedsActionVlog,
-  markNeedsActionVlogsHandled,
   markVlogHandled,
   saveVlogAndClearSessionDraft,
 } from "@/features/clips/storage";
@@ -150,11 +149,7 @@ export function CaptureScreen() {
 
     setSlideDirection("left");
     setHasNeedsActionVlog(false);
-    void markNeedsActionVlogsHandled().catch((error) => {
-      reportError(error);
-      void refreshNeedsActionBadge();
-    });
-  }, [canOpenVideos, refreshNeedsActionBadge]);
+  }, [canOpenVideos]);
 
   const restoreRequestedView = useCallback(
     async (requestedView = requestedViewFromUrl()) => {
