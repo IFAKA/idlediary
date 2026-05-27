@@ -265,11 +265,11 @@ button {
     90deg,
     transparent 0%,
     hsl(var(--memory) / 0.06) 34%,
-    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.12) 50%,
     hsl(var(--memory) / 0.06) 66%,
     transparent 100%
   );
-  filter: blur(5px);
+  filter: blur(10px);
   transform: translateX(-100%);
   animation: generation-shine 2.25s ease-in-out infinite;
   will-change: transform;
