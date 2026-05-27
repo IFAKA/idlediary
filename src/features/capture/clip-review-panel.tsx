@@ -22,7 +22,14 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Play, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Clapperboard,
+  Play,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -188,6 +195,18 @@ export function ClipReviewPanel({
     onClose: () => setPreviewClip(null),
   });
 
+  if (visibleClips.length === 0) {
+    return (
+      <motion.div
+        className="relative z-10 flex h-[100svh] flex-col top-level-screen"
+        layoutId="draft-card"
+        transition={spring}
+      >
+        <EmptyDraft onBack={onBack} />
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       className="relative z-10 flex h-[100svh] flex-col top-level-screen"
@@ -268,9 +287,6 @@ export function ClipReviewPanel({
             return;
           }
           setDeleteTarget(null);
-          if (nextClips.length === 0) {
-            onBack();
-          }
         }}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       />
@@ -278,7 +294,7 @@ export function ClipReviewPanel({
       <ResponsiveConfirm
         actionLabel="Clear draft"
         actionVariant="destructive"
-        description="This deletes every clip in today's draft and returns to the camera."
+        description="This deletes every clip in today's draft."
         open={confirmClearDraft}
         title="Clear this draft?"
         onAction={async () => {
@@ -292,7 +308,6 @@ export function ClipReviewPanel({
             return;
           }
           setConfirmClearDraft(false);
-          onBack();
         }}
         onOpenChange={setConfirmClearDraft}
       />
@@ -308,6 +323,24 @@ export function ClipReviewPanel({
         </AnimatePresence>
       </BodyPortal>
     </motion.div>
+  );
+}
+
+function EmptyDraft({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center text-center">
+      <div className="mb-6 inline-flex size-14 items-center justify-center rounded-full border border-memory/35 bg-memory/15 text-memory">
+        <Clapperboard className="size-7" />
+      </div>
+      <h2 className="text-2xl font-semibold">No draft clips yet</h2>
+      <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
+        Record a few three-second clips, then come back here to review them.
+      </p>
+      <Button className="mt-6" type="button" onClick={onBack}>
+        <ArrowLeft className="size-4" />
+        Back to recording
+      </Button>
+    </div>
   );
 }
 

@@ -114,13 +114,7 @@ export function CaptureScreen() {
 
       if (requestedView === "review") {
         setVlog(null);
-        if (clips.clips.length > 0) {
-          setMode("review");
-          return;
-        }
-
-        setMode("capture");
-        writeViewToUrl("capture", "replace");
+        setMode("review");
         return;
       }
 
@@ -137,7 +131,7 @@ export function CaptureScreen() {
         writeViewToUrl("capture", "replace");
       }
     },
-    [clips.clips.length, clips.loading, clips.session],
+    [clips.loading, clips.session],
   );
 
   useEffect(() => {

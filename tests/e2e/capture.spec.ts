@@ -503,7 +503,7 @@ test("saved videos can be deleted from detail", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "No diary entries yet" })).toBeVisible();
 });
 
-test("deleting the final clip returns to capture", async ({ page }) => {
+test("deleting the final clip shows the draft empty state", async ({ page }) => {
   await mockMediaCapture(page);
   await openRecord(page);
 
@@ -513,14 +513,13 @@ test("deleting the final clip returns to capture", async ({ page }) => {
   await page.getByRole("button", { name: "Review draft clips" }).click();
   await holdDragClipToDeleteZone(page, 1);
   await page.getByRole("button", { name: "Delete clip" }).click();
-  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
-    "aria-disabled",
-    "true",
-  );
+  await expect(page).toHaveURL("/draft");
+  await expect(page.getByRole("heading", { name: "No draft clips yet" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Clear draft" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Make video" })).toHaveCount(0);
 });
 
-test("clearing the draft returns to capture", async ({ page }) => {
+test("clearing the draft shows the draft empty state", async ({ page }) => {
   await mockMediaCapture(page);
   await openRecord(page);
 
@@ -533,11 +532,10 @@ test("clearing the draft returns to capture", async ({ page }) => {
     .getByRole("dialog", { name: "Clear this draft?" })
     .getByRole("button", { name: "Clear draft" })
     .click();
-  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
-    "aria-disabled",
-    "true",
-  );
+  await expect(page).toHaveURL("/draft");
+  await expect(page.getByRole("heading", { name: "No draft clips yet" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Clear draft" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Make video" })).toHaveCount(0);
 });
 
 test("done after generation returns home and clears the needs action badge", async ({ page }) => {
@@ -631,13 +629,20 @@ test("draft header back button returns to capture", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Draft clips" })).not.toBeVisible();
 });
 
-test("draft URL without clips falls back to record", async ({ page }) => {
+test("draft URL without clips shows an empty draft state", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/draft");
 
+  await expect(page).toHaveURL("/draft");
+  await expect(page).toHaveTitle("Review Draft Clips | IdleDiary");
+  await expect(page.getByRole("heading", { name: "No draft clips yet" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Clear draft" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Make video" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Back to recording" }).click();
+
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
-  await expect(page).toHaveTitle("IdleDiary");
 });
 
 test("generated result reload returns home and leaves the saved video needing action", async ({ page }) => {
