@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { addDebugEvent } from "@/features/errors/debug-store";
 
 type CameraPreviewProps = {
   stream: MediaStream | null;
@@ -22,9 +23,18 @@ export function CameraPreview({ stream }: CameraPreviewProps) {
           ref={videoRef}
           aria-label="Camera preview"
           autoPlay
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           muted
           playsInline
+          onLoadedMetadata={(event) => {
+            const video = event.currentTarget;
+            addDebugEvent("camera-preview-metadata", "capture", {
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              clientWidth: video.clientWidth,
+              clientHeight: video.clientHeight,
+            });
+          }}
         />
       ) : (
         <div className="h-full w-full bg-[linear-gradient(135deg,rgba(73,205,151,0.18),rgba(237,111,74,0.14)),linear-gradient(180deg,#151513,#070706)]" />
