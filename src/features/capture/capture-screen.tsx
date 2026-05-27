@@ -700,7 +700,7 @@ function LatestDraftButton({
   const showDraftAttention = clipCount > 0 && !disabled;
   const hasPreview = Boolean(clip && (thumbnailSrc || src));
   const draftCountTextSize =
-    clipCount >= 100 ? "text-xl" : clipCount >= 10 ? "text-2xl" : "text-3xl";
+    clipCount >= 100 ? "text-lg" : clipCount >= 10 ? "text-xl" : "text-2xl";
 
   return (
     <motion.button
@@ -759,7 +759,7 @@ function LatestDraftButton({
             <span className="absolute inset-0 bg-black/42" />
             {clipCount > 0 ? (
               <motion.span
-                className={`absolute inset-0 inline-flex items-center justify-center font-bold leading-none text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] ${draftCountTextSize}`}
+                className={`absolute inset-0 inline-flex items-center justify-center font-medium leading-none text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] ${draftCountTextSize}`}
                 key="draft-count"
                 layout
                 animate={{ scale: 1, opacity: 1, y: 0 }}
