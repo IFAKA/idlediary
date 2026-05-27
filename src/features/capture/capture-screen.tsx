@@ -122,6 +122,7 @@ export function CaptureScreen() {
     recorder.state !== "saving";
   const clipLimitReached = clips.clips.length >= 20;
   const latestClip = clips.clips.length > 0 ? clips.clips[clips.clips.length - 1] : null;
+  const draftClipCount = clips.loading ? null : clips.clips.length;
 
   const startCamera = useCallback(async () => {
     try {
@@ -447,8 +448,12 @@ export function CaptureScreen() {
         trailing: (
           <div className="px-1 py-1 text-right">
             <p className="whitespace-nowrap text-sm font-semibold">
-              <ItemCounter value={clips.clips.length} />{" "}
-              {clips.clips.length === 1 ? "clip" : "clips"}
+              {draftClipCount === null ? null : (
+                <>
+                  <ItemCounter value={draftClipCount} />{" "}
+                  {draftClipCount === 1 ? "clip" : "clips"}
+                </>
+              )}
             </p>
           </div>
         ),
@@ -466,7 +471,7 @@ export function CaptureScreen() {
       eyebrow: "Today",
       title: "No pressure",
     };
-  }, [clips.clips.length, isFinishing, mode, showCapture, vlog]);
+  }, [draftClipCount, isFinishing, mode, showCapture, vlog]);
 
   useAppHeader(headerConfig);
 
