@@ -41,8 +41,8 @@ describe("RecordButton", () => {
     return container.querySelectorAll("[data-record-segment]");
   }
 
-  function completedSegments() {
-    return container.querySelectorAll("[data-record-completed-segment]");
+  function progressSegments() {
+    return container.querySelectorAll("[data-record-progress-segment]");
   }
 
   it("renders three ring segments while recording", () => {
@@ -55,7 +55,7 @@ describe("RecordButton", () => {
     renderButton("success", 100);
 
     const baseSegments = Array.from(recordSegments());
-    const finishedSegments = Array.from(completedSegments());
+    const finishedSegments = Array.from(progressSegments());
 
     expect(finishedSegments).toHaveLength(3);
     for (const [index, finishedSegment] of finishedSegments.entries()) {

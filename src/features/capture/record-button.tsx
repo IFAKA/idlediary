@@ -3,7 +3,7 @@
 import { Check, Circle, Loader2, X } from "lucide-react";
 import { motion } from "motion/react";
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { spring, twoSecondRecordMs } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { RecordingState } from "./use-two-second-recorder";
@@ -21,9 +21,9 @@ const ringCircumference = 282.743;
 const segmentGap = 10;
 const segmentStep = ringCircumference / recordingMarkerSeconds.length;
 const segmentLength = segmentStep - segmentGap;
-const segmentedDashPattern = `${segmentLength} ${segmentGap}`;
 const segmentDashPattern = `${segmentLength} ${ringCircumference - segmentLength}`;
 const markerRadius = 45;
+const progressSegmentDurationMs = twoSecondRecordMs / recordingMarkerSeconds.length;
 const poofParticles = [
   { dx: 0, dy: -13, r: 1.3, delay: 0 },
   { dx: 9, dy: -8, r: 1.05, delay: 34 },
@@ -38,28 +38,37 @@ type PoofParticleStyle = CSSProperties & {
   "--poof-delay": string;
 };
 
+type ProgressSegmentStyle = CSSProperties & {
+  "--record-segment-delay": string;
+  "--record-segment-fill": string;
+  "--record-segment-rest": string;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function svgNumber(value: number) {
+  return value.toFixed(3);
+}
+
 function pointOnRing(second: number) {
   const angle = (360 / recordingMarkerSeconds.length) * second;
   const radians = (angle * Math.PI) / 180;
 
   return {
-    x: 50 + markerRadius * Math.cos(radians),
-    y: 50 + markerRadius * Math.sin(radians),
+    x: svgNumber(50 + markerRadius * Math.cos(radians)),
+    y: svgNumber(50 + markerRadius * Math.sin(radians)),
   };
 }
 
 export function RecordButton({ state, progress, disabled, onClick }: RecordButtonProps) {
-  const segmentedRingMaskId = `record-ring-mask-${useId().replace(/:/g, "")}`;
   const [activePulseSecond, setActivePulseSecond] = useState<number | null>(null);
   const pulseTimersRef = useRef<number[]>([]);
   const isRecording = state === "recording";
   const isSaving = state === "saving";
   const isSuccess = state === "success";
   const isInactive = state === "idle" || state === "error";
-  const showCompletedSegments = !isRecording && !isInactive && progress >= 100;
-  const progressOffset = isInactive
-    ? ringCircumference
-    : ringCircumference * (1 - progress / 100);
 
   const clearPulseTimers = useCallback(() => {
     for (const timer of pulseTimersRef.current) {
@@ -101,6 +110,12 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
     return clearPulseTimers;
   }, [clearPulseTimers, isRecording]);
 
+  function progressSegmentLength(index: number) {
+    const segmentProgress = clamp((progress / 100) * recordingMarkerSeconds.length - index, 0, 1);
+
+    return segmentLength * segmentProgress;
+  }
+
   return (
     <motion.button
       aria-label={isRecording ? "Cancel recording" : "Record three second clip"}
@@ -116,21 +131,6 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
       onClick={onClick}
     >
       <svg className="absolute inset-1 -rotate-90 overflow-visible" viewBox="0 0 100 100" aria-hidden="true">
-        <defs>
-          <mask id={segmentedRingMaskId}>
-            <circle
-              cx="50"
-              cy="50"
-              fill="none"
-              r={markerRadius}
-              stroke="white"
-              strokeDasharray={segmentedDashPattern}
-              strokeDashoffset={segmentGap / 2}
-              strokeLinecap="round"
-              strokeWidth="8"
-            />
-          </mask>
-        </defs>
         {recordingMarkerSeconds.map((second, index) => (
           <circle
             key={second}
@@ -146,46 +146,33 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
             strokeWidth="5"
           />
         ))}
-        <motion.circle
-          key={isRecording ? "recording-progress" : state}
-          className={cn(isRecording && "record-progress-ring")}
-          cx="50"
-          cy="50"
-          fill="none"
-          mask={`url(#${segmentedRingMaskId})`}
-          r={markerRadius}
-          stroke="hsl(var(--primary))"
-          strokeLinecap="round"
-          strokeWidth="6"
-          style={{
-            opacity: isInactive || showCompletedSegments ? 0 : 1,
-            strokeDasharray: ringCircumference,
-            strokeDashoffset: isRecording ? ringCircumference : progressOffset,
-            animationDuration: `${twoSecondRecordMs}ms`,
-          }}
-          initial={false}
-          animate={isRecording ? undefined : { strokeDashoffset: progressOffset }}
-          transition={{
-            duration: isInactive ? 0.01 : 0.12,
-            ease: "easeOut",
-          }}
-        />
-        {recordingMarkerSeconds.map((second, index) => (
-          <circle
-            key={`completed-segment-${second}`}
-            data-record-completed-segment={second}
-            cx="50"
-            cy="50"
-            fill="none"
-            r={markerRadius}
-            stroke="hsl(var(--primary))"
-            strokeDasharray={segmentDashPattern}
-            strokeDashoffset={-(segmentStep * index + segmentGap / 2)}
-            strokeLinecap="round"
-            strokeWidth="6"
-            style={{ opacity: showCompletedSegments ? 1 : 0 }}
-          />
-        ))}
+        {recordingMarkerSeconds.map((second, index) => {
+          const filledLength = isRecording ? 0 : progressSegmentLength(index);
+          const progressSegmentStyle: ProgressSegmentStyle = {
+            "--record-segment-delay": `${index * progressSegmentDurationMs}ms`,
+            "--record-segment-fill": `${segmentLength}`,
+            "--record-segment-rest": `${ringCircumference - segmentLength}`,
+            opacity: isInactive ? 0 : 1,
+            strokeDasharray: `${filledLength} ${ringCircumference - filledLength}`,
+          };
+
+          return (
+            <circle
+              key={`progress-segment-${second}-${isRecording ? "recording" : state}`}
+              className={cn(isRecording && "record-progress-segment")}
+              data-record-progress-segment={second}
+              cx="50"
+              cy="50"
+              fill="none"
+              r={markerRadius}
+              stroke="hsl(var(--primary))"
+              strokeDashoffset={-(segmentStep * index + segmentGap / 2)}
+              strokeLinecap="round"
+              strokeWidth="6"
+              style={progressSegmentStyle}
+            />
+          );
+        })}
         {recordingMarkerSeconds.map((second, index) => {
           const isActivePulse = isRecording && activePulseSecond === second;
 
