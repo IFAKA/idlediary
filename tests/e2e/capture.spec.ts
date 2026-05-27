@@ -811,6 +811,21 @@ test("reloading during generation returns to review with clips preserved", async
   ).not.toBeVisible();
 });
 
+test("long-running generation shows local safety reassurance", async ({ page }) => {
+  await mockMediaCapture(page, { generationDelayMs: 12_000 });
+  await openRecord(page);
+  await page.getByRole("button", { name: "Record three second clip" }).click();
+  await expectClipRecorded(page, 1);
+  await page.getByRole("button", { name: "Review draft clips" }).click();
+
+  await page.getByRole("button", { name: "Make video" }).click();
+
+  await expect(page.getByText("Still working locally. Your clips are safe.")).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByRole("progressbar")).toBeVisible();
+});
+
 test("back and forward navigate between capture and review", async ({ page }) => {
   await recordOneClipAndOpenReview(page);
 

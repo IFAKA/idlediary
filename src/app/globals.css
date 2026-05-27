@@ -129,6 +129,64 @@ button {
   }
 }
 
+@keyframes local-orbit {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translateY(-50%) scale(0.72);
+  }
+
+  45% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(8px) scale(1);
+  }
+}
+
+@keyframes generation-shine {
+  0% {
+    transform: translateX(0) rotate(6deg);
+  }
+
+  100% {
+    transform: translateX(340px) rotate(6deg);
+  }
+}
+
+@keyframes clip-stack {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes video-frame {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scaleY(0.72);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes card-land {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  48% {
+    transform: translateY(-5px) rotate(-4deg);
+  }
+}
+
 .safe-screen {
   min-height: 100svh;
   padding-top: max(16px, env(safe-area-inset-top));
