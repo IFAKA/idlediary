@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, Film, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { CameraPreview } from "@/features/capture/camera-preview";
-import { PermissionPanel } from "@/features/capture/permission-panel";
 import {
   getObjectUrlForVlog,
   releaseVlogObjectUrl,
@@ -15,6 +13,7 @@ import { listVlogs } from "@/features/clips/storage";
 import type { VlogRecord } from "@/features/clips/types";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
+import { FirstLaunchIntro } from "./first-launch-intro";
 
 type HomeState =
   | { status: "checking"; vlogs: VlogRecord[]; error?: never }
@@ -95,9 +94,7 @@ export function HomeScreen() {
   if (!introSeen) {
     return (
       <main className="relative isolate h-[100svh] overflow-hidden bg-background">
-        <CameraPreview stream={null} />
-        <PermissionPanel
-          permission="prompt"
+        <FirstLaunchIntro
           onStart={() => {
             markIntroSeen();
             router.push("/capture");

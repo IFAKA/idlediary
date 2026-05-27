@@ -139,15 +139,34 @@ async function recordOneClipAndOpenReview(page: Page) {
 }
 
 test("first launch shows intro screen", async ({ page }) => {
+  await mockMediaCapture(page);
   await page.goto("/");
   await page.waitForLoadState("networkidle");
 
   await expect(page.getByRole("heading", { name: "IdleDiary" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Capture 2 seconds" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Keep it local" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Generate the diary" })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryStartedStreams?: number })
+            .__idleDiaryStartedStreams ?? 0,
+      ),
+    )
+    .toBe(0);
+
   const start = page.getByRole("button", { name: "Start recording" });
   await expect(start).toBeVisible();
 
   const box = await start.boundingBox();
   expect(box?.height).toBeGreaterThanOrEqual(44);
+
+  await start.click();
+  await expect(page).toHaveURL("/capture");
+  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Record two second clip" })).toBeVisible();
 });
 
 test("home shows generated videos entry point after intro", async ({ page }) => {
