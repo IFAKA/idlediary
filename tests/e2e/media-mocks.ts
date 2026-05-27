@@ -73,14 +73,19 @@ export async function mockMediaCapture(
       configurable: true,
       value: {
         getUserMedia: async () => {
+          const testWindow = window as typeof window & { __idleDiaryStartedStreams?: number };
+          testWindow.__idleDiaryStartedStreams = (testWindow.__idleDiaryStartedStreams ?? 0) + 1;
           const stream = new MediaStream();
           Object.defineProperty(stream, "getTracks", {
             configurable: true,
             value: () => [
               {
                 stop: () => {
-                  const testWindow = window as typeof window & { __idleDiaryStoppedTracks?: number };
-                  testWindow.__idleDiaryStoppedTracks = (testWindow.__idleDiaryStoppedTracks ?? 0) + 1;
+                  const testWindow = window as typeof window & {
+                    __idleDiaryStoppedTracks?: number;
+                  };
+                  testWindow.__idleDiaryStoppedTracks =
+                    (testWindow.__idleDiaryStoppedTracks ?? 0) + 1;
                 },
               },
             ],

@@ -209,7 +209,7 @@ test("mocked capture saves a two-second clip and enables draft review", async ({
   await expect(page).toHaveURL("/capture");
 });
 
-test("draft review opens before generation and make video stops the camera", async ({ page }) => {
+test("draft review stops the camera before generation", async ({ page }) => {
   await mockMediaCapture(page, { generationDelayMs: 5_000 });
   await page.goto("/capture");
 
@@ -234,7 +234,7 @@ test("draft review opens before generation and make video stops the camera", asy
               .__idleDiaryStoppedTracks ?? 0,
         ),
     )
-    .toBe(0);
+    .toBeGreaterThan(0);
 
   await page.getByRole("button", { name: "Make video" }).click();
 
@@ -391,6 +391,15 @@ test("recording a clip opens review, reloads on review, and keeps a named button
   await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview clip 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Back to camera" })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryStartedStreams?: number })
+            .__idleDiaryStartedStreams ?? 0,
+      ),
+    )
+    .toBe(0);
 });
 
 test("review URL without clips falls back to capture", async ({ page }) => {
@@ -416,6 +425,15 @@ test("generated result restores after reload", async ({ page }) => {
   await expect(page).toHaveURL("/result");
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open generated video fullscreen" })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryStartedStreams?: number })
+            .__idleDiaryStartedStreams ?? 0,
+      ),
+    )
+    .toBe(0);
 });
 
 test("reloading during generation returns to review with clips preserved", async ({ page }) => {
@@ -451,11 +469,29 @@ test("back and forward navigate between capture and review", async ({ page }) =>
     "aria-disabled",
     "false",
   );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryStartedStreams?: number })
+            .__idleDiaryStartedStreams ?? 0,
+      ),
+    )
+    .toBeGreaterThanOrEqual(2);
 
   await page.goForward();
 
   await expect(page).toHaveURL("/review");
   await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryStoppedTracks?: number })
+            .__idleDiaryStoppedTracks ?? 0,
+      ),
+    )
+    .toBeGreaterThanOrEqual(2);
 });
 
 test("gallery reorders clips and generation receives UI order", async ({ page }) => {

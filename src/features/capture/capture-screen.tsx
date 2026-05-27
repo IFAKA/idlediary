@@ -79,6 +79,7 @@ export function CaptureScreen() {
   const clips = useClips();
   const recorder = useTwoSecondRecorder(camera.stream);
   const [mode, setMode] = useState<ScreenMode>("capture");
+  const [initialViewReady, setInitialViewReady] = useState(false);
   const [isStartingCamera, setIsStartingCamera] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [vlog, setVlog] = useState<VlogRecord | null>(null);
@@ -169,15 +170,24 @@ export function CaptureScreen() {
   }, [mode]);
 
   useEffect(() => {
-    if (mode !== "capture" || camera.stream || cameraStartAttempted.current) return;
+    if (!initialViewReady || mode !== "capture" || camera.stream || cameraStartAttempted.current) return;
     cameraStartAttempted.current = true;
     void startCamera();
-  }, [camera.stream, mode, startCamera]);
+  }, [camera.stream, initialViewReady, mode, startCamera]);
+
+  useEffect(() => {
+    if (mode === "capture") return;
+
+    cameraStartAttempted.current = false;
+    if (camera.stream) {
+      camera.stop();
+    }
+  }, [camera, mode]);
 
   useEffect(() => {
     if (initialViewResolved.current || clips.loading || !clips.session) return;
     initialViewResolved.current = true;
-    void restoreRequestedView();
+    void restoreRequestedView().finally(() => setInitialViewReady(true));
   }, [clips.loading, clips.session, restoreRequestedView]);
 
   useEffect(() => {
@@ -219,7 +229,6 @@ export function CaptureScreen() {
       }
       releaseAllVlogObjectUrls();
       setVlog(null);
-      await startCamera();
       showCapture("push");
     } catch (error) {
       const appError = reportError(error);
