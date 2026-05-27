@@ -32,7 +32,14 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
@@ -95,32 +102,6 @@ export function ClipReviewPanel({
   }, [orderedClips]);
 
   useEffect(() => {
-    if (!activeClipId) return;
-
-    const draggedClipId = activeClipId;
-    const clearMissedDragEnd = () => {
-      window.setTimeout(() => {
-        setActiveClipId((currentActiveClipId) => {
-          if (currentActiveClipId !== draggedClipId) return currentActiveClipId;
-          setIsOverDeleteZone(false);
-          hasVibratedForDeleteZone.current = false;
-          return null;
-        });
-      }, 0);
-    };
-
-    window.addEventListener("mouseup", clearMissedDragEnd);
-    window.addEventListener("pointerup", clearMissedDragEnd);
-    window.addEventListener("touchend", clearMissedDragEnd);
-
-    return () => {
-      window.removeEventListener("mouseup", clearMissedDragEnd);
-      window.removeEventListener("pointerup", clearMissedDragEnd);
-      window.removeEventListener("touchend", clearMissedDragEnd);
-    };
-  }, [activeClipId]);
-
-  useEffect(() => {
     setOrderedClips((current) => {
       const incomingById = new Map(clips.map((clip) => [clip.id, clip]));
       const kept = current
@@ -148,6 +129,79 @@ export function ClipReviewPanel({
     if (!hasCurrentOrderChanged) return true;
     return onReorderClips(currentOrder.map((clip) => clip.id));
   };
+
+  const moveClip = useCallback(
+    (activeId: string, overId: string) => {
+      if (activeId === overId) return;
+
+      const current = orderedClipsRef.current;
+      const fromIndex = current.findIndex((clip) => clip.id === activeId);
+      const toIndex = current.findIndex((clip) => clip.id === overId);
+      if (fromIndex < 0 || toIndex < 0) return;
+
+      const next = arrayMove(current, fromIndex, toIndex);
+      setOrderedClips(next);
+      orderedClipsRef.current = next;
+      void onReorderClips(next.map((clip) => clip.id)).then((saved) => {
+        if (saved) return;
+        setOrderedClips(current);
+        orderedClipsRef.current = current;
+      });
+    },
+    [onReorderClips],
+  );
+
+  useEffect(() => {
+    if (!activeClipId) return;
+
+    const draggedClipId = activeClipId;
+    const finishMissedDrop = (event: MouseEvent | PointerEvent | TouchEvent) => {
+      const point =
+        "changedTouches" in event
+          ? event.changedTouches[0]
+          : "clientX" in event
+            ? event
+            : null;
+      if (!point) return;
+
+      window.setTimeout(() => {
+        setActiveClipId((currentActiveClipId) => {
+          if (currentActiveClipId !== draggedClipId) return currentActiveClipId;
+
+          const dropTarget = document.elementFromPoint(point.clientX, point.clientY);
+          const overClipId = dropTarget
+            ?.closest<HTMLElement>("[data-clip-id]")
+            ?.dataset.clipId;
+          const isOverDelete = Boolean(
+            dropTarget?.closest(`[data-droppable-id="${deleteZoneId}"]`),
+          );
+          const draggedClip = orderedClipsRef.current.find(
+            (clip) => clip.id === draggedClipId,
+          );
+
+          if (isOverDelete && draggedClip) {
+            setDeleteTarget(draggedClip);
+          } else if (overClipId) {
+            moveClip(draggedClipId, overClipId);
+          }
+
+          setIsOverDeleteZone(false);
+          hasVibratedForDeleteZone.current = false;
+          return null;
+        });
+      }, 0);
+    };
+
+    window.addEventListener("mouseup", finishMissedDrop, true);
+    window.addEventListener("pointerup", finishMissedDrop, true);
+    window.addEventListener("touchend", finishMissedDrop, true);
+
+    return () => {
+      window.removeEventListener("mouseup", finishMissedDrop, true);
+      window.removeEventListener("pointerup", finishMissedDrop, true);
+      window.removeEventListener("touchend", finishMissedDrop, true);
+    };
+  }, [activeClipId, moveClip]);
 
   const collisionDetection: CollisionDetection = (args) => {
     const pointerCollisions = pointerWithin(args);
@@ -192,19 +246,7 @@ export function ClipReviewPanel({
 
     if (event.active.id === overId) return;
 
-    const current = orderedClipsRef.current;
-    const fromIndex = current.findIndex((clip) => clip.id === event.active.id);
-    const toIndex = current.findIndex((clip) => clip.id === overId);
-    if (fromIndex < 0 || toIndex < 0) return;
-
-    const next = arrayMove(current, fromIndex, toIndex);
-    setOrderedClips(next);
-    orderedClipsRef.current = next;
-    void onReorderClips(next.map((clip) => clip.id)).then((saved) => {
-      if (saved) return;
-      setOrderedClips(current);
-      orderedClipsRef.current = current;
-    });
+    moveClip(String(event.active.id), String(overId));
   };
 
   const handleDragCancel = () => {
@@ -284,14 +326,16 @@ export function ClipReviewPanel({
 
         <DragOverlay dropAnimation={null}>
           {activeClip ? (
-            <ClipPreview
-              clip={activeClip}
-              index={visibleClips.findIndex(
-                (clip) => clip.id === activeClip.id,
-              )}
-              isOverlay
-              isPulledToDelete={isOverDeleteZone}
-            />
+            <div className="pointer-events-none">
+              <ClipPreview
+                clip={activeClip}
+                index={visibleClips.findIndex(
+                  (clip) => clip.id === activeClip.id,
+                )}
+                isOverlay
+                isPulledToDelete={isOverDeleteZone}
+              />
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>
@@ -472,7 +516,9 @@ function ClipPreview({
         aria-label={`Preview clip ${index + 1}`}
         className="absolute inset-0 cursor-grab touch-none overflow-hidden outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         disabled={isOverlay}
+        draggable={false}
         type="button"
+        onDragStart={(event) => event.preventDefault()}
         onClick={onOpen}
       >
         {thumbnailSrc ? (
@@ -480,6 +526,7 @@ function ClipPreview({
             alt=""
             className="h-full w-full object-cover"
             decoding="async"
+            draggable={false}
             loading="lazy"
             src={thumbnailSrc}
           />
@@ -487,6 +534,7 @@ function ClipPreview({
           <video
             aria-hidden="true"
             className="h-full w-full object-cover"
+            draggable={false}
             muted
             playsInline
             preload={isOverlay ? "none" : "metadata"}
@@ -536,6 +584,7 @@ function ReviewActionBar({
   return (
     <motion.div
       ref={setNodeRef}
+      data-droppable-id={deleteZoneId}
       data-testid="review-action-bar"
       className={`mt-3 ${
         isDragging
