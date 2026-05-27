@@ -81,7 +81,6 @@ export function CaptureScreen() {
   const recorder = useTwoSecondRecorder(camera.stream);
   const [mode, setMode] = useState<ScreenMode>("capture");
   const [initialViewReady, setInitialViewReady] = useState(false);
-  const [isStartingCamera, setIsStartingCamera] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [vlog, setVlog] = useState<VlogRecord | null>(null);
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
@@ -105,13 +104,10 @@ export function CaptureScreen() {
 
   const startCamera = useCallback(async () => {
     try {
-      setIsStartingCamera(true);
       await camera.start();
     } catch (error) {
       const appError = reportError(error);
       toast.error(appError.userMessage);
-    } finally {
-      setIsStartingCamera(false);
     }
   }, [camera]);
 
@@ -420,7 +416,6 @@ export function CaptureScreen() {
                 <RecordButton
                   disabled={
                     needsPermission ||
-                    isStartingCamera ||
                     recorder.state === "recording" ||
                     recorder.state === "saving" ||
                     clipLimitReached
@@ -438,27 +433,23 @@ export function CaptureScreen() {
                 />
               </div>
 
-              {needsPermission ? (
+              {camera.error ? (
                 <div className="mb-3 rounded-lg border bg-black/50 p-3">
-                  <p className="text-sm font-semibold">
-                    {camera.error ? "Camera is blocked" : "Starting camera..."}
-                  </p>
+                  <p className="text-sm font-semibold">Camera is blocked</p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {camera.error?.userMessage ?? "Allow camera access to begin recording clips."}
+                    {camera.error.userMessage}
                   </p>
-                  {camera.error ? (
-                    <button
-                      className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                      type="button"
-                      onClick={() => {
-                        cameraStartAttempted.current = false;
-                        void startCamera();
-                      }}
-                    >
-                      <RotateCcw className="size-4" />
-                      Retry camera
-                    </button>
-                  ) : null}
+                  <button
+                    className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                    type="button"
+                    onClick={() => {
+                      cameraStartAttempted.current = false;
+                      void startCamera();
+                    }}
+                  >
+                    <RotateCcw className="size-4" />
+                    Retry camera
+                  </button>
                 </div>
               ) : null}
 
