@@ -667,16 +667,16 @@ function AnimatedDraftCount({
   count: number;
   reducedMotion: boolean;
 }) {
-  const previousCount = useRef(count);
-  const [direction, setDirection] = useState<1 | -1>(1);
+  const [countState, setCountState] = useState<{ count: number; direction: 1 | -1 }>({
+    count,
+    direction: 1,
+  });
+  const direction = countState.direction;
   const digits = String(count).split("");
 
-  useEffect(() => {
-    if (count === previousCount.current) return;
-
-    setDirection(count > previousCount.current ? 1 : -1);
-    previousCount.current = count;
-  }, [count]);
+  if (count !== countState.count) {
+    setCountState({ count, direction: count > countState.count ? 1 : -1 });
+  }
 
   return (
     <span className="inline-flex items-center tabular-nums" aria-label={`+${count}`}>
@@ -691,27 +691,26 @@ function AnimatedDraftCount({
               key={place}
               layout
             >
-              <AnimatePresence custom={direction} initial={false} mode="popLayout">
+              <AnimatePresence initial={false} mode="popLayout">
                 <motion.span
                   className="absolute inset-0"
                   key={`${place}-${digit}`}
-                  custom={direction}
                   animate={{ opacity: 1, y: 0 }}
                   exit={
                     reducedMotion
                       ? { opacity: 0 }
-                      : (customDirection: 1 | -1) => ({
+                      : {
                           opacity: 0,
-                          y: customDirection > 0 ? "-100%" : "100%",
-                        })
+                          y: direction > 0 ? "-100%" : "100%",
+                        }
                   }
                   initial={
                     reducedMotion
                       ? { opacity: 0 }
-                      : (customDirection: 1 | -1) => ({
+                      : {
                           opacity: 0,
-                          y: customDirection > 0 ? "100%" : "-100%",
-                        })
+                          y: direction > 0 ? "100%" : "-100%",
+                        }
                   }
                   transition={reducedMotion ? { duration: 0 } : draftDigitTransition}
                 >
