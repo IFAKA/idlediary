@@ -559,7 +559,6 @@ function FullscreenPreview({
         eyebrow="Preview"
         title="Clip player"
         titleAs="h2"
-        titleClassName="text-xl"
         trailing={
           <Button
             aria-label="Close preview"

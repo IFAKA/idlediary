@@ -8,7 +8,6 @@ type AppHeaderProps = {
   leading?: ReactNode;
   trailing?: ReactNode;
   className?: string;
-  titleClassName?: string;
 };
 
 export function AppHeader({
@@ -18,7 +17,6 @@ export function AppHeader({
   leading,
   trailing,
   className,
-  titleClassName,
 }: AppHeaderProps) {
   return (
     <header
@@ -32,12 +30,7 @@ export function AppHeader({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
           {eyebrow}
         </p>
-        <Title
-          className={cn(
-            "mt-1 text-2xl font-semibold leading-tight",
-            titleClassName,
-          )}
-        >
+        <Title className="mt-1 text-2xl font-semibold leading-tight">
           {title}
         </Title>
       </div>

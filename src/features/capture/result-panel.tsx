@@ -125,7 +125,6 @@ function FullscreenResultPlayer({
         eyebrow="Preview"
         title={title}
         titleAs="h2"
-        titleClassName="text-xl"
         trailing={
           <Button
             aria-label="Close generated video preview"

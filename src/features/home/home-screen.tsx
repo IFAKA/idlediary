@@ -67,7 +67,6 @@ export function HomeScreen() {
         <AppHeader
           eyebrow="IdleDiary"
           title="Generated videos"
-          titleClassName="text-3xl"
           leading={
             <Button asChild size="icon" variant="outline" aria-label="Back to camera">
               <Link href="/">
