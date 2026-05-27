@@ -33,8 +33,18 @@ describe("RecordButton", () => {
     return container.querySelector('[data-record-marker-active="true"]');
   }
 
+  function activeMarkerFor(second: number) {
+    return container.querySelector(`[data-record-marker="${second}"][data-record-marker-active="true"]`);
+  }
+
   function activeSegmentPulse() {
     return container.querySelector('[data-record-segment-pulse-active="true"]');
+  }
+
+  function activeSegmentPulseFor(second: number) {
+    return container.querySelector(
+      `[data-record-segment-pulse="${second}"][data-record-segment-pulse-active="true"]`,
+    );
   }
 
   function recordSegments() {
@@ -84,34 +94,40 @@ describe("RecordButton", () => {
     act(() => {
       vi.advanceTimersByTime(1000);
     });
-    expect(activeMarker()).toHaveAttribute("data-record-marker", "1");
-    expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "1");
-    expect(activeSegmentPulse()).toHaveAttribute(
+    expect(activeMarkerFor(1)).not.toBeNull();
+    expect(activeSegmentPulseFor(1)).not.toBeNull();
+    expect(activeSegmentPulseFor(1)).toHaveAttribute(
       "stroke-dasharray",
       recordSegments()[0]?.getAttribute("stroke-dasharray"),
     );
-    expect(activeSegmentPulse()).toHaveAttribute(
+    expect(activeSegmentPulseFor(1)).toHaveAttribute(
       "stroke-dashoffset",
       recordSegments()[0]?.getAttribute("stroke-dashoffset"),
     );
 
     act(() => {
-      vi.advanceTimersByTime(720);
-    });
-    expect(activeMarker()).toBeNull();
-    expect(activeSegmentPulse()).toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(580);
-    });
-    expect(activeMarker()).toHaveAttribute("data-record-marker", "2");
-    expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "2");
-
-    act(() => {
       vi.advanceTimersByTime(1000);
     });
-    expect(activeMarker()).toHaveAttribute("data-record-marker", "3");
-    expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "3");
+    expect(activeMarkerFor(1)).not.toBeNull();
+    expect(activeMarkerFor(2)).not.toBeNull();
+    expect(activeSegmentPulseFor(1)).not.toBeNull();
+    expect(activeSegmentPulseFor(2)).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(activeMarkerFor(1)).toBeNull();
+    expect(activeMarkerFor(2)).not.toBeNull();
+    expect(activeSegmentPulseFor(1)).toBeNull();
+    expect(activeSegmentPulseFor(2)).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(850);
+    });
+    expect(activeMarkerFor(2)).not.toBeNull();
+    expect(activeMarkerFor(3)).not.toBeNull();
+    expect(activeSegmentPulseFor(2)).not.toBeNull();
+    expect(activeSegmentPulseFor(3)).not.toBeNull();
   });
 
   it("clears pending marker pulses when recording stops", () => {

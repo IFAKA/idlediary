@@ -16,7 +16,7 @@ type RecordButtonProps = {
 };
 
 const recordingMarkerSeconds = [1, 2, 3] as const;
-const markerPulseMs = 720;
+const markerPulseMs = 1150;
 const ringCircumference = 282.743;
 const segmentGap = 10;
 const segmentStep = ringCircumference / recordingMarkerSeconds.length;
@@ -60,7 +60,7 @@ function pointOnRing(second: number) {
 }
 
 export function RecordButton({ state, progress, disabled, onClick }: RecordButtonProps) {
-  const [activePulseSecond, setActivePulseSecond] = useState<number | null>(null);
+  const [activePulseSeconds, setActivePulseSeconds] = useState<number[]>([]);
   const pulseTimersRef = useRef<number[]>([]);
   const isRecording = state === "recording";
   const isSaving = state === "saving";
@@ -80,23 +80,25 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
 
     if (!isRecording) {
       const resetTimer = window.setTimeout(() => {
-        setActivePulseSecond(null);
+        setActivePulseSeconds([]);
       }, 0);
 
       return () => window.clearTimeout(resetTimer);
     }
 
     const resetTimer = window.setTimeout(() => {
-      setActivePulseSecond(null);
+      setActivePulseSeconds([]);
     }, 0);
     pulseTimersRef.current.push(resetTimer);
 
     for (const second of recordingMarkerSeconds) {
       const pulseTimer = window.setTimeout(() => {
-        setActivePulseSecond(second);
+        setActivePulseSeconds((currentSeconds) =>
+          currentSeconds.includes(second) ? currentSeconds : [...currentSeconds, second],
+        );
 
         const clearTimer = window.setTimeout(() => {
-          setActivePulseSecond((currentSecond) => (currentSecond === second ? null : currentSecond));
+          setActivePulseSeconds((currentSeconds) => currentSeconds.filter((currentSecond) => currentSecond !== second));
         }, markerPulseMs);
 
         pulseTimersRef.current.push(clearTimer);
@@ -195,7 +197,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
           );
         })}
         {recordingMarkerSeconds.map((second, index) => {
-          const isActivePulse = isRecording && activePulseSecond === second;
+          const isActivePulse = isRecording && activePulseSeconds.includes(second);
 
           return (
             <circle
@@ -216,7 +218,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
           );
         })}
         {recordingMarkerSeconds.map((second) => {
-          const isActivePulse = isRecording && activePulseSecond === second;
+          const isActivePulse = isRecording && activePulseSeconds.includes(second);
           const markerPoint = pointOnRing(second);
 
           return (
