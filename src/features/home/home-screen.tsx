@@ -357,15 +357,15 @@ function VlogCard({
     >
       <Link
         aria-label={`Open ${vlog.title}`}
-        className="group grid h-36 grid-cols-[144px_minmax(0,1fr)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-40 sm:grid-cols-[160px_minmax(0,1fr)]"
+        className="group grid grid-cols-[144px_minmax(0,1fr)] items-stretch overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:grid-cols-[160px_minmax(0,1fr)]"
         href={`/videos/${encodeURIComponent(vlog.id)}`}
       >
         <article className="contents">
-          <div className="relative h-full w-full bg-black">
+          <div className="relative min-h-full w-full bg-black">
             {thumbnailSrc && !thumbnailFailed ? (
               <img
                 alt=""
-                className="h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-cover"
                 decoding="async"
                 loading="lazy"
                 src={thumbnailSrc}
@@ -375,7 +375,7 @@ function VlogCard({
                 }}
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-black text-white/60">
+              <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-black text-white/60">
                 <FileVideo className="size-8" />
               </div>
             )}
