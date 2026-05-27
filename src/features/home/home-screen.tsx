@@ -74,6 +74,9 @@ function formatMimeType(mimeType: string) {
 
 export function HomeScreen() {
   const [state, setState] = useState<HomeState>({ status: "loading" });
+  const [highlightedVlogIds, setHighlightedVlogIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const mountedRef = useRef(false);
   const thumbnailBackfillsRef = useRef(new Set<string>());
   const videoCount = state.status === "ready" ? state.vlogs.length : null;
@@ -146,6 +149,9 @@ export function HomeScreen() {
     listVlogSummaries()
       .then(async (vlogs) => {
         const sortedVlogs = sortVlogsNewestFirst(vlogs);
+        const newVlogIds = sortedVlogs
+          .filter((vlog) => vlog.needsAction === true)
+          .map((vlog) => vlog.id);
         const handledVlogs = new Map<string, VlogSummary>();
 
         try {
@@ -163,6 +169,7 @@ export function HomeScreen() {
             : sortedVlogs;
 
         if (!mounted) return;
+        setHighlightedVlogIds(new Set(newVlogIds));
         setState({ status: "ready", vlogs: readyVlogs });
 
         void (async () => {
@@ -214,6 +221,7 @@ export function HomeScreen() {
                 {state.vlogs.map((vlog) => (
                   <VlogCard
                     key={vlog.id}
+                    isNew={highlightedVlogIds.has(vlog.id)}
                     vlog={vlog}
                     onThumbnailError={backfillVlogThumbnail}
                   />
@@ -251,9 +259,11 @@ function EmptyHistory() {
 }
 
 function VlogCard({
+  isNew,
   vlog,
   onThumbnailError,
 }: {
+  isNew: boolean;
   vlog: VlogSummary;
   onThumbnailError: (vlogId: string) => void;
 }) {
@@ -268,7 +278,9 @@ function VlogCard({
   return (
     <Link
       aria-label={`Open ${vlog.title}`}
-      className="group grid h-36 grid-cols-[144px_minmax(0,1fr)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-40 sm:grid-cols-[160px_minmax(0,1fr)]"
+      className={`group grid h-36 grid-cols-[144px_minmax(0,1fr)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-40 sm:grid-cols-[160px_minmax(0,1fr)] ${
+        isNew ? "new-video-card-highlight" : ""
+      }`}
       href={`/videos/${encodeURIComponent(vlog.id)}`}
     >
       <article className="contents">

@@ -208,6 +208,33 @@ describe("thumbnail rendering", () => {
     expect(cards[1]?.querySelector("video")).not.toBeInTheDocument();
   });
 
+  it("highlights saved video cards that were still marked new on entry", async () => {
+    const newVlog = vlog({ id: "vlog-new", needsAction: true });
+    const oldVlog = vlog({
+      id: "vlog-old",
+      createdAt: "2026-05-26T10:00:00.000Z",
+      needsAction: false,
+      title: "Yesterday",
+    });
+    mocks.listVlogSummaries.mockResolvedValueOnce([oldVlog, newVlog]);
+    mocks.markNeedsActionVlogsHandled.mockResolvedValueOnce([{ ...newVlog, needsAction: false }]);
+
+    act(() => {
+      root.render(<HomeScreen />);
+    });
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('a[aria-label^="Open "]')).toHaveLength(2);
+    });
+
+    expect(container.querySelector('a[aria-label="Open Two Seconds Today"]')).toHaveClass(
+      "new-video-card-highlight",
+    );
+    expect(container.querySelector('a[aria-label="Open Yesterday"]')).not.toHaveClass(
+      "new-video-card-highlight",
+    );
+  });
+
   it("does not publish a zero saved video count while loading history", async () => {
     const history = deferred<VlogRecord[]>();
     const savedVlog = vlog();

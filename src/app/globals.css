@@ -264,6 +264,46 @@ button {
   }
 }
 
+@keyframes new-video-card-glow {
+  0% {
+    border-color: hsl(var(--primary) / 0.68);
+    box-shadow:
+      0 0 0 0 hsl(var(--primary) / 0.5),
+      0 0 0 0 hsl(var(--primary) / 0);
+    transform: translateY(0);
+  }
+
+  42% {
+    border-color: hsl(var(--primary) / 0.95);
+    box-shadow:
+      0 0 0 4px hsl(var(--primary) / 0.2),
+      0 0 30px 0 hsl(var(--primary) / 0.34);
+    transform: translateY(-1px);
+  }
+
+  100% {
+    border-color: hsl(var(--memory) / 0.2);
+    box-shadow:
+      0 0 0 0 hsl(var(--primary) / 0),
+      0 0 0 0 hsl(var(--primary) / 0);
+    transform: translateY(0);
+  }
+}
+
+.new-video-card-highlight {
+  animation: new-video-card-glow 1.8s ease-out 2;
+  will-change: border-color, box-shadow, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-video-card-highlight {
+    animation: none;
+    border-color: hsl(var(--primary) / 0.75);
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.35);
+    will-change: auto;
+  }
+}
+
 @keyframes sparkle-breathe {
   0%,
   100% {
