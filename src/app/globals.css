@@ -292,80 +292,45 @@ button {
   }
 }
 
-@keyframes new-video-card-arrive {
+@keyframes new-video-card-pulse {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.985);
+    box-shadow:
+      0 0 0 0 hsl(var(--primary) / 0),
+      0 0 0 0 hsl(var(--primary) / 0),
+      0 0 0 hsl(var(--primary) / 0);
+  }
+
+  26% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.9),
+      0 0 0 9px hsl(var(--primary) / 0.28),
+      0 0 30px hsl(var(--primary) / 0.58);
+  }
+
+  56% {
+    opacity: 0.72;
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.68),
+      0 0 0 15px hsl(var(--primary) / 0.16),
+      0 0 42px hsl(var(--primary) / 0.38);
+  }
+
+  100% {
+    opacity: 0;
     box-shadow:
       0 0 0 1px hsl(var(--primary) / 0),
-      0 10px 20px hsl(var(--primary) / 0);
-  }
-
-  36% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.006);
-    box-shadow:
-      0 0 0 1px hsl(var(--primary) / 0.48),
-      0 18px 34px hsl(var(--primary) / 0.18);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    box-shadow:
-      0 0 0 1px hsl(var(--primary) / 0.18),
-      0 8px 18px hsl(var(--primary) / 0.08);
-  }
-}
-
-@keyframes new-video-card-sheen {
-  0% {
-    opacity: 0;
-    transform: translate3d(-140%, 0, 0) rotate(7deg);
-  }
-
-  12% {
-    opacity: 0.18;
-    transform: translate3d(-92%, 0, 0) rotate(9deg);
-  }
-
-  46% {
-    opacity: 0.52;
-    transform: translate3d(36%, 0, 0) rotate(13deg);
-  }
-
-  76% {
-    opacity: 0.2;
-    transform: translate3d(138%, 0, 0) rotate(16deg);
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate3d(214%, 0, 0) rotate(18deg);
-  }
-}
-
-@keyframes new-video-card-edge {
-  0% {
-    opacity: 0;
-  }
-
-  28% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
+      0 0 0 22px hsl(var(--primary) / 0),
+      0 0 54px hsl(var(--primary) / 0);
   }
 }
 
 .new-video-card-highlight {
   position: relative;
-  animation: new-video-card-arrive 920ms cubic-bezier(0.23, 1, 0.32, 1) both;
-  will-change: transform, opacity, box-shadow;
+  overflow: visible;
 }
 
-.new-video-card-highlight::before,
 .new-video-card-highlight::after {
   pointer-events: none;
   content: "";
@@ -375,32 +340,11 @@ button {
   z-index: 1;
 }
 
-.new-video-card-highlight::before {
-  inset: -34% auto -34% -22%;
-  width: 42%;
-  background:
-    linear-gradient(
-      90deg,
-      transparent 0%,
-      hsl(var(--primary) / 0.04) 22%,
-      hsl(var(--memory) / 0.13) 42%,
-      rgba(255, 255, 255, 0.22) 50%,
-      hsl(var(--memory) / 0.1) 58%,
-      transparent 82%
-    );
-  filter: blur(0.35px);
-  mix-blend-mode: plus-lighter;
-  transform-origin: center;
-  opacity: 0;
-  transform: translate3d(-140%, 0, 0) rotate(7deg);
-  will-change: transform, opacity;
-  animation: new-video-card-sheen 1.45s cubic-bezier(0.19, 1, 0.22, 1) both;
-}
-
 .new-video-card-highlight::after {
-  border: 1px solid hsl(var(--primary) / 0.42);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.12);
-  animation: new-video-card-edge 1.7s cubic-bezier(0.23, 1, 0.32, 1) both;
+  border: 1px solid hsl(var(--primary) / 0.78);
+  opacity: 0;
+  animation: new-video-card-pulse 2.2s cubic-bezier(0.33, 1, 0.68, 1) both;
+  will-change: opacity, box-shadow;
 }
 
 .saved-videos-scroll {
@@ -415,15 +359,12 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .new-video-card-highlight {
     animation: none;
-    border-color: hsl(var(--primary) / 0.8);
-    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.28);
-    will-change: auto;
   }
 
-  .new-video-card-highlight::before,
   .new-video-card-highlight::after {
     animation: none;
     opacity: 0;
+    will-change: auto;
   }
 }
 
