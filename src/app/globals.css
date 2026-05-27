@@ -293,12 +293,8 @@ button {
 }
 
 @keyframes new-video-card-shimmer {
-  0% {
-    left: -40%;
-  }
-
   100% {
-    left: 100%;
+    transform: translateX(100%);
   }
 }
 
@@ -311,21 +307,20 @@ button {
   pointer-events: none;
   content: "";
   position: absolute;
-  inset-block: 0;
-  left: -40%;
-  width: 40%;
+  inset: 0;
   border-radius: inherit;
   z-index: 1;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    hsl(var(--memory) / 0.12) 38%,
+    hsl(var(--memory) / 0.1) 42%,
     rgba(255, 255, 255, 0.24) 50%,
-    hsl(var(--memory) / 0.1) 62%,
+    hsl(var(--memory) / 0.1) 58%,
     transparent 100%
   );
+  transform: translateX(-100%);
   animation: new-video-card-shimmer 1.25s ease-in-out both;
-  will-change: left;
+  will-change: transform;
 }
 
 .saved-videos-scroll {
@@ -344,7 +339,7 @@ button {
 
   .new-video-card-highlight::after {
     animation: none;
-    left: 100%;
+    transform: translateX(100%);
     will-change: auto;
   }
 }
