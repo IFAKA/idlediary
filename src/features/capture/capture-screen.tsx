@@ -756,7 +756,7 @@ function LatestDraftButton({
                 src={src ?? undefined}
               />
             )}
-            <span className="absolute inset-0 bg-black/42" />
+            <span className="absolute inset-0 bg-black/56 backdrop-blur-[1px]" />
             {clipCount > 0 ? (
               <motion.span
                 className={`absolute inset-0 inline-flex items-center justify-center font-medium leading-none text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] ${draftCountTextSize}`}
