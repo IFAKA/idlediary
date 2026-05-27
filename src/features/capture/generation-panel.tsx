@@ -1,6 +1,15 @@
 "use client";
 
-import { BookOpen, Check, Circle, Film, LockKeyhole, Sparkles, WandSparkles } from "lucide-react";
+import {
+  BookOpen,
+  Check,
+  Circle,
+  Film,
+  LoaderCircle,
+  LockKeyhole,
+  Sparkles,
+  WandSparkles,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { Progress } from "@/components/ui/progress";
 import type { GenerationProgress } from "@/features/generation/generation";
@@ -117,12 +126,17 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
                     isComplete
                       ? "border-memory bg-memory text-memory-foreground"
                       : isActive
-                        ? "border-memory/70 bg-memory/18 text-memory animate-pulse motion-reduce:animate-none"
+                        ? "border-memory/70 bg-memory/18 text-memory"
                         : "border-muted-foreground/30 bg-black/24 text-muted-foreground/70"
                   }`}
                 >
                   {isComplete ? (
                     <Check className="size-4" aria-hidden="true" />
+                  ) : isActive ? (
+                    <LoaderCircle
+                      className="size-4 animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <Circle className="size-3" aria-hidden="true" />
                   )}
