@@ -34,31 +34,31 @@ const progressCopy: Record<
 > = {
   idle: {
     label: "Preparing",
-    detail: "Setting up the local video renderer",
+    detail: "Getting your diary space ready",
     technical: technicalSummary,
   },
   loading: {
-    label: "Loading local editor",
-    detail: "Starting the on-device FFmpeg engine",
+    label: "Opening your diary",
+    detail: "Warming up your private editor",
     technical: `${technicalSummary} | @ffmpeg/ffmpeg wasm core`,
   },
   writing: {
-    label: "Collecting clips",
-    detail: "Copying today's clips into the local renderer",
+    label: "Gathering moments",
+    detail: "Pulling today's little clips together",
     technical: `${technicalSummary} | concat demuxer input list`,
   },
   rendering: {
-    label: "Normalizing clips",
-    detail: "Centering video, balancing audio, and encoding MP4",
+    label: "Smoothing clips",
+    detail: "Making your clips feel smooth",
     technical: technicalSummary,
   },
   saving: {
-    label: "Saving result",
-    detail: "Storing the finished diary video locally",
+    label: "Saving privately",
+    detail: "Keeping the finished diary on your device",
     technical: exportProfile.output,
   },
   done: {
-    label: "Done",
+    label: "Ready",
     detail: "Your diary video is ready",
     technical: exportProfile.output,
   },
@@ -175,9 +175,9 @@ export function resetGenerationForTests() {
 }
 
 function renderingLabelFor(value: number) {
-  if (value >= 78) return "Encoding MP4";
-  if (value >= 52) return "Balancing audio";
-  return "Normalizing clips";
+  if (value >= 78) return "Making playback ready";
+  if (value >= 52) return "Softening audio";
+  return "Smoothing clips";
 }
 
 function emitProgress(progress: GenerationProgress) {

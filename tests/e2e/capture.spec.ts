@@ -350,7 +350,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Make video" })).toBeVisible();
   await expect(
     page
-      .getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ }),
+      .getByRole("heading", { name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/ }),
   ).not.toBeVisible();
   await expect
     .poll(
@@ -366,7 +366,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await page.getByRole("button", { name: "Make video" }).click();
 
   const generationHeading = page.getByRole("heading", {
-    name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/,
+    name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
   });
   await expect(generationHeading.first()).toBeVisible();
   await expect(generationHeading).toHaveCount(1);
@@ -374,9 +374,9 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Draft clips" })).not.toBeVisible();
   await expect(page.getByRole("link", { name: "Back to camera" })).toHaveCount(0);
   await expect(page.locator("header").getByText(/^\d+ clips$/)).toHaveCount(0);
-  await expect(page.getByText("Centering video, balancing audio, and encoding MP4")).toBeVisible();
-  await expect(page.getByText("scale -> crop -> fps -> setsar -> format")).toBeVisible();
-  await expect(page.getByText("movflags +faststart")).toBeVisible();
+  await expect(page.getByText("Making your clips feel smooth")).toBeVisible();
+  await expect(page.getByText("This stays on your device.")).toBeVisible();
+  await expect(page.getByText("scale -> crop -> fps -> setsar -> format")).toHaveCount(0);
   await expect
     .poll(() =>
       page.evaluate(
@@ -795,7 +795,7 @@ test("reloading during generation returns to review with clips preserved", async
   await expect(
     page
       .getByRole("heading", {
-        name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/,
+        name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
       })
       .first(),
   ).toBeVisible();
@@ -807,7 +807,7 @@ test("reloading during generation returns to review with clips preserved", async
   await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview clip 1" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/ }),
+    page.getByRole("heading", { name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/ }),
   ).not.toBeVisible();
 });
 
@@ -820,7 +820,7 @@ test("long-running generation shows local safety reassurance", async ({ page }) 
 
   await page.getByRole("button", { name: "Make video" }).click();
 
-  await expect(page.getByText("Still working locally. Your clips are safe.")).toBeVisible({
+  await expect(page.getByText("Still working privately. Your clips are safe.")).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByRole("progressbar")).toBeVisible();
@@ -894,7 +894,7 @@ test("gallery reorders clips and generation receives UI order", async ({ page })
   await expect(
     page
       .getByRole("heading", {
-        name: /Preparing|Loading local editor|Collecting clips|Normalizing clips|Balancing audio|Encoding MP4|Saving result|Done/,
+        name: /Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
       })
       .first(),
   ).toBeVisible();

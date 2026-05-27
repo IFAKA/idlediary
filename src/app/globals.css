@@ -264,6 +264,19 @@ button {
   }
 }
 
+@keyframes sparkle-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
 .safe-screen {
   min-height: 100svh;
   padding-top: max(16px, env(safe-area-inset-top));

@@ -561,7 +561,7 @@ export function CaptureScreen() {
           </motion.div>
         )}
       </AnimatePresence>
-      <DebugDrawer />
+      {mode === "generating" ? null : <DebugDrawer />}
     </main>
   );
 }

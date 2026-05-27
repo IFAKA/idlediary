@@ -127,13 +127,13 @@ describe("generation export profile", () => {
     expect(execArgs).toEqual([buildFfmpegArgs()]);
     expect(progress.map((entry) => entry.label)).toEqual(
       expect.arrayContaining([
-        "Loading local editor",
-        "Collecting clips",
-        "Normalizing clips",
-        "Balancing audio",
-        "Encoding MP4",
-        "Saving result",
-        "Done",
+        "Opening your diary",
+        "Gathering moments",
+        "Smoothing clips",
+        "Softening audio",
+        "Making playback ready",
+        "Saving privately",
+        "Ready",
       ]),
     );
     expect(progress.some((entry) => entry.technical.includes("H.264 MP4"))).toBe(true);

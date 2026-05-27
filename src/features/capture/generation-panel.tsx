@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Circle, Disc3, FileVideo2 } from "lucide-react";
+import { BookOpen, Check, Circle, Film, LockKeyhole, Sparkles, WandSparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import type { GenerationProgress } from "@/features/generation/generation";
@@ -19,18 +19,18 @@ type GenerationStage = {
 const reassuranceDelayMs = 8_000;
 
 const stages: GenerationStage[] = [
-  { id: "loading", label: "Starting editor" },
-  { id: "writing", label: "Collecting clips" },
-  { id: "normalizing", label: "Normalizing" },
-  { id: "encoding", label: "Encoding" },
-  { id: "saving", label: "Saving" },
+  { id: "loading", label: "Opening your diary" },
+  { id: "writing", label: "Gathering moments" },
+  { id: "normalizing", label: "Smoothing clips" },
+  { id: "encoding", label: "Making playback ready" },
+  { id: "saving", label: "Saving privately" },
 ];
 
 export function activeGenerationStage(progress: Pick<GenerationProgress, "step" | "label" | "value">) {
   if (progress.step === "done") return "saving";
   if (progress.step === "saving") return "saving";
   if (progress.step === "rendering") {
-    return progress.label === "Encoding MP4" || progress.value >= 78 ? "encoding" : "normalizing";
+    return progress.value >= 78 ? "encoding" : "normalizing";
   }
   if (progress.step === "writing") return "writing";
   return "loading";
@@ -53,7 +53,6 @@ export function completedGenerationStages(
 }
 
 export function GenerationPanel({ progress }: GenerationPanelProps) {
-  const logs = progress.logs.slice(-5);
   const activeStage = activeGenerationStage(progress);
   const completedStages = completedGenerationStages(progress);
   const [reassuranceStep, setReassuranceStep] = useState<GenerationProgress["step"] | null>(null);
@@ -76,38 +75,25 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
     <div className="relative z-10 flex h-[100svh] flex-col justify-end overflow-hidden top-level-screen">
       <div
         aria-hidden="true"
-        className="absolute inset-x-[-18%] bottom-6 h-72 bg-[radial-gradient(circle,hsl(var(--memory)/0.18),transparent_62%)]"
+        className="absolute inset-x-[-22%] bottom-[-7rem] h-[34rem] bg-[radial-gradient(circle_at_50%_55%,hsl(var(--memory)/0.26),transparent_58%)]"
       />
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 bottom-28 top-[var(--app-header-background-start)] overflow-hidden rounded-lg border border-memory/20 bg-surface-soft/45 p-4 text-[11px] leading-5 text-memory/40 [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_72%,transparent)]"
-      >
-        <p>Arranging today&apos;s saved moments</p>
-        <p>Keeping the entry local</p>
-        <p>Preparing a quiet playback copy</p>
-        <p>{progress.technical}</p>
-        <p>movflags +faststart</p>
-        {logs.map((log, index) => (
-          <p key={`${log}-${index}`} className="truncate">
-            {log}
-          </p>
-        ))}
-      </div>
+        className="absolute inset-x-0 bottom-24 top-[var(--app-header-background-start)] overflow-hidden bg-[linear-gradient(180deg,transparent,hsl(var(--surface-soft)/0.56)_44%,transparent)] [mask-image:linear-gradient(to_bottom,transparent,black_16%,black_76%,transparent)]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute bottom-40 left-5 size-2 rounded-full bg-primary/60 shadow-[64px_-42px_0_hsl(var(--memory)/0.42),154px_18px_0_hsl(var(--primary)/0.36),246px_-28px_0_hsl(var(--accent)/0.38)]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-5 bottom-28 h-px bg-gradient-to-r from-transparent via-memory/28 to-transparent"
+      />
 
       <div className="relative mb-6 w-full max-w-sm">
-        <div className="mb-5 flex items-center gap-3 text-memory" aria-hidden="true">
-          <Disc3 className="size-8 animate-spin motion-reduce:animate-none" />
-          <div className="relative h-8 w-20 overflow-hidden rounded-full border border-memory/25 bg-black/20">
-            <span className="absolute left-3 top-1/2 size-2 -translate-y-1/2 rounded-full bg-memory/70 animate-[local-orbit_1.6s_linear_infinite] motion-reduce:animate-none" />
-            <span
-              className="absolute left-8 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary/80 animate-[local-orbit_1.6s_linear_infinite] motion-reduce:animate-none"
-              style={{ animationDelay: "0.18s" }}
-            />
-            <span
-              className="absolute left-[52px] top-1/2 size-2 -translate-y-1/2 rounded-full bg-accent/80 animate-[local-orbit_1.6s_linear_infinite] motion-reduce:animate-none"
-              style={{ animationDelay: "0.36s" }}
-            />
-          </div>
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-memory/20 bg-black/24 px-3 py-2 text-xs font-semibold text-memory shadow-[0_12px_30px_hsl(var(--memory)/0.12)]">
+          <Sparkles className="size-4 animate-[sparkle-breathe_1.9s_ease-in-out_infinite] motion-reduce:animate-none" aria-hidden="true" />
+          <span>Private diary magic</span>
         </div>
 
         <ol className="relative mb-5 grid gap-2">
@@ -118,18 +104,18 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
             return (
               <li
                 key={stage.id}
-                className={`relative grid min-h-12 grid-cols-[32px_minmax(0,1fr)_72px] items-center gap-3 overflow-hidden rounded-lg border px-3 py-2 transition ${
+                className={`relative grid min-h-14 grid-cols-[36px_minmax(0,1fr)_36px] items-center gap-3 overflow-hidden rounded-lg border px-3 py-2.5 transition ${
                   isActive
-                    ? "border-memory/60 bg-memory/15 text-foreground shadow-[0_0_24px_hsl(var(--memory)/0.16)]"
+                    ? "border-memory/55 bg-memory/16 text-foreground shadow-[0_0_28px_hsl(var(--memory)/0.18)]"
                     : isComplete
-                      ? "border-memory/24 bg-surface-soft/58 text-foreground"
-                      : "border-border/70 bg-black/18 text-muted-foreground"
+                      ? "border-memory/24 bg-surface-soft/54 text-foreground"
+                      : "border-border/62 bg-black/14 text-muted-foreground"
                 } motion-reduce:transition-none`}
               >
                 {isActive ? (
                   <span
                     aria-hidden="true"
-                    className="absolute inset-y-0 -left-20 w-24 rotate-6 bg-memory/12 blur-sm animate-[generation-shine_1.8s_ease-in-out_infinite] motion-reduce:hidden"
+                    className="absolute inset-y-0 -left-20 w-24 rotate-6 bg-memory/14 blur-sm animate-[generation-shine_2.4s_ease-in-out_infinite] motion-reduce:hidden"
                   />
                 ) : null}
                 <span
@@ -160,17 +146,25 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
           <p className="text-sm leading-6 text-muted-foreground">
             {progress.detail}
           </p>
+          <p className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-memory/85">
+            <LockKeyhole className="size-3.5" aria-hidden="true" />
+            This stays on your device.
+          </p>
           <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-memory/80">
             {progress.label}
           </p>
           {showReassurance ? (
             <p className="mt-3 rounded-lg border border-memory/20 bg-black/25 px-3 py-2 text-xs leading-5 text-muted-foreground">
-              Still working locally. Your clips are safe.
+              Still working privately. Your clips are safe.
             </p>
           ) : null}
         </div>
       </div>
-      <Progress indicatorClassName="bg-memory" value={progress.value} />
+      <Progress
+        className="bg-memory/22"
+        indicatorClassName="bg-gradient-to-r from-primary via-memory to-accent"
+        value={progress.value}
+      />
     </div>
   );
 }
@@ -188,19 +182,11 @@ function StageVisual({
 
   if (id === "loading") {
     return (
-      <span
-        aria-hidden="true"
-        className={`relative h-7 w-16 ${activeClass}`}
-        data-generation-motion="decorative-loop"
-      >
-        <span className="absolute left-1 top-2.5 size-2 rounded-full bg-memory animate-[local-orbit_1.5s_linear_infinite] motion-reduce:animate-none" />
-        <span
-          className="absolute left-7 top-2.5 size-2 rounded-full bg-primary animate-[local-orbit_1.5s_linear_infinite] motion-reduce:animate-none"
-          style={{ animationDelay: "0.2s" }}
-        />
-        <span
-          className="absolute left-[52px] top-2.5 size-2 rounded-full bg-accent animate-[local-orbit_1.5s_linear_infinite] motion-reduce:animate-none"
-          style={{ animationDelay: "0.4s" }}
+      <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
+        <BookOpen
+          className={`size-5 text-memory ${
+            active ? "animate-[sparkle-breathe_1.7s_ease-in-out_infinite] motion-reduce:animate-none" : ""
+          }`}
         />
       </span>
     );
@@ -208,45 +194,33 @@ function StageVisual({
 
   if (id === "writing") {
     return (
-      <span aria-hidden="true" className={`relative h-7 w-16 ${activeClass}`}>
-        {[0, 1, 2].map((index) => (
-          <span
-            key={index}
-            className={`absolute h-3 w-8 rounded-sm border border-memory/35 bg-memory/20 ${
-              active ? "animate-[clip-stack_1.8s_ease-in-out_infinite] motion-reduce:animate-none" : ""
-            }`}
-            style={{
-              animationDelay: `${index * 0.14}s`,
-              left: `${index * 10}px`,
-              top: `${4 + index * 3}px`,
-            }}
-          />
-        ))}
+      <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
+        <Film
+          className={`size-5 text-memory ${
+            active ? "animate-[card-land_1.8s_ease-in-out_infinite] motion-reduce:animate-none" : ""
+          }`}
+        />
       </span>
     );
   }
 
   if (id === "normalizing" || id === "encoding") {
     return (
-      <span aria-hidden="true" className={`flex h-7 w-16 items-center gap-1 ${activeClass}`}>
-        {[0, 1, 2, 3, 4].map((index) => (
-          <span
-            key={index}
-            className={`h-6 w-2 rounded-[2px] bg-memory/45 ${
-              active ? "animate-[video-frame_1.3s_ease-in-out_infinite] motion-reduce:animate-none" : ""
-            }`}
-            style={{ animationDelay: `${index * 0.08}s` }}
-          />
-        ))}
+      <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
+        <WandSparkles
+          className={`size-5 text-memory ${
+            active ? "animate-[sparkle-breathe_1.45s_ease-in-out_infinite] motion-reduce:animate-none" : ""
+          }`}
+        />
       </span>
     );
   }
 
   return (
-    <span aria-hidden="true" className={`relative flex h-7 w-16 items-center justify-center ${activeClass}`}>
-      <FileVideo2
+    <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
+      <LockKeyhole
         className={`size-6 text-memory ${
-          active ? "animate-[card-land_1.6s_ease-in-out_infinite] motion-reduce:animate-none" : ""
+          active ? "animate-[sparkle-breathe_1.7s_ease-in-out_infinite] motion-reduce:animate-none" : ""
         }`}
       />
     </span>

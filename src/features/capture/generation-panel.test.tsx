@@ -22,7 +22,7 @@ describe("GenerationPanel", () => {
     vi.useRealTimers();
   });
 
-  function renderPanel(progress = generationProgress("rendering", 52, { label: "Balancing audio" })) {
+  function renderPanel(progress = generationProgress("rendering", 52, { label: "Softening audio" })) {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -39,7 +39,7 @@ describe("GenerationPanel", () => {
     expect(activeGenerationStage(generationProgress("loading", 8))).toBe("loading");
     expect(activeGenerationStage(generationProgress("writing", 18))).toBe("writing");
     expect(
-      activeGenerationStage(generationProgress("rendering", 24, { label: "Normalizing clips" })),
+      activeGenerationStage(generationProgress("rendering", 24, { label: "Smoothing clips" })),
     ).toBe("normalizing");
     expect(activeGenerationStage(generationProgress("saving", 94))).toBe("saving");
     expect(activeGenerationStage(generationProgress("done", 100))).toBe("saving");
@@ -47,20 +47,20 @@ describe("GenerationPanel", () => {
 
   it("distinguishes rendering labels before the encoding stage", () => {
     expect(
-      activeGenerationStage(generationProgress("rendering", 24, { label: "Normalizing clips" })),
+      activeGenerationStage(generationProgress("rendering", 24, { label: "Smoothing clips" })),
     ).toBe("normalizing");
     expect(
-      activeGenerationStage(generationProgress("rendering", 56, { label: "Balancing audio" })),
+      activeGenerationStage(generationProgress("rendering", 56, { label: "Softening audio" })),
     ).toBe("normalizing");
     expect(
-      activeGenerationStage(generationProgress("rendering", 78, { label: "Encoding MP4" })),
+      activeGenerationStage(generationProgress("rendering", 78, { label: "Making playback ready" })),
     ).toBe("encoding");
   });
 
   it("marks earlier stages complete and all stages complete when done", () => {
     expect([
       ...completedGenerationStages(
-        generationProgress("rendering", 78, { label: "Encoding MP4" }),
+        generationProgress("rendering", 78, { label: "Making playback ready" }),
       ),
     ]).toEqual(["loading", "writing", "normalizing"]);
 
@@ -73,21 +73,22 @@ describe("GenerationPanel", () => {
     ]);
   });
 
-  it("keeps the factual status, progress bar, and reduced-motion classes visible", () => {
+  it("keeps the friendly status, privacy note, progress bar, and reduced-motion classes visible", () => {
     const view = renderPanel(
       generationProgress("rendering", 56, {
-        label: "Balancing audio",
+        label: "Softening audio",
         logs: ["scale -> crop -> fps -> setsar -> format"],
       }),
     );
 
-    expect(view.textContent).toContain("Starting editor");
-    expect(view.textContent).toContain("Collecting clips");
-    expect(view.textContent).toContain("Normalizing");
-    expect(view.textContent).toContain("Encoding");
-    expect(view.textContent).toContain("Saving");
-    expect(view.textContent).toContain("Balancing audio");
-    expect(view.textContent).toContain("scale -> crop -> fps -> setsar -> format");
+    expect(view.textContent).toContain("Opening your diary");
+    expect(view.textContent).toContain("Gathering moments");
+    expect(view.textContent).toContain("Smoothing clips");
+    expect(view.textContent).toContain("Making playback ready");
+    expect(view.textContent).toContain("Saving privately");
+    expect(view.textContent).toContain("Softening audio");
+    expect(view.textContent).toContain("This stays on your device.");
+    expect(view.textContent).not.toContain("scale -> crop -> fps -> setsar -> format");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();
     expect(view.querySelector('[class*="motion-reduce:animate-none"]')).not.toBeNull();
   });
@@ -96,12 +97,12 @@ describe("GenerationPanel", () => {
     vi.useFakeTimers();
     const view = renderPanel(generationProgress("loading", 8));
 
-    expect(view.textContent).not.toContain("Still working locally. Your clips are safe.");
+    expect(view.textContent).not.toContain("Still working privately. Your clips are safe.");
 
     act(() => {
       vi.advanceTimersByTime(8_000);
     });
 
-    expect(view.textContent).toContain("Still working locally. Your clips are safe.");
+    expect(view.textContent).toContain("Still working privately. Your clips are safe.");
   });
 });
