@@ -5,6 +5,7 @@ import { ArrowLeft, Clapperboard, Layers2, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
+import { ItemCounter } from "@/components/item-counter";
 import { Button } from "@/components/ui/button";
 import { useClips } from "@/features/clips/use-clips";
 import {
@@ -375,7 +376,10 @@ export function CaptureScreen() {
         ),
         trailing: (
           <div className="px-1 py-1 text-right">
-            <p className="text-sm font-semibold">{clips.clips.length} clips</p>
+            <p className="whitespace-nowrap text-sm font-semibold">
+              <ItemCounter value={clips.clips.length} />{" "}
+              {clips.clips.length === 1 ? "clip" : "clips"}
+            </p>
           </div>
         ),
       };

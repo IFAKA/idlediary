@@ -11,6 +11,7 @@ import {
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
+import { ItemCounter } from "@/components/item-counter";
 import { Button } from "@/components/ui/button";
 import {
   getThumbnailObjectUrlForVlog,
@@ -73,6 +74,7 @@ function formatMimeType(mimeType: string) {
 
 export function HomeScreen() {
   const [state, setState] = useState<HomeState>({ status: "loading", vlogs: [] });
+  const videoCount = state.vlogs.length;
   const headerConfig = useMemo<AppHeaderConfig>(
     () => ({
       eyebrow: "IdleDiary",
@@ -84,8 +86,15 @@ export function HomeScreen() {
           </Link>
         </Button>
       ),
+      trailing: (
+        <div className="px-1 py-1 text-right">
+          <p className="whitespace-nowrap text-sm font-semibold">
+            <ItemCounter value={videoCount} /> {videoCount === 1 ? "video" : "videos"}
+          </p>
+        </div>
+      ),
     }),
-    [],
+    [videoCount],
   );
 
   useAppHeader(headerConfig);

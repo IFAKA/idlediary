@@ -161,7 +161,7 @@ function HeaderActionSlot({
         marginRight: side === "leading" ? 16 : 0,
         opacity: 1,
         scale: 1,
-        width: 56,
+        width: side === "trailing" ? 84 : 56,
       }}
       className={cn(
         "pointer-events-auto flex h-14 shrink-0 items-start overflow-hidden",
