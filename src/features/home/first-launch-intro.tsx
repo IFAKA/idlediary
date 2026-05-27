@@ -1,9 +1,16 @@
 "use client";
 
 import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Camera, CircleDot, LockKeyhole, Sparkles } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import {
+  motion,
+  useAnimationControls,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from "motion/react";
 import { Button } from "@/components/ui/button";
 
 type FirstLaunchIntroProps = {
@@ -47,9 +54,83 @@ const mountDuration = 0.42;
 const cardMountDuration = 0.38;
 const buttonMountDelay = mountDuration + steps.length * 0.08;
 const blinkDelay = buttonMountDelay + 0.58;
+const blinkDuration = 0.34;
+const blinkEase = [0.25, 1, 0.5, 1] as const;
+const pupilTravel = 22;
 
 export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
   const shouldReduceMotion = useReducedMotion() === true;
+  const iconRef = useRef<HTMLButtonElement>(null);
+  const [isPupilAwake, setIsPupilAwake] = useState(false);
+  const iconControls = useAnimationControls();
+  const blinkControls = useAnimationControls();
+  const pupilX = useMotionValue(256);
+  const pupilY = useMotionValue(256);
+  const smoothPupilX = useSpring(pupilX, { stiffness: 180, damping: 24, mass: 0.45 });
+  const smoothPupilY = useSpring(pupilY, { stiffness: 180, damping: 24, mass: 0.45 });
+
+  useEffect(() => {
+    if (shouldReduceMotion) return;
+
+    const awakeTimer = window.setTimeout(
+      () => setIsPupilAwake(true),
+      (blinkDelay + blinkDuration + 0.08) * 1000,
+    );
+
+    void iconControls.start({
+      scaleY: [1, 0.985, 1],
+      transition: { delay: blinkDelay, duration: blinkDuration, ease: blinkEase },
+    });
+    void blinkControls.start({
+      scaleY: [0, 1, 0],
+      transition: {
+        delay: blinkDelay,
+        duration: blinkDuration,
+        ease: blinkEase,
+        times: [0, 0.42, 1],
+      },
+    });
+
+    return () => window.clearTimeout(awakeTimer);
+  }, [blinkControls, iconControls, shouldReduceMotion]);
+
+  const updatePupilFromPointer = useCallback((clientX: number, clientY: number) => {
+    if (iconRef.current === null) return;
+    const bounds = iconRef.current.getBoundingClientRect();
+    const pointerX = (clientX - (bounds.left + bounds.width / 2)) / bounds.width;
+    const pointerY = (clientY - (bounds.top + bounds.height / 2)) / bounds.height;
+    const distance = Math.hypot(pointerX, pointerY);
+    const clamped = distance > 0.5 ? 0.5 / distance : 1;
+
+    pupilX.set(256 + pointerX * clamped * pupilTravel * 2);
+    pupilY.set(256 + pointerY * clamped * pupilTravel * 2);
+  }, [pupilX, pupilY]);
+
+  useEffect(() => {
+    if (shouldReduceMotion || !isPupilAwake) return;
+
+    function handleWindowPointerMove(event: globalThis.PointerEvent) {
+      if (event.pointerType === "touch") return;
+      updatePupilFromPointer(event.clientX, event.clientY);
+    }
+
+    window.addEventListener("pointermove", handleWindowPointerMove);
+    return () => window.removeEventListener("pointermove", handleWindowPointerMove);
+  }, [isPupilAwake, shouldReduceMotion, updatePupilFromPointer]);
+
+  function replayBlink() {
+    if (shouldReduceMotion) return;
+
+    setIsPupilAwake(true);
+    void iconControls.start({
+      scaleY: [1, 0.982, 1],
+      transition: { duration: blinkDuration, ease: blinkEase },
+    });
+    void blinkControls.start({
+      scaleY: [0, 1, 0],
+      transition: { duration: blinkDuration, ease: blinkEase, times: [0, 0.42, 1] },
+    });
+  }
 
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden">
@@ -74,14 +155,15 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
               className="absolute inset-3 rounded-[2rem] bg-primary/28 blur-3xl"
               aria-hidden="true"
             />
-            <motion.div
-              className="relative flex size-28 items-center justify-center rounded-[1.85rem] border border-primary/30 bg-background/88 p-1.5 shadow-[0_24px_80px_hsl(var(--primary)/0.24)] min-[390px]:size-32"
-              animate={shouldReduceMotion ? undefined : { scaleY: [1, 0.985, 1] }}
-              transition={
-                shouldReduceMotion
-                  ? undefined
-                  : { delay: blinkDelay, duration: 0.34, ease: [0.25, 1, 0.5, 1] }
-              }
+            <motion.button
+              ref={iconRef}
+              className="relative flex size-28 cursor-pointer items-center justify-center rounded-[1.85rem] border border-primary/30 bg-background/88 p-1.5 shadow-[0_24px_80px_hsl(var(--primary)/0.24)] outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-[390px]:size-32"
+              animate={shouldReduceMotion ? undefined : iconControls}
+              onClick={replayBlink}
+              aria-label="Replay icon blink"
+              type="button"
+              whileHover={shouldReduceMotion ? undefined : { scale: 1.015 }}
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.985 }}
             >
               <Image
                 className="size-full rounded-[1.48rem] min-[390px]:rounded-[1.58rem]"
@@ -103,49 +185,39 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                   </clipPath>
                 </defs>
                 <g clipPath="url(#intro-icon-blink-clip)">
+                  <circle cx="256" cy="256" fill="#de728d" r="86" />
+                  <motion.circle
+                    cx={shouldReduceMotion ? 256 : smoothPupilX}
+                    cy={shouldReduceMotion ? 256 : smoothPupilY}
+                    fill="#0e0a0c"
+                    r="84"
+                  />
+                  <circle cx="338" cy="176" fill="#b89bd5" r="30" />
+                </g>
+                <g clipPath="url(#intro-icon-blink-clip)">
                   <motion.rect
+                    animate={shouldReduceMotion ? undefined : blinkControls}
                     fill="#0e0a0c"
                     height="146"
                     width="292"
                     x="110"
                     y="110"
                     initial={{ scaleY: 0 }}
-                    animate={shouldReduceMotion ? undefined : { scaleY: [0, 1, 0] }}
                     style={{ originY: 0 }}
-                    transition={
-                      shouldReduceMotion
-                        ? undefined
-                        : {
-                            delay: blinkDelay,
-                            duration: 0.34,
-                            ease: [0.25, 1, 0.5, 1],
-                            times: [0, 0.42, 1],
-                          }
-                    }
                   />
                   <motion.rect
+                    animate={shouldReduceMotion ? undefined : blinkControls}
                     fill="#0e0a0c"
                     height="146"
                     width="292"
                     x="110"
                     y="256"
                     initial={{ scaleY: 0 }}
-                    animate={shouldReduceMotion ? undefined : { scaleY: [0, 1, 0] }}
                     style={{ originY: 1 }}
-                    transition={
-                      shouldReduceMotion
-                        ? undefined
-                        : {
-                            delay: blinkDelay,
-                            duration: 0.34,
-                            ease: [0.25, 1, 0.5, 1],
-                            times: [0, 0.42, 1],
-                          }
-                    }
                   />
                 </g>
               </svg>
-            </motion.div>
+            </motion.button>
           </div>
 
           <h1 className="mt-5 text-[2.65rem] font-semibold leading-none tracking-normal min-[390px]:text-5xl">
