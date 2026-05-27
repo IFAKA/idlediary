@@ -298,9 +298,6 @@ export function HomeScreen() {
                   />
                 ))}
               </div>
-              <div className="flex justify-center pb-10">
-                <SupportLink className="border-transparent bg-transparent text-muted-foreground hover:border-memory/25 hover:text-foreground" />
-              </div>
             </div>
           ) : (
             <EmptyHistory />
