@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Clapperboard, Layers2, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import { useClips } from "@/features/clips/use-clips";
 import { getObjectUrlForClip, releaseAllVlogObjectUrls } from "@/features/clips/media-cache";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
@@ -109,8 +108,7 @@ export function CaptureScreen() {
     try {
       await camera.start();
     } catch (error) {
-      const appError = reportError(error);
-      toast.error(appError.userMessage);
+      reportError(error);
     }
   }, [camera]);
 
@@ -142,8 +140,7 @@ export function CaptureScreen() {
             return;
           }
         } catch (error) {
-          const appError = reportError(error);
-          toast.error(appError.userMessage);
+          reportError(error);
         }
 
         setVlog(null);
@@ -235,8 +232,7 @@ export function CaptureScreen() {
       setVlog(null);
       showCapture("push");
     } catch (error) {
-      const appError = reportError(error);
-      toast.error(appError.userMessage);
+      reportError(error);
       setVlog(null);
       showCapture("push");
     }
@@ -244,17 +240,14 @@ export function CaptureScreen() {
 
   const captureClip = async () => {
     if (clipLimitReached) {
-      toast("Session limit reached for v1.");
       return;
     }
 
     try {
       const blob = await recorder.record();
       await clips.addClip(blob, 2000);
-      toast.success("Saved");
     } catch (error) {
-      const appError = reportError(error);
-      toast.error(appError.userMessage);
+      reportError(error);
     }
   };
 
@@ -267,7 +260,6 @@ export function CaptureScreen() {
     const selectedClips = (reviewClips ?? clips.clips).slice(0, 20);
 
     if (!clips.session || clips.loading || selectedClips.length === 0) {
-      toast.error("Record at least one clip first.");
       return;
     }
 
@@ -282,10 +274,9 @@ export function CaptureScreen() {
       await saveVlog(nextVlog);
       showResult(nextVlog, "replace");
     } catch (error) {
-      const appError = reportError(error);
+      reportError(error);
       setGenerationProgress(makeGenerationProgress("error", 0));
       showReview("replace");
-      toast.error(appError.userMessage);
     } finally {
       setIsFinishing(false);
     }
@@ -351,22 +342,18 @@ export function CaptureScreen() {
                     await clearGeneratedVlogForSession(clips.session.id);
                   }
                   releaseAllVlogObjectUrls();
-                  toast("Draft cleared");
                   return true;
                 } catch (error) {
-                  const appError = reportError(error);
-                  toast.error(appError.userMessage);
+                  reportError(error);
                   return false;
                 }
               }}
               onDeleteClip={async (id) => {
                 try {
                   await clips.removeClip(id);
-                  toast("Clip deleted");
                   return true;
                 } catch (error) {
-                  const appError = reportError(error);
-                  toast.error(appError.userMessage);
+                  reportError(error);
                   return false;
                 }
               }}
@@ -376,8 +363,7 @@ export function CaptureScreen() {
                   await clips.reorderClips(clipIds);
                   return true;
                 } catch (error) {
-                  const appError = reportError(error);
-                  toast.error(appError.userMessage);
+                  reportError(error);
                   return false;
                 }
               }}

@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Toaster } from "@/components/ui/sonner";
 import { PwaRegister } from "./pwa-register";
 import "./globals.css";
 
@@ -31,7 +30,6 @@ export default function RootLayout({
       <body>
         {children}
         <PwaRegister />
-        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );
