@@ -370,7 +370,7 @@ export function CaptureScreen() {
                 </p>
                 <h1 className="mt-1 text-2xl font-semibold">No pressure</h1>
               </div>
-              <div className="rounded-md border bg-black/35 px-3 py-2 text-right backdrop-blur">
+              <div className="rounded-md border bg-black/45 px-3 py-2 text-right">
                 <p className="text-xl font-semibold">{clips.clips.length}</p>
                 <p className="text-xs text-muted-foreground">clips</p>
               </div>
@@ -397,7 +397,7 @@ export function CaptureScreen() {
               <motion.button
                 aria-label="Review draft clips"
                 aria-disabled={!canReview}
-                className="grid min-h-20 w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-3 rounded-lg border bg-black/40 p-3 text-left backdrop-blur-xl transition hover:bg-black/50 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45"
+                className="grid min-h-20 w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-3 rounded-lg border bg-black/50 p-3 text-left transition hover:bg-black/60 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45"
                 data-disabled={!canReview}
                 disabled={!canReview}
                 layoutId="draft-card"

@@ -89,6 +89,22 @@ button {
   touch-action: manipulation;
 }
 
+.record-progress-ring {
+  animation-name: record-progress-ring;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes record-progress-ring {
+  from {
+    stroke-dashoffset: 282.743;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .safe-screen {
   min-height: 100svh;
   padding-top: max(16px, env(safe-area-inset-top));

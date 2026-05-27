@@ -401,7 +401,7 @@ function ClipPreview({
           Can&apos;t load
         </span>
       ) : null}
-      <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/62 px-2 py-1 text-xs font-semibold text-white backdrop-blur">
+      <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/72 px-2 py-1 text-xs font-semibold text-white">
         {index + 1}
       </span>
       <Play
@@ -439,7 +439,7 @@ function ReviewActionBar({
     <motion.div
       ref={setNodeRef}
       data-testid="review-action-bar"
-      className={`mt-3 rounded-lg border p-2.5 backdrop-blur-xl ${
+      className={`mt-3 rounded-lg border p-2.5 ${
         isDragging
           ? "border-destructive/65 bg-destructive/20"
           : "border-border bg-black/42"

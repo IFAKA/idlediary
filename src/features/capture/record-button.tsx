@@ -2,7 +2,7 @@
 
 import { Check, Circle, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
-import { spring } from "@/lib/motion";
+import { spring, twoSecondRecordMs } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { RecordingState } from "./use-two-second-recorder";
 
@@ -18,14 +18,14 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
   const isSaving = state === "saving";
   const isSuccess = state === "success";
   const isInactive = state === "idle" || state === "error";
-  const progressPathLength = isInactive ? 0 : progress / 100;
-  const progressOpacity = isInactive ? 0 : 1;
+  const circumference = 282.743;
+  const progressOffset = isInactive ? circumference : circumference * (1 - progress / 100);
 
   return (
     <motion.button
       aria-label={isRecording ? "Recording two second clip" : "Record two second clip"}
       className={cn(
-        "relative grid size-24 place-items-center rounded-full border border-white/18 bg-black/45 shadow-[0_20px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl outline-none",
+        "relative grid size-24 place-items-center rounded-full border border-white/18 bg-black/45 shadow-[0_20px_80px_rgba(0,0,0,0.45)] outline-none",
         "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         disabled && "pointer-events-none opacity-45",
       )}
@@ -45,6 +45,8 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
           strokeWidth="5"
         />
         <motion.circle
+          key={isRecording ? "recording-progress" : state}
+          className={cn(isRecording && "record-progress-ring")}
           cx="50"
           cy="50"
           fill="none"
@@ -52,13 +54,17 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
           stroke="hsl(var(--primary))"
           strokeLinecap="round"
           strokeWidth="5"
+          style={{
+            opacity: isInactive ? 0 : 1,
+            strokeDasharray: circumference,
+            strokeDashoffset: isRecording ? circumference : progressOffset,
+            animationDuration: `${twoSecondRecordMs}ms`,
+          }}
           initial={false}
-          animate={{ opacity: progressOpacity, pathLength: progressPathLength }}
+          animate={isRecording ? undefined : { strokeDashoffset: progressOffset }}
           transition={{
-            opacity: { duration: 0.24, ease: "easeOut" },
-            pathLength: isInactive
-              ? { delay: 0.24, duration: 0.01 }
-              : { duration: 0.12, ease: "easeOut" },
+            duration: isInactive ? 0.01 : 0.12,
+            ease: "easeOut",
           }}
         />
       </svg>

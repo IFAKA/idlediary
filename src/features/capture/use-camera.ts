@@ -41,18 +41,26 @@ export function useCamera() {
       const nextStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
+          width: { ideal: 720 },
+          height: { ideal: 1280 },
+          frameRate: { ideal: 30, max: 30 },
           aspectRatio: { ideal: 9 / 16 },
         },
         audio: true,
       });
+      const videoTrack = nextStream.getVideoTracks()[0];
+      const settings = videoTrack?.getSettings();
       streamRef.current = nextStream;
       setStream(nextStream);
       setPermission("granted");
       addDebugEvent("camera-started", "capture", {
         videoTracks: nextStream.getVideoTracks().length,
         audioTracks: nextStream.getAudioTracks().length,
+        videoWidth: settings?.width,
+        videoHeight: settings?.height,
+        frameRate: settings?.frameRate,
+        facingMode: settings?.facingMode,
+        deviceLabel: videoTrack?.label,
       });
       return nextStream;
     } catch (cause) {

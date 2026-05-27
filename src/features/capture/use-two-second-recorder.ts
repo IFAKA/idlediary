@@ -13,15 +13,15 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
   const [state, setState] = useState<RecordingState>("idle");
   const [progress, setProgress] = useState(0);
   const timerRef = useRef<number | null>(null);
-  const frameRef = useRef<number | null>(null);
+  const progressTimerRef = useRef<number | null>(null);
   const resetRef = useRef<number | null>(null);
 
   const cleanup = useCallback(() => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
-    if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+    if (progressTimerRef.current) window.clearTimeout(progressTimerRef.current);
     if (resetRef.current) window.clearTimeout(resetRef.current);
     timerRef.current = null;
-    frameRef.current = null;
+    progressTimerRef.current = null;
     resetRef.current = null;
   }, []);
 
@@ -96,17 +96,12 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
         resolve(blob);
       };
 
-      const tick = () => {
-        const elapsed = performance.now() - startedAt;
-        setProgress(Math.min(100, (elapsed / twoSecondRecordMs) * 100));
-        if (elapsed < twoSecondRecordMs) {
-          frameRef.current = window.requestAnimationFrame(tick);
-        }
-      };
-
       try {
         recorder.start();
-        frameRef.current = window.requestAnimationFrame(tick);
+        progressTimerRef.current = window.setTimeout(() => {
+          setProgress(100);
+          progressTimerRef.current = null;
+        }, twoSecondRecordMs);
         timerRef.current = window.setTimeout(() => {
           if (recorder.state === "recording") {
             recorder.requestData();
