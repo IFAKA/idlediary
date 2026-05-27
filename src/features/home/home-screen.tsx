@@ -14,6 +14,7 @@ import {
   useAppHeader,
   type AppHeaderConfig,
 } from "@/components/app-header-shell";
+import { AppViewportShell } from "@/components/app-viewport-shell";
 import { ItemCountStack } from "@/components/item-counter";
 import { Button } from "@/components/ui/button";
 import {
@@ -263,7 +264,7 @@ export function HomeScreen() {
   }, [backfillVlogThumbnail, clearHighlightStart, scheduleHighlightStart]);
 
   return (
-    <main className="relative isolate h-[100svh] overflow-hidden bg-background">
+    <AppViewportShell>
       <motion.div
         className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col top-level-screen"
         animate={{ opacity: 1, x: 0 }}
@@ -284,7 +285,7 @@ export function HomeScreen() {
             </div>
           ) : state.vlogs.length > 0 ? (
             <div className="saved-videos-scroll">
-              <div className="grid gap-5 pb-10 xl:grid-cols-2">
+              <div className="grid gap-5 pb-10">
                 {state.vlogs.map((vlog) => (
                   <VlogCard
                     key={vlog.id}
@@ -304,7 +305,7 @@ export function HomeScreen() {
         </section>
       </motion.div>
       <DebugDrawer />
-    </main>
+    </AppViewportShell>
   );
 }
 
@@ -357,7 +358,7 @@ function VlogCard({
     >
       <Link
         aria-label={`Open ${vlog.title}`}
-        className="group grid grid-cols-[144px_minmax(0,1fr)] items-stretch overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:grid-cols-[160px_minmax(0,1fr)]"
+        className="group grid grid-cols-[144px_minmax(0,1fr)] items-stretch overflow-hidden rounded-lg border border-memory/20 bg-surface-soft text-surface-soft-foreground outline-none transition hover:border-memory/65 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         href={`/videos/${encodeURIComponent(vlog.id)}`}
       >
         <article className="contents">

@@ -95,6 +95,32 @@ export function ClipReviewPanel({
   }, [orderedClips]);
 
   useEffect(() => {
+    if (!activeClipId) return;
+
+    const draggedClipId = activeClipId;
+    const clearMissedDragEnd = () => {
+      window.setTimeout(() => {
+        setActiveClipId((currentActiveClipId) => {
+          if (currentActiveClipId !== draggedClipId) return currentActiveClipId;
+          setIsOverDeleteZone(false);
+          hasVibratedForDeleteZone.current = false;
+          return null;
+        });
+      }, 0);
+    };
+
+    window.addEventListener("mouseup", clearMissedDragEnd);
+    window.addEventListener("pointerup", clearMissedDragEnd);
+    window.addEventListener("touchend", clearMissedDragEnd);
+
+    return () => {
+      window.removeEventListener("mouseup", clearMissedDragEnd);
+      window.removeEventListener("pointerup", clearMissedDragEnd);
+      window.removeEventListener("touchend", clearMissedDragEnd);
+    };
+  }, [activeClipId]);
+
+  useEffect(() => {
     setOrderedClips((current) => {
       const incomingById = new Map(clips.map((clip) => [clip.id, clip]));
       const kept = current
@@ -230,7 +256,7 @@ export function ClipReviewPanel({
             items={visibleClips.map((clip) => clip.id)}
             strategy={rectSortingStrategy}
           >
-            <ul className="grid grid-cols-3 gap-2.5 pb-3 sm:grid-cols-4">
+            <ul className="grid grid-cols-3 gap-2.5 pb-3">
               {visibleClips.map((clip, index) => (
                 <SortableClipGalleryItem
                   key={clip.id}

@@ -14,6 +14,7 @@ import {
   type TouchEvent,
 } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
+import { AppViewportShell } from "@/components/app-viewport-shell";
 import { ItemCountStack } from "@/components/item-counter";
 import { Button } from "@/components/ui/button";
 import { useClips } from "@/features/clips/use-clips";
@@ -634,7 +635,7 @@ export function CaptureScreen() {
   useAppHeader(headerConfig);
 
   return (
-    <main className="relative isolate h-[100svh] overflow-hidden bg-background">
+    <AppViewportShell>
       <AnimatePresence initial={false}>
         <motion.div
           key={mode === "capture" && camera.stream ? "camera-preview" : "processing-backdrop"}
@@ -849,7 +850,7 @@ export function CaptureScreen() {
         )}
       </AnimatePresence>
       {mode === "generating" ? null : <DebugDrawer />}
-    </main>
+    </AppViewportShell>
   );
 }
 

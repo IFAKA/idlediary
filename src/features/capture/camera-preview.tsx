@@ -138,7 +138,7 @@ function CameraPreviewSurface({ stream }: CameraPreviewProps) {
         data-testid="camera-preview-frame"
         style={{
           aspectRatio: exportProfile.aspectRatio,
-          height: "min(100%, calc(100vw * 16 / 9))",
+          height: "min(100%, calc(var(--app-viewport-width) * 16 / 9))",
           width: "auto",
         }}
       >

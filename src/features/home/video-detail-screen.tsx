@@ -6,6 +6,7 @@ import { ArrowLeft, Download, Share2, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
+import { AppViewportShell } from "@/components/app-viewport-shell";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { SupportLink } from "@/components/support-link";
 import { Button } from "@/components/ui/button";
@@ -108,7 +109,7 @@ export function VideoDetailScreen() {
   };
 
   return (
-    <main className="relative isolate h-[100svh] overflow-hidden bg-background">
+    <AppViewportShell>
       <motion.div
         className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col top-level-screen"
         animate={{ opacity: 1, x: 0 }}
@@ -139,7 +140,7 @@ export function VideoDetailScreen() {
         onAction={handleDelete}
         onOpenChange={setConfirmDelete}
       />
-    </main>
+    </AppViewportShell>
   );
 }
 

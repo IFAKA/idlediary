@@ -77,10 +77,10 @@ function MorphingAppHeader({ config }: { config: AppHeaderConfig | null }) {
   return (
     <div
       aria-hidden={!config}
-      className="pointer-events-none fixed inset-x-0 top-0 z-40 px-[max(16px,env(safe-area-inset-left))] pt-[max(16px,env(safe-area-inset-top))]"
+      className="app-header-root pointer-events-none fixed inset-x-0 top-0 z-40 px-[max(16px,env(safe-area-inset-left))] pt-[max(16px,env(safe-area-inset-top))]"
     >
       <motion.header
-        className="mx-auto flex min-h-16 w-full max-w-5xl items-start"
+        className="mx-auto flex min-h-16 w-full items-start"
         layout
         layoutRoot
         transition={easeOut}

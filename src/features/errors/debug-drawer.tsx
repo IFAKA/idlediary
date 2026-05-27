@@ -50,7 +50,7 @@ export function DebugDrawer() {
     <>
       <Button
         aria-label="Open debug report"
-        className="fixed right-4 top-[max(16px,env(safe-area-inset-top))] z-40 rounded-full bg-black/45 backdrop-blur"
+        className="app-debug-button fixed right-4 top-[max(16px,env(safe-area-inset-top))] z-40 rounded-full bg-black/45 backdrop-blur"
         size="icon"
         type="button"
         variant="ghost"

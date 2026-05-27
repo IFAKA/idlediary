@@ -377,6 +377,30 @@ button {
   display: none;
 }
 
+.app-viewport-shell {
+  position: relative;
+  isolation: isolate;
+  --app-viewport-width: 100vw;
+  --app-viewport-height: 100svh;
+  height: 100svh;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+.app-viewport-frame {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+.app-header-root {
+  --app-frame-width: 100vw;
+  --app-frame-height: 100svh;
+  --app-frame-radius: 0px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .new-video-card-highlight {
     animation: none;
@@ -403,7 +427,7 @@ button {
 }
 
 .safe-screen {
-  min-height: 100svh;
+  min-height: var(--app-viewport-height);
   padding-top: max(16px, env(safe-area-inset-top));
   padding-bottom: max(16px, env(safe-area-inset-bottom));
   padding-left: max(16px, env(safe-area-inset-left));
@@ -411,11 +435,61 @@ button {
 }
 
 .top-level-screen {
-  min-height: 100svh;
+  min-height: var(--app-viewport-height);
   padding-top: max(88px, calc(env(safe-area-inset-top) + 72px));
   padding-bottom: max(16px, env(safe-area-inset-bottom));
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
+}
+
+@media (min-width: 768px) {
+  .app-viewport-shell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: hsl(var(--background));
+  }
+
+  .app-viewport-frame {
+    height: min(100%, 844px);
+    width: min(100%, 390px);
+    --app-viewport-width: min(calc(100vw - 48px), 390px);
+    --app-viewport-height: min(calc(100svh - 48px), 844px);
+    border-radius: 30px;
+    outline: 1px solid hsl(var(--memory) / 0.2);
+    box-shadow:
+      0 28px 90px rgb(0 0 0 / 0.44),
+      0 0 0 1px hsl(var(--foreground) / 0.035) inset;
+  }
+
+  .app-header-root {
+    --app-frame-width: min(calc(100vw - 48px), 390px);
+    --app-frame-height: min(calc(100svh - 48px), 844px);
+    --app-frame-radius: 30px;
+    left: 50%;
+    right: auto;
+    top: max(24px, calc((100svh - 844px) / 2));
+    width: var(--app-frame-width);
+    padding-top: 16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    transform: translateX(-50%);
+  }
+
+  .app-debug-button {
+    top: max(40px, calc((100svh - 844px) / 2 + 16px));
+    right: max(40px, calc((100vw - 390px) / 2 + 16px));
+  }
+
+  .app-viewport-frame .h-\[100svh\] {
+    height: var(--app-viewport-height);
+  }
+
+  .safe-screen,
+  .top-level-screen {
+    min-height: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
