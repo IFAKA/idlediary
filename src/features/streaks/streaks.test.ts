@@ -3,15 +3,17 @@ import type { VlogRecord } from "@/features/clips/types";
 import { calculateStreak, generatedDaySet } from "./streaks";
 
 function vlog(createdAt: string): VlogRecord {
+  const blob = new Blob(["x"], { type: "video/mp4" });
   return {
     id: createdAt,
     sessionId: createdAt.slice(0, 10),
-    blob: new Blob(["x"], { type: "video/mp4" }),
+    blob,
     mimeType: "video/mp4",
     clipCount: 1,
     title: "Title",
     caption: "Caption",
     createdAt,
+    size: blob.size,
   };
 }
 

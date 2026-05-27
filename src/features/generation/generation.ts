@@ -4,6 +4,7 @@ import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
+import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
 
 export type GenerationProgress = {
   step: "idle" | "loading" | "writing" | "rendering" | "saving" | "done" | "error";
@@ -129,6 +130,36 @@ export function buildFfmpegArgs() {
   ];
 }
 
+function stableJson(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return JSON.stringify(value);
+  }
+
+  return JSON.stringify(
+    Object.keys(value)
+      .sort()
+      .reduce<Record<string, unknown>>((sorted, key) => {
+        sorted[key] = (value as Record<string, unknown>)[key];
+        return sorted;
+      }, {}),
+  );
+}
+
+export function buildGenerationFingerprint(
+  clips: ClipRecord[],
+  profile: Record<string, unknown> = exportProfile,
+) {
+  return stableJson({
+    clips: clips.map((clip) => ({
+      id: clip.id,
+      size: clip.size,
+      createdAt: clip.createdAt,
+      mimeType: clip.mimeType,
+    })),
+    exportProfile: profile,
+  });
+}
+
 export function recentGenerationLogs(logs: string[], nextLog: string) {
   return [...logs, nextLog].slice(-maxLogLines);
 }
@@ -203,7 +234,10 @@ async function loadFfmpeg() {
       return ffmpeg;
     }
 
-    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+    const baseURL =
+      typeof window === "undefined"
+        ? "/ffmpeg"
+        : new URL("/ffmpeg", window.location.href).href;
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
       wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
@@ -245,6 +279,18 @@ export async function generateVlog(
       (window as typeof window & { __idleDiaryGenerationClipIds?: string[] })
         .__idleDiaryGenerationClipIds = clips.map((clip) => clip.id);
     }
+    const generationFingerprint = buildGenerationFingerprint(clips, exportProfile);
+    const cachedVlog = await getVlogByGenerationFingerprint(generationFingerprint, sessionId);
+    if (cachedVlog) {
+      emitProgress(generationProgress("done", 100));
+      addDebugEvent("vlog-generation-reused", "generation", {
+        vlogId: cachedVlog.id,
+        size: cachedVlog.size,
+        clipCount: clips.length,
+      });
+      return cachedVlog;
+    }
+
     const ffmpeg = await loadFfmpeg();
     emitProgress(generationProgress("writing", 14));
 
@@ -290,6 +336,8 @@ export async function generateVlog(
       title: suggestTitle(clips.length),
       caption: suggestCaption(clips.length),
       createdAt: new Date().toISOString(),
+      size: blob.size,
+      generationFingerprint,
     };
     emitProgress(generationProgress("done", 100));
     addDebugEvent("vlog-generated", "generation", {

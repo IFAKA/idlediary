@@ -21,10 +21,11 @@ import {
 } from "@/features/generation/generation";
 import {
   clearGeneratedVlogForSession,
-  listVlogs,
+  hasNeedsActionVlog as checkHasNeedsActionVlog,
   markVlogHandled,
   saveVlogAndClearSessionDraft,
 } from "@/features/clips/storage";
+import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbnail";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 import { shareVlog } from "@/features/share/share";
 import { CameraPreview } from "./camera-preview";
@@ -115,8 +116,7 @@ export function CaptureScreen() {
 
   const refreshNeedsActionBadge = useCallback(async () => {
     try {
-      const vlogs = await listVlogs();
-      setHasNeedsActionVlog(vlogs.some((savedVlog) => savedVlog.needsAction === true));
+      setHasNeedsActionVlog(await checkHasNeedsActionVlog());
     } catch (error) {
       reportError(error);
     }
@@ -182,10 +182,10 @@ export function CaptureScreen() {
     if (!initialViewReady || mode !== "capture") return;
     let mounted = true;
 
-    listVlogs()
-      .then((vlogs) => {
+    checkHasNeedsActionVlog()
+      .then((hasNeedsAction) => {
         if (mounted) {
-          setHasNeedsActionVlog(vlogs.some((savedVlog) => savedVlog.needsAction === true));
+          setHasNeedsActionVlog(hasNeedsAction);
         }
       })
       .catch((error) => {
@@ -296,6 +296,13 @@ export function CaptureScreen() {
       camera.stop();
       await waitForPaint();
       const nextVlog = await generateVlog(selectedClips, clips.session.id, setGenerationProgress);
+      if (!nextVlog.thumbnailBlob) {
+        try {
+          Object.assign(nextVlog, await generateVideoThumbnail(nextVlog.blob, thumbnailSizes.vlog));
+        } catch (error) {
+          reportError(error);
+        }
+      }
       await saveVlogAndClearSessionDraft(nextVlog);
       clips.clearLocalClips();
       showResult(nextVlog, "replace");

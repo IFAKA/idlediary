@@ -1,32 +1,44 @@
-export type ClipRecord = {
-  id: string;
-  sessionId: string;
-  blob: Blob;
-  mimeType: string;
+export type ThumbnailFields = {
   thumbnailBlob?: Blob;
   thumbnailMimeType?: string;
   thumbnailWidth?: number;
   thumbnailHeight?: number;
+};
+
+export type ThumbnailMetadataFields = Omit<ThumbnailFields, "thumbnailBlob">;
+
+export type ClipMetadataRecord = ThumbnailMetadataFields & {
+  id: string;
+  sessionId: string;
+  mimeType: string;
   durationMs: number;
   order?: number;
   createdAt: string;
   size: number;
 };
 
-export type VlogRecord = {
+export type ClipRecord = ClipMetadataRecord &
+  ThumbnailFields & {
+    blob: Blob;
+  };
+
+export type VlogMetadataRecord = ThumbnailMetadataFields & {
   id: string;
   sessionId: string;
-  blob: Blob;
   mimeType: string;
-  thumbnailBlob?: Blob;
-  thumbnailMimeType?: string;
-  thumbnailWidth?: number;
-  thumbnailHeight?: number;
   clipCount: number;
   title: string;
   caption: string;
   createdAt: string;
   needsAction?: boolean;
+  size: number;
+  generationFingerprint?: string;
+};
+
+export type VlogSummary = VlogMetadataRecord & ThumbnailFields;
+
+export type VlogRecord = VlogSummary & {
+  blob: Blob;
 };
 
 export type SessionSummary = {

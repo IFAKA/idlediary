@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   getObjectUrlForVlog: vi.fn(),
   getThumbnailObjectUrlForClip: vi.fn(),
   getThumbnailObjectUrlForVlog: vi.fn(),
-  listVlogs: vi.fn(),
+  listVlogSummaries: vi.fn(),
+  getVlog: vi.fn(),
   markVlogHandled: vi.fn(),
   releaseVlogObjectUrl: vi.fn(),
   saveVlogThumbnail: vi.fn(),
@@ -27,7 +28,8 @@ vi.mock("./media-cache", () => ({
 
 vi.mock("./storage", async (importOriginal) => ({
   ...((await importOriginal()) as object),
-  listVlogs: mocks.listVlogs,
+  listVlogSummaries: mocks.listVlogSummaries,
+  getVlog: mocks.getVlog,
   markVlogHandled: mocks.markVlogHandled,
   saveVlogThumbnail: mocks.saveVlogThumbnail,
 }));
@@ -66,6 +68,7 @@ function vlog(overrides: Partial<VlogRecord> = {}): VlogRecord {
     title: "Two Seconds Today",
     caption: "",
     createdAt: "2026-05-27T10:00:00.000Z",
+    size: blob.size,
     ...overrides,
   };
 }
@@ -116,7 +119,8 @@ describe("thumbnail rendering", () => {
     mocks.getThumbnailObjectUrlForVlog.mockImplementation((record: VlogRecord) =>
       record.thumbnailBlob ? "blob:vlog-thumb" : null,
     );
-    mocks.listVlogs.mockResolvedValue([]);
+    mocks.listVlogSummaries.mockResolvedValue([]);
+    mocks.getVlog.mockResolvedValue(null);
     mocks.markVlogHandled.mockResolvedValue(null);
     mocks.saveVlogThumbnail.mockResolvedValue(null);
     mocks.generateVideoThumbnail.mockResolvedValue({
@@ -177,7 +181,8 @@ describe("thumbnail rendering", () => {
       thumbnailHeight: 640,
     });
     const withoutThumbnail = vlog({ id: "vlog-2", createdAt: "2026-05-26T10:00:00.000Z" });
-    mocks.listVlogs.mockResolvedValueOnce([withoutThumbnail, withThumbnail]);
+    mocks.listVlogSummaries.mockResolvedValueOnce([withoutThumbnail, withThumbnail]);
+    mocks.getVlog.mockResolvedValue(withoutThumbnail);
 
     act(() => {
       root.render(<HomeScreen />);
@@ -191,6 +196,6 @@ describe("thumbnail rendering", () => {
     expect(cards[0]?.querySelector("img")).toHaveAttribute("src", "blob:vlog-thumb");
     expect(cards[0]?.querySelector("video")).not.toBeInTheDocument();
     expect(cards[1]?.querySelector("img")).not.toBeInTheDocument();
-    expect(cards[1]?.querySelector("video")).toHaveAttribute("src", "blob:vlog-video");
+    expect(cards[1]?.querySelector("video")).not.toBeInTheDocument();
   });
 });

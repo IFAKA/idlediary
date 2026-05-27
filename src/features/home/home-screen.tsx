@@ -13,37 +13,39 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { Button } from "@/components/ui/button";
 import {
-  getObjectUrlForVlog,
   getThumbnailObjectUrlForVlog,
   releaseVlogObjectUrl,
 } from "@/features/clips/media-cache";
 import {
-  listVlogs,
+  getVlog,
+  listVlogSummaries,
   markVlogHandled,
   saveVlogThumbnail,
   sortVlogsNewestFirst,
 } from "@/features/clips/storage";
 import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbnail";
-import type { VlogRecord } from "@/features/clips/types";
+import type { VlogSummary } from "@/features/clips/types";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
 
 type HomeState =
-  | { status: "loading"; vlogs: VlogRecord[]; error?: never }
-  | { status: "ready"; vlogs: VlogRecord[]; error?: never }
-  | { status: "error"; vlogs: VlogRecord[]; error: string };
+  | { status: "loading"; vlogs: VlogSummary[]; error?: never }
+  | { status: "ready"; vlogs: VlogSummary[]; error?: never }
+  | { status: "error"; vlogs: VlogSummary[]; error: string };
+
+const completedAtFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
 
 function formatCompletedAt(value: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(parsed);
+  return completedAtFormatter.format(parsed);
 }
 
 function formatDuration(clipCount: number) {
@@ -92,11 +94,11 @@ export function HomeScreen() {
     let mounted = true;
     const backfills = new Set<string>();
 
-    listVlogs()
+    listVlogSummaries()
       .then(async (vlogs) => {
         const sortedVlogs = sortVlogsNewestFirst(vlogs);
         const needsActionVlogs = sortedVlogs.filter((vlog) => vlog.needsAction === true);
-        const handledVlogs = new Map<string, VlogRecord>();
+        const handledVlogs = new Map<string, VlogSummary>();
 
         await Promise.all(
           needsActionVlogs.map(async (vlog) => {
@@ -117,14 +119,15 @@ export function HomeScreen() {
         if (!mounted) return;
         setState({ status: "ready", vlogs: readyVlogs });
 
-        readyVlogs
-          .filter((vlog) => !vlog.thumbnailBlob)
-          .forEach((vlog) => {
-            if (backfills.has(vlog.id)) return;
-            backfills.add(vlog.id);
-            void generateVideoThumbnail(vlog.blob, thumbnailSizes.vlog)
-              .then((thumbnail) => saveVlogThumbnail(vlog.id, thumbnail))
-              .then((updatedVlog) => {
+        void (async () => {
+          for (const vlog of readyVlogs.filter((entry) => !entry.thumbnailBlob)) {
+            if (!mounted || backfills.has(vlog.id)) continue;
+            try {
+              backfills.add(vlog.id);
+              const fullVlog = await getVlog(vlog.id);
+              if (!fullVlog) continue;
+              const thumbnail = await generateVideoThumbnail(fullVlog.blob, thumbnailSizes.vlog);
+              const updatedVlog = await saveVlogThumbnail(vlog.id, thumbnail);
                 if (!mounted || !updatedVlog) return;
                 setState((current) => {
                   if (current.status !== "ready") return current;
@@ -137,12 +140,13 @@ export function HomeScreen() {
                     ),
                   };
                 });
-              })
-              .catch((error) => reportError(error))
-              .finally(() => {
+            } catch (error) {
+              reportError(error);
+            } finally {
                 backfills.delete(vlog.id);
-              });
-          });
+            }
+          }
+        })();
       })
       .catch((error) => {
         const appError = reportError(error);
@@ -218,12 +222,8 @@ function EmptyHistory() {
   );
 }
 
-function VlogCard({ vlog }: { vlog: VlogRecord }) {
+function VlogCard({ vlog }: { vlog: VlogSummary }) {
   const thumbnailSrc = useMemo(() => getThumbnailObjectUrlForVlog(vlog), [vlog]);
-  const src = useMemo(
-    () => (thumbnailSrc ? null : getObjectUrlForVlog(vlog)),
-    [thumbnailSrc, vlog],
-  );
 
   useEffect(() => {
     return () => releaseVlogObjectUrl(vlog.id);
@@ -246,14 +246,9 @@ function VlogCard({ vlog }: { vlog: VlogRecord }) {
               src={thumbnailSrc}
             />
           ) : (
-            <video
-              aria-hidden="true"
-              className="h-full w-full object-cover"
-              muted
-              playsInline
-              preload="metadata"
-              src={src ?? undefined}
-            />
+            <div className="flex h-full w-full items-center justify-center bg-black text-white/60">
+              <FileVideo className="size-8" />
+            </div>
           )}
         </div>
         <div className="flex min-w-0 flex-col border-l border-memory/15 p-3">
@@ -280,7 +275,7 @@ function VlogCard({ vlog }: { vlog: VlogRecord }) {
             <div className="flex min-w-0 items-center gap-1.5">
               <HardDrive className="size-3.5 shrink-0 text-memory" />
               <dt className="sr-only">File size</dt>
-              <dd className="truncate">{formatFileSize(vlog.blob.size)}</dd>
+              <dd className="truncate">{formatFileSize(vlog.size)}</dd>
             </div>
           </dl>
 

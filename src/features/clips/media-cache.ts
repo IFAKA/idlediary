@@ -1,4 +1,4 @@
-import type { ClipRecord, VlogRecord } from "./types";
+import type { ClipRecord, ThumbnailFields, VlogRecord, VlogSummary } from "./types";
 
 type CacheEntry = {
   version: string;
@@ -18,7 +18,7 @@ function vlogVersion(vlog: VlogRecord) {
   return `${vlog.blob.size}:${vlog.createdAt}`;
 }
 
-function thumbnailVersion(record: ClipRecord | VlogRecord) {
+function thumbnailVersion(record: ThumbnailFields) {
   if (!record.thumbnailBlob) return null;
 
   return [
@@ -115,7 +115,7 @@ export function getObjectUrlForVlog(vlog: VlogRecord) {
   return entry.url;
 }
 
-export function getThumbnailObjectUrlForVlog(vlog: VlogRecord) {
+export function getThumbnailObjectUrlForVlog(vlog: VlogSummary) {
   if (!vlog.thumbnailBlob) return null;
   const version = thumbnailVersion(vlog);
   if (!version) return null;

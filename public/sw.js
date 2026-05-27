@@ -1,4 +1,4 @@
-const CACHE_NAME = "idlediary-v3";
+const CACHE_NAME = "idlediary-v4";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg"];
 const STATIC_ASSET_PATTERN = /\.(?:css|js|mjs|png|jpg|jpeg|webp|svg|ico|json|woff2?)$/;
 
@@ -40,6 +40,7 @@ self.addEventListener("fetch", (event) => {
 
   const isStaticAsset =
     APP_SHELL.includes(url.pathname) ||
+    url.pathname.startsWith("/ffmpeg/") ||
     url.pathname.startsWith("/_next/static/") ||
     STATIC_ASSET_PATTERN.test(url.pathname);
 

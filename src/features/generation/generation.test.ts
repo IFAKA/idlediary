@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ClipRecord } from "@/features/clips/types";
 import {
   buildFfmpegArgs,
+  buildGenerationFingerprint,
   buildVideoFilter,
   exportProfile,
   generateVlog,
@@ -10,6 +11,14 @@ import {
   resetGenerationForTests,
   type GenerationProgress,
 } from "./generation";
+
+const storageMocks = vi.hoisted(() => ({
+  getVlogByGenerationFingerprint: vi.fn(),
+}));
+
+vi.mock("@/features/clips/storage", () => ({
+  getVlogByGenerationFingerprint: storageMocks.getVlogByGenerationFingerprint,
+}));
 
 function clip(id: string): ClipRecord {
   return {
@@ -26,6 +35,7 @@ function clip(id: string): ClipRecord {
 describe("generation export profile", () => {
   afterEach(() => {
     resetGenerationForTests();
+    storageMocks.getVlogByGenerationFingerprint.mockReset();
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
   });
 
@@ -99,6 +109,7 @@ describe("generation export profile", () => {
 
     (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
       MockFFmpeg;
+    storageMocks.getVlogByGenerationFingerprint.mockResolvedValue(null);
 
     const progress: GenerationProgress[] = [];
     await generateVlog([clip("clip-1")], "session-1", (nextProgress) => {
@@ -130,5 +141,69 @@ describe("generation export profile", () => {
     expect(logs).toHaveLength(8);
     expect(logs[0]).toBe("line-4");
     expect(generationProgress("rendering", 24, { logs }).logs).toEqual(logs);
+  });
+
+  it("builds stable fingerprints from ordered clips and export settings", () => {
+    const first = clip("clip-1");
+    const second = {
+      ...clip("clip-2"),
+      size: 8,
+      createdAt: "2026-05-27T10:00:01.000Z",
+      mimeType: "video/mp4",
+    };
+
+    expect(buildGenerationFingerprint([first, second])).toBe(
+      buildGenerationFingerprint([first, second]),
+    );
+    expect(buildGenerationFingerprint([first, second])).not.toBe(
+      buildGenerationFingerprint([second, first]),
+    );
+    expect(buildGenerationFingerprint([first, second])).not.toBe(
+      buildGenerationFingerprint([{ ...first, size: first.size + 1 }, second]),
+    );
+    expect(buildGenerationFingerprint([first, second])).not.toBe(
+      buildGenerationFingerprint([{ ...first, createdAt: "2026-05-27T10:00:02.000Z" }, second]),
+    );
+    expect(buildGenerationFingerprint([first, second])).not.toBe(
+      buildGenerationFingerprint([{ ...first, mimeType: "video/mp4" }, second]),
+    );
+    expect(buildGenerationFingerprint([first, second])).not.toBe(
+      buildGenerationFingerprint([first, second], { ...exportProfile, fps: 24 }),
+    );
+  });
+
+  it("reuses a matching generated vlog without running FFmpeg", async () => {
+    const sourceClip = clip("clip-1");
+    const cachedBlob = new Blob(["cached"], { type: "video/mp4" });
+    storageMocks.getVlogByGenerationFingerprint.mockResolvedValue({
+      id: "cached-vlog",
+      sessionId: "session-1",
+      blob: cachedBlob,
+      mimeType: "video/mp4",
+      clipCount: 1,
+      title: "Cached",
+      caption: "",
+      createdAt: "2026-05-27T11:00:00.000Z",
+      size: cachedBlob.size,
+      generationFingerprint: buildGenerationFingerprint([sourceClip]),
+    });
+
+    class MockFFmpeg {
+      on() {}
+      async load() {}
+      async writeFile() {}
+      async exec() {
+        throw new Error("ffmpeg should not run");
+      }
+      async readFile() {
+        return new Uint8Array([1, 2, 3]);
+      }
+    }
+    (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
+      MockFFmpeg;
+
+    const vlog = await generateVlog([sourceClip], "session-1", () => undefined);
+
+    expect(vlog.id).toBe("cached-vlog");
   });
 });
