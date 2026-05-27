@@ -22,14 +22,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  ArrowLeft,
-  Play,
-  RotateCcw,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Play, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
@@ -68,7 +61,8 @@ export function ClipReviewPanel({
   const hasVibratedForDeleteZone = useRef(false);
   const orderedClipsRef = useRef(orderedClips);
   const visibleClips = orderedClips.slice(0, 20);
-  const activeClip = visibleClips.find((clip) => clip.id === activeClipId) ?? null;
+  const activeClip =
+    visibleClips.find((clip) => clip.id === activeClipId) ?? null;
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
@@ -110,14 +104,17 @@ export function ClipReviewPanel({
   const saveOrder = async () => {
     const currentOrder = orderedClipsRef.current;
     const hasCurrentOrderChanged =
-      currentOrder.map((clip) => clip.id).join("|") !== clips.map((clip) => clip.id).join("|");
+      currentOrder.map((clip) => clip.id).join("|") !==
+      clips.map((clip) => clip.id).join("|");
     if (!hasCurrentOrderChanged) return true;
     return onReorderClips(currentOrder.map((clip) => clip.id));
   };
 
   const collisionDetection: CollisionDetection = (args) => {
     const pointerCollisions = pointerWithin(args);
-    const deleteCollision = pointerCollisions.find((collision) => collision.id === deleteZoneId);
+    const deleteCollision = pointerCollisions.find(
+      (collision) => collision.id === deleteZoneId,
+    );
     if (deleteCollision) return [deleteCollision];
     return closestCenter({
       ...args,
@@ -138,7 +135,9 @@ export function ClipReviewPanel({
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const draggedClip = orderedClipsRef.current.find((clip) => clip.id === event.active.id);
+    const draggedClip = orderedClipsRef.current.find(
+      (clip) => clip.id === event.active.id,
+    );
     const overId = event.over?.id;
 
     setActiveClipId(null);
@@ -194,7 +193,7 @@ export function ClipReviewPanel({
           </p>
           <h1 className="mt-1 text-2xl font-semibold">Draft clips</h1>
         </div>
-        <div className="mr-14 px-1 py-1 text-right">
+        <div className="px-1 py-1 text-right">
           <p className="text-sm font-semibold">{orderedClips.length} clips</p>
         </div>
       </div>
@@ -219,7 +218,9 @@ export function ClipReviewPanel({
                   clip={clip}
                   index={index}
                   isDisabled={isFinishing}
-                  isDraggingToDelete={activeClipId === clip.id && isOverDeleteZone}
+                  isDraggingToDelete={
+                    activeClipId === clip.id && isOverDeleteZone
+                  }
                   onPreview={() => setPreviewClip(clip)}
                 />
               ))}
@@ -241,7 +242,9 @@ export function ClipReviewPanel({
           {activeClip ? (
             <ClipPreview
               clip={activeClip}
-              index={visibleClips.findIndex((clip) => clip.id === activeClip.id)}
+              index={visibleClips.findIndex(
+                (clip) => clip.id === activeClip.id,
+              )}
               isOverlay
               isPulledToDelete={isOverDeleteZone}
             />
@@ -258,7 +261,9 @@ export function ClipReviewPanel({
         onAction={async () => {
           if (!deleteTarget) return;
           const previousClips = orderedClips;
-          const nextClips = orderedClips.filter((clip) => clip.id !== deleteTarget.id);
+          const nextClips = orderedClips.filter(
+            (clip) => clip.id !== deleteTarget.id,
+          );
           setOrderedClips(nextClips);
           orderedClipsRef.current = nextClips;
           const deleted = await onDeleteClip(deleteTarget.id);
@@ -299,7 +304,10 @@ export function ClipReviewPanel({
 
       <AnimatePresence>
         {previewClip ? (
-          <FullscreenPreview clip={previewClip} onClose={() => setPreviewClip(null)} />
+          <FullscreenPreview
+            clip={previewClip}
+            onClose={() => setPreviewClip(null)}
+          />
         ) : null}
       </AnimatePresence>
     </motion.div>
@@ -387,7 +395,9 @@ function ClipPreview({
         y: isPulledToDelete ? 8 : 0,
       }}
       className={`relative aspect-square overflow-hidden rounded-lg border bg-black shadow-lg ${
-        isOverlay ? "w-[7.25rem] border-primary/80 shadow-2xl" : "w-full border-border"
+        isOverlay
+          ? "w-[7.25rem] border-primary/80 shadow-2xl"
+          : "w-full border-border"
       }`}
       layoutId={isOverlay ? undefined : `clip-preview-${clip.id}`}
       transition={spring}
@@ -528,7 +538,13 @@ function ReviewActionBar({
   );
 }
 
-function FullscreenPreview({ clip, onClose }: { clip: ClipRecord; onClose: () => void }) {
+function FullscreenPreview({
+  clip,
+  onClose,
+}: {
+  clip: ClipRecord;
+  onClose: () => void;
+}) {
   const src = useMemo(() => getObjectUrlForClip(clip), [clip]);
   const [hasError, setHasError] = useState(false);
 
@@ -574,8 +590,8 @@ function FullscreenPreview({ clip, onClose }: { clip: ClipRecord; onClose: () =>
         />
         {hasError ? (
           <div className="absolute inset-x-4 bottom-4 rounded-lg border bg-black/80 p-3 text-sm text-foreground">
-            This clip can&apos;t be loaded by this browser. Record the next clip using the current
-            recorder format.
+            This clip can&apos;t be loaded by this browser. Record the next clip
+            using the current recorder format.
           </div>
         ) : null}
       </motion.div>
