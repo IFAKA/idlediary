@@ -65,6 +65,10 @@ describe("CameraPreview", () => {
       root.render(<CameraPreview stream={null} />);
     });
 
+    const backdrop = container.querySelector('[data-testid="camera-preview-backdrop"]');
+    const frame = container.querySelector('[data-testid="camera-preview-frame"]');
+    expect(backdrop).toBeInTheDocument();
+    expect(frame).not.toContainElement(backdrop);
     expect(container.querySelector('[data-testid="camera-preview-placeholder"]')).toBeInTheDocument();
     expect(container.querySelector('[aria-label="Camera preview"]')).not.toBeInTheDocument();
   });

@@ -12,6 +12,8 @@ type CameraPreviewProps = {
 
 const PREVIEW_SETTLE_MS = 190;
 const PLACEHOLDER_EXIT_MS = 420;
+const PREVIEW_BACKDROP_CLASS =
+  "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_28%,hsl(var(--memory)/0.32),transparent_34%),radial-gradient(circle_at_78%_18%,hsl(var(--accent)/0.24),transparent_32%),radial-gradient(circle_at_55%_82%,hsl(var(--primary)/0.26),transparent_38%),linear-gradient(135deg,#181115,#090708_62%,#130d12)] bg-[length:140%_140%,130%_130%,150%_150%,100%_100%]";
 const streamKeys = new WeakMap<MediaStream, number>();
 let nextStreamKey = 0;
 
@@ -113,6 +115,24 @@ function CameraPreviewSurface({ stream }: CameraPreviewProps) {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black">
+      <motion.div
+        aria-hidden="true"
+        className={PREVIEW_BACKDROP_CLASS}
+        data-testid="camera-preview-backdrop"
+        animate={{
+          backgroundPosition: [
+            "0% 32%, 100% 18%, 50% 100%, 0% 0%",
+            "100% 55%, 0% 42%, 22% 0%, 0% 0%",
+            "0% 32%, 100% 18%, 50% 100%, 0% 0%",
+          ],
+          scale: [1, 1.025, 1],
+        }}
+        initial={false}
+        transition={{
+          backgroundPosition: { duration: 14, ease: "easeInOut", repeat: Infinity },
+          scale: { duration: 8, ease: "easeInOut", repeat: Infinity },
+        }}
+      />
       <div
         className="relative max-h-full max-w-full overflow-hidden bg-black"
         data-testid="camera-preview-frame"
@@ -165,7 +185,7 @@ function CameraPreviewSurface({ stream }: CameraPreviewProps) {
         {showPlaceholder ? (
           <motion.div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_28%,hsl(var(--memory)/0.32),transparent_34%),radial-gradient(circle_at_78%_18%,hsl(var(--accent)/0.24),transparent_32%),radial-gradient(circle_at_55%_82%,hsl(var(--primary)/0.26),transparent_38%),linear-gradient(135deg,#181115,#090708_62%,#130d12)] bg-[length:140%_140%,130%_130%,150%_150%,100%_100%]"
+            className={PREVIEW_BACKDROP_CLASS}
             data-preview-ready={previewReady}
             data-testid="camera-preview-placeholder"
             animate={{
