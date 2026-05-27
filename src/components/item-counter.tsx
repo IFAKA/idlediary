@@ -4,10 +4,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 
 const counterPulseTransition = {
-  type: "spring",
-  stiffness: 520,
-  damping: 24,
-  mass: 0.65,
+  duration: 0.28,
+  ease: [0.16, 1, 0.3, 1],
 } as const;
 
 const digitTransition = {

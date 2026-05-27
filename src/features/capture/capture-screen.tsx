@@ -49,6 +49,7 @@ const routeSlideTransition = { duration: 0.24, ease: "easeOut" } as const;
 const notificationBadgeSpring = { type: "spring", stiffness: 680, damping: 24, mass: 0.55 } as const;
 const notificationBadgePulse = { duration: 1.6, repeat: Infinity, repeatDelay: 1.8, ease: "easeInOut" } as const;
 const draftBadgeTransition = { type: "spring", stiffness: 520, damping: 32, bounce: 0.12 } as const;
+const draftCounterPulseTransition = { duration: 0.28, ease: [0.16, 1, 0.3, 1] } as const;
 const draftDigitTransition = { type: "spring", stiffness: 680, damping: 32, mass: 0.62 } as const;
 const minimumVisibleGenerationStepMs = 450;
 const minimumVisibleSavingStepMs = 500;
@@ -819,7 +820,7 @@ function AnimatedDraftCount({
                 y: [0, direction > 0 ? -1 : 1, 0],
               }
         }
-        transition={draftBadgeTransition}
+        transition={draftCounterPulseTransition}
       >
         {digits.map((digit, index) => {
           const place = digits.length - index - 1;
