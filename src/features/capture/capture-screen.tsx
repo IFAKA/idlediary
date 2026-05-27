@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Clapperboard, Layers2, RotateCcw, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Clapperboard, Layers2, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
@@ -18,7 +19,6 @@ import {
 import {
   clearGeneratedVlogForSession,
   getLatestVlogForSession,
-  getVlog,
   saveVlog,
 } from "@/features/clips/storage";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
@@ -46,20 +46,13 @@ function requestedViewFromUrl(): DurableView {
   return "capture";
 }
 
-function requestedVlogIdFromUrl() {
-  if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get("vlog");
-}
-
 function writeViewToUrl(view: DurableView, action: "push" | "replace") {
   if (typeof window === "undefined") return;
 
   const url = new URL(window.location.href);
   const nextPath = view === "capture" ? "/" : view === "review" ? "/draft" : "/result";
   url.pathname = nextPath;
-  if (view !== "result") {
-    url.searchParams.delete("vlog");
-  }
+  url.searchParams.delete("vlog");
 
   const search = url.searchParams.toString();
   const next = `${url.pathname}${search ? `?${search}` : ""}${url.hash}`;
@@ -81,6 +74,7 @@ function titleForMode(mode: ScreenMode) {
 }
 
 export function CaptureScreen() {
+  const router = useRouter();
   const camera = useCamera();
   const clips = useClips();
   const recorder = useTwoSecondRecorder(camera.stream);
@@ -92,6 +86,7 @@ export function CaptureScreen() {
   const [resultExitDirection, setResultExitDirection] = useState<"up" | "bottom">("up");
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
+  const redirectingAway = useRef(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     ...makeGenerationProgress("idle", 0),
   });
@@ -133,13 +128,12 @@ export function CaptureScreen() {
 
       if (requestedView === "result") {
         try {
-          const requestedVlogId = requestedVlogIdFromUrl();
-          const savedVlog = requestedVlogId
-            ? await getVlog(requestedVlogId)
-            : await getLatestVlogForSession(clips.session.id);
+          const savedVlog = await getLatestVlogForSession(clips.session.id);
           if (savedVlog) {
-            setVlog(savedVlog);
-            setMode("result");
+            redirectingAway.current = true;
+            setVlog(null);
+            setMode("capture");
+            router.replace(`/videos/${encodeURIComponent(savedVlog.id)}`);
             return;
           }
         } catch (error) {
@@ -164,7 +158,7 @@ export function CaptureScreen() {
         writeViewToUrl("capture", "replace");
       }
     },
-    [clips.clips.length, clips.loading, clips.session],
+    [clips.clips.length, clips.loading, clips.session, router],
   );
 
   useEffect(() => {
@@ -172,7 +166,13 @@ export function CaptureScreen() {
   }, [mode]);
 
   useEffect(() => {
-    if (!initialViewReady || mode !== "capture" || camera.stream || cameraStartAttempted.current) return;
+    if (
+      !initialViewReady ||
+      redirectingAway.current ||
+      mode !== "capture" ||
+      camera.stream ||
+      cameraStartAttempted.current
+    ) return;
     cameraStartAttempted.current = true;
     void startCamera();
   }, [camera.stream, initialViewReady, mode, startCamera]);
@@ -194,12 +194,15 @@ export function CaptureScreen() {
 
   useEffect(() => {
     const onPopState = () => {
+      if (mode === "result" && vlog && window.location.pathname === "/result") {
+        return;
+      }
       void restoreRequestedView();
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [restoreRequestedView]);
+  }, [mode, restoreRequestedView, vlog]);
 
   const showCapture = useCallback((action: "push" | "replace" = "push") => {
     setSlideDirection("right");
@@ -231,10 +234,6 @@ export function CaptureScreen() {
     try {
       setResultExitDirection("up");
       await clearDraft();
-      if (clips.session) {
-        await clearGeneratedVlogForSession(clips.session.id);
-      }
-      releaseAllVlogObjectUrls();
       setVlog(null);
       showCapture("push");
     } catch (error) {
@@ -243,11 +242,6 @@ export function CaptureScreen() {
       showCapture("push");
     }
   };
-
-  const closeResult = useCallback(() => {
-    setResultExitDirection("bottom");
-    showCapture("push");
-  }, [showCapture]);
 
   const captureClip = async () => {
     if (clipLimitReached) {
@@ -340,18 +334,6 @@ export function CaptureScreen() {
       return {
         eyebrow: "Ready",
         title: vlog.title,
-        trailing: (
-          <Button
-            aria-label="Back to recording"
-            className="shrink-0 bg-black/35 backdrop-blur hover:bg-black/50"
-            size="icon"
-            type="button"
-            variant="ghost"
-            onClick={closeResult}
-          >
-            <X className="size-5" />
-          </Button>
-        ),
       };
     }
 
@@ -359,7 +341,7 @@ export function CaptureScreen() {
       eyebrow: "Today",
       title: "No pressure",
     };
-  }, [clips.clips.length, closeResult, generationProgress.label, isFinishing, mode, showCapture, vlog]);
+  }, [clips.clips.length, generationProgress.label, isFinishing, mode, showCapture, vlog]);
 
   useAppHeader(headerConfig);
 

@@ -296,6 +296,42 @@ export async function getVlog(id: string) {
   }
 }
 
+export async function deleteVlog(id: string) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction(["vlogs", "sessions"], "readwrite");
+    await tx.objectStore("vlogs").delete(id);
+
+    const sessionsStore = tx.objectStore("sessions");
+    const sessions = await sessionsStore.getAll();
+    await Promise.all(
+      sessions
+        .filter((session) => session.generatedVlogId === id)
+        .map((session) =>
+          sessionsStore.put({
+            id: session.id,
+            startedAt: session.startedAt,
+            updatedAt: new Date().toISOString(),
+          }),
+        ),
+    );
+
+    await tx.done;
+    addDebugEvent("vlog-deleted", "storage", { vlogId: id });
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-delete-failed",
+        area: "storage",
+        message: "Could not delete generated vlog",
+        userMessage: "The saved video could not be deleted.",
+        cause,
+        context: { vlogId: id },
+      }),
+    );
+  }
+}
+
 export async function getLatestVlogForSession(sessionId: string) {
   try {
     const db = await getDb();

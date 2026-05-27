@@ -179,6 +179,14 @@ async function recordOneClipAndOpenReview(page: Page) {
   await page.getByRole("button", { name: "Review draft clips" }).click();
 }
 
+async function generateOneVideo(page: Page) {
+  await recordOneClipAndOpenReview(page);
+  await page.getByRole("button", { name: "Make video" }).click();
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible({
+    timeout: 8_000,
+  });
+}
+
 test("first launch shows intro screen", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/");
@@ -413,7 +421,6 @@ test("generated video preview opens fullscreen and result screen does not scroll
 
   await page.getByRole("button", { name: "Open generated video fullscreen" }).click();
   await expect(page.getByLabel("Fullscreen generated video preview")).toBeVisible();
-  await expectControlNotTopHitTarget(page, page.getByLabel("Back to recording"), "Back to recording");
   await expect(page.getByRole("button", { name: "Close generated video preview" })).toHaveCount(0);
   await expect(page.locator("header").getByText("Preview")).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -427,6 +434,69 @@ test("generated video preview opens fullscreen and result screen does not scroll
   await expect(page.getByLabel("Fullscreen generated video preview")).not.toBeVisible();
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
   await expect(page).toHaveURL(/\/result$/);
+});
+
+test("saved video detail opens from videos and returns to videos", async ({ page }) => {
+  await generateOneVideo(page);
+
+  await page.getByRole("link", { name: "View saved videos" }).click();
+  await expect(page).toHaveURL("/videos");
+  await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
+  await expect(page).toHaveURL(/\/videos\/[^/]+$/);
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New recording" })).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Back to videos" }).click();
+  await expect(page).toHaveURL("/videos");
+  await expect(page.getByRole("heading", { exact: true, name: "Saved entries" })).toBeVisible();
+});
+
+test("saved video detail preview closes with escape and browser back", async ({ page }) => {
+  await generateOneVideo(page);
+
+  await page.getByRole("link", { name: "View saved videos" }).click();
+  await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
+  await expect(page).toHaveURL(/\/videos\/[^/]+$/);
+
+  await page.getByRole("button", { name: "Open saved video fullscreen" }).click();
+  await expect(page.getByLabel("Fullscreen saved video preview")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByLabel("Fullscreen saved video preview")).not.toBeVisible();
+  await expect(page).toHaveURL(/\/videos\/[^/]+$/);
+
+  await page.getByRole("button", { name: "Open saved video fullscreen" }).click();
+  await expect(page.getByLabel("Fullscreen saved video preview")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByLabel("Fullscreen saved video preview")).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
+  await expect(page).toHaveURL(/\/videos\/[^/]+$/);
+});
+
+test("missing saved video detail shows a not found state", async ({ page }) => {
+  await page.goto("/videos/not-found-id");
+
+  await expect(page.getByRole("heading", { name: "Video not found" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to saved videos" }).click();
+  await expect(page).toHaveURL("/videos");
+  await expect(page.getByRole("heading", { exact: true, name: "Saved entries" })).toBeVisible();
+});
+
+test("saved videos can be deleted from detail", async ({ page }) => {
+  await generateOneVideo(page);
+
+  await page.getByRole("link", { name: "View saved videos" }).click();
+  await page.getByRole("link", { name: "Open Two Seconds Today" }).click();
+  const deleteButton = page.getByRole("button", { exact: true, name: "Delete" });
+  await expect(deleteButton).toBeVisible();
+  await deleteButton.click();
+  await expectMobileDrawer(page, "Delete this video?");
+  await page
+    .getByRole("dialog", { name: "Delete this video?" })
+    .getByRole("button", { name: "Delete video" })
+    .click();
+
+  await expect(page).toHaveURL("/videos");
+  await expect(page.getByRole("heading", { name: "No diary entries yet" })).toBeVisible();
 });
 
 test("deleting the final clip returns to capture", async ({ page }) => {
@@ -497,7 +567,7 @@ test("new recording after generation clears the old draft", async ({ page }) => 
   );
 });
 
-test("result close returns to recording without clearing the draft", async ({ page }) => {
+test("success page has no header close button", async ({ page }) => {
   await mockMediaCapture(page);
   await openRecord(page);
 
@@ -510,14 +580,8 @@ test("result close returns to recording without clearing the draft", async ({ pa
     timeout: 8_000,
   });
 
-  await page.getByRole("button", { name: "Back to recording" }).click();
-
-  await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Review draft clips" })).not.toHaveAttribute(
-    "aria-disabled",
-    "true",
-  );
+  await expect(page.getByRole("button", { name: "Back to recording" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "View saved videos" })).toBeVisible();
 });
 
 test("recording a clip opens review, reloads on review, and keeps a named button", async ({ page }) => {
@@ -573,7 +637,7 @@ test("draft URL without clips falls back to record", async ({ page }) => {
   await expect(page).toHaveTitle("IdleDiary");
 });
 
-test("generated result restores after reload", async ({ page }) => {
+test("generated result redirects to saved detail after reload", async ({ page }) => {
   await recordOneClipAndOpenReview(page);
   await page.getByRole("button", { name: "Make video" }).click();
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible({
@@ -584,9 +648,9 @@ test("generated result restores after reload", async ({ page }) => {
 
   await page.reload();
 
-  await expect(page).toHaveURL("/result");
+  await expect(page).toHaveURL(/\/videos\/[^/]+$/);
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open generated video fullscreen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open saved video fullscreen" })).toBeVisible();
   await expect
     .poll(() =>
       page.evaluate(
