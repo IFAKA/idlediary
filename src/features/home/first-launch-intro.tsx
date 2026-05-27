@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
-import { BookOpenText, Camera, CircleDot, LockKeyhole, Sparkles } from "lucide-react";
+import { Camera, CircleDot, LockKeyhole, Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 
@@ -133,9 +134,16 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
           transition={{ duration: shouldReduceMotion ? 0 : mountDuration, ease: "easeOut" }}
         >
           <div className="flex items-center gap-3">
-            <div className="relative flex size-14 items-center justify-center rounded-lg border border-primary/45 bg-primary/15 text-primary shadow-[0_0_42px_hsl(var(--primary)/0.2)]">
-              <Camera className="size-7" />
-              <BookOpenText className="absolute -bottom-1 -right-1 size-5 rounded-md bg-background p-0.5 text-memory" />
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-[1.05rem] border border-primary/35 bg-background/80 p-1 shadow-[0_0_42px_hsl(var(--primary)/0.22)]">
+              <Image
+                className="size-full rounded-[0.85rem]"
+                src="/icon.svg"
+                width={56}
+                height={56}
+                alt=""
+                aria-hidden="true"
+                priority
+              />
             </div>
             <div>
               <h1 className="text-3xl font-semibold leading-none">IdleDiary</h1>
