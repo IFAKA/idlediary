@@ -25,6 +25,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowLeft, Play, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AppHeader } from "@/components/app-header";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import { getObjectUrlForClip } from "@/features/clips/media-cache";
@@ -186,17 +187,15 @@ export function ClipReviewPanel({
       layoutId="draft-card"
       transition={spring}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-            Review
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold">Draft clips</h1>
-        </div>
-        <div className="px-1 py-1 text-right">
-          <p className="text-sm font-semibold">{orderedClips.length} clips</p>
-        </div>
-      </div>
+      <AppHeader
+        eyebrow="Review"
+        title="Draft clips"
+        trailing={
+          <div className="px-1 py-1 text-right">
+            <p className="text-sm font-semibold">{orderedClips.length} clips</p>
+          </div>
+        }
+      />
 
       <DndContext
         collisionDetection={collisionDetection}
@@ -555,24 +554,25 @@ function FullscreenPreview({
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
     >
-      <div className="relative z-[60] flex shrink-0 items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-            Preview
-          </p>
-          <h2 className="mt-1 text-xl font-semibold leading-tight">Clip player</h2>
-        </div>
-        <Button
-          aria-label="Close preview"
-          className="mr-14 shrink-0 bg-black/55 backdrop-blur"
-          size="icon"
-          type="button"
-          variant="ghost"
-          onClick={onClose}
-        >
-          <X className="size-5" />
-        </Button>
-      </div>
+      <AppHeader
+        className="relative z-[60]"
+        eyebrow="Preview"
+        title="Clip player"
+        titleAs="h2"
+        titleClassName="text-xl"
+        trailing={
+          <Button
+            aria-label="Close preview"
+            className="mr-14 shrink-0 bg-black/55 backdrop-blur"
+            size="icon"
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+          >
+            <X className="size-5" />
+          </Button>
+        }
+      />
       <motion.div
         className="relative mt-4 min-h-0 flex-1 overflow-hidden rounded-lg border bg-black"
         layoutId={`clip-preview-${clip.id}`}

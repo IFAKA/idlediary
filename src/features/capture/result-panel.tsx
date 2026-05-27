@@ -3,6 +3,7 @@
 import { Download, RefreshCcw, Share2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
+import { AppHeader } from "@/components/app-header";
 import { ResponsiveConfirm } from "@/components/responsive-confirm";
 import { Button } from "@/components/ui/button";
 import { getObjectUrlForVlog, retainVlogObjectUrl } from "@/features/clips/media-cache";
@@ -26,24 +27,23 @@ export function ResultPanel({ vlog, onClose, onReset }: ResultPanelProps) {
 
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden safe-screen">
-      <div className="relative z-[60] flex shrink-0 items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-            Ready
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold leading-tight">{vlog.title}</h1>
-        </div>
-        <Button
-          aria-label="Back to recording"
-          className="mr-14 shrink-0 bg-black/35 backdrop-blur hover:bg-black/50"
-          size="icon"
-          type="button"
-          variant="ghost"
-          onClick={onClose}
-        >
-          <X className="size-5" />
-        </Button>
-      </div>
+      <AppHeader
+        className="relative z-[60]"
+        eyebrow="Ready"
+        title={vlog.title}
+        trailing={
+          <Button
+            aria-label="Back to recording"
+            className="mr-14 shrink-0 bg-black/35 backdrop-blur hover:bg-black/50"
+            size="icon"
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+          >
+            <X className="size-5" />
+          </Button>
+        }
+      />
 
       <div className="mt-5 flex min-h-0 flex-1 items-center justify-center">
         <button
@@ -120,24 +120,25 @@ function FullscreenResultPlayer({
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
     >
-      <div className="relative z-[60] flex shrink-0 items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-            Preview
-          </p>
-          <h2 className="mt-1 text-xl font-semibold leading-tight">{title}</h2>
-        </div>
-        <Button
-          aria-label="Close generated video preview"
-          className="mr-14 shrink-0 bg-black/55 backdrop-blur"
-          size="icon"
-          type="button"
-          variant="ghost"
-          onClick={onClose}
-        >
-          <X className="size-5" />
-        </Button>
-      </div>
+      <AppHeader
+        className="relative z-[60]"
+        eyebrow="Preview"
+        title={title}
+        titleAs="h2"
+        titleClassName="text-xl"
+        trailing={
+          <Button
+            aria-label="Close generated video preview"
+            className="mr-14 shrink-0 bg-black/55 backdrop-blur"
+            size="icon"
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+          >
+            <X className="size-5" />
+          </Button>
+        }
+      />
       <div className="relative mt-4 min-h-0 flex-1 overflow-hidden rounded-lg border bg-black">
         <video
           aria-label="Fullscreen generated video preview"

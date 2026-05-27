@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, Clapperboard, RefreshCw } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
+import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import {
   getObjectUrlForVlog,
@@ -63,20 +64,19 @@ export function HomeScreen() {
         initial={{ opacity: 0, x: -42 }}
         transition={{ duration: 0.24, ease: "easeOut" }}
       >
-        <header className="shrink-0 flex items-start justify-between gap-4">
-          <Button asChild size="icon" variant="outline" aria-label="Back to camera">
-            <Link href="/">
-              <ArrowLeft className="size-5" />
-            </Link>
-          </Button>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              IdleDiary
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold leading-tight">Generated videos</h1>
-          </div>
-          <div className="size-11 shrink-0" aria-hidden="true" />
-        </header>
+        <AppHeader
+          eyebrow="IdleDiary"
+          title="Generated videos"
+          titleClassName="text-3xl"
+          leading={
+            <Button asChild size="icon" variant="outline" aria-label="Back to camera">
+              <Link href="/">
+                <ArrowLeft className="size-5" />
+              </Link>
+            </Button>
+          }
+          trailing={<div className="size-11 shrink-0" aria-hidden="true" />}
+        />
 
         {state.status === "error" ? (
           <div className="mt-5 shrink-0 rounded-md border border-destructive/45 bg-destructive/10 p-3 text-sm leading-6 text-destructive-foreground">

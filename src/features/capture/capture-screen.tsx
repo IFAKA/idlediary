@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Clapperboard, Layers2, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppHeader } from "@/components/app-header";
 import { useClips } from "@/features/clips/use-clips";
 import { getObjectUrlForClip, releaseAllVlogObjectUrls } from "@/features/clips/media-cache";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
@@ -392,14 +393,7 @@ export function CaptureScreen() {
             initial={{ opacity: 0, x: 0 }}
             transition={routeSlideTransition}
           >
-            <header className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                  Today
-                </p>
-                <h1 className="mt-1 text-2xl font-semibold">No pressure</h1>
-              </div>
-            </header>
+            <AppHeader eyebrow="Today" title="No pressure" />
 
             <div className="mt-auto">
               <div className="mb-5 flex items-center justify-between gap-3">
