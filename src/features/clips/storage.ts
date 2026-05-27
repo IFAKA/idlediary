@@ -278,6 +278,45 @@ export async function saveVlog(vlog: VlogRecord) {
   }
 }
 
+export async function saveVlogAndClearSessionDraft(vlog: VlogRecord) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction(["vlogs", "clips", "sessions"], "readwrite");
+    const clipsStore = tx.objectStore("clips");
+    const clips = await clipsStore.index("by-session").getAll(vlog.sessionId);
+
+    await tx.objectStore("vlogs").put(vlog);
+    await Promise.all(clips.map((clip) => clipsStore.delete(clip.id)));
+
+    const session = await tx.objectStore("sessions").get(vlog.sessionId);
+    if (session) {
+      await tx.objectStore("sessions").put({
+        ...session,
+        generatedVlogId: vlog.id,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    await tx.done;
+    addDebugEvent("vlog-saved-draft-cleared", "storage", {
+      vlogId: vlog.id,
+      sessionId: vlog.sessionId,
+      clipCount: clips.length,
+    });
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-write-failed",
+        area: "storage",
+        message: "Could not save generated vlog and clear draft clips",
+        userMessage: "The vlog was created but could not be saved locally.",
+        cause,
+        context: { vlogId: vlog.id, sessionId: vlog.sessionId },
+      }),
+    );
+  }
+}
+
 export async function getVlog(id: string) {
   try {
     const db = await getDb();

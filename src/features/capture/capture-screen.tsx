@@ -19,7 +19,7 @@ import {
 import {
   clearGeneratedVlogForSession,
   getLatestVlogForSession,
-  saveVlog,
+  saveVlogAndClearSessionDraft,
 } from "@/features/clips/storage";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 import { CameraPreview } from "./camera-preview";
@@ -276,7 +276,8 @@ export function CaptureScreen() {
       camera.stop();
       await waitForPaint();
       const nextVlog = await generateVlog(selectedClips, clips.session.id, setGenerationProgress);
-      await saveVlog(nextVlog);
+      await saveVlogAndClearSessionDraft(nextVlog);
+      clips.clearLocalClips();
       showResult(nextVlog, "replace");
     } catch (error) {
       reportError(error);

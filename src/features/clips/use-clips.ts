@@ -194,6 +194,12 @@ export function useClips() {
     dispatch({ type: "clear" });
   }, []);
 
+  const clearLocalClips = useCallback(() => {
+    ++requestVersionRef.current;
+    releaseAllClipObjectUrls();
+    dispatch({ type: "clear" });
+  }, []);
+
   return useMemo(
     () => ({
       session: state.session,
@@ -201,10 +207,21 @@ export function useClips() {
       loading: state.loading,
       addClip,
       clearClips,
+      clearLocalClips,
       reorderClips,
       removeClip,
       refresh,
     }),
-    [addClip, clearClips, refresh, removeClip, reorderClips, state.clips, state.loading, state.session],
+    [
+      addClip,
+      clearClips,
+      clearLocalClips,
+      refresh,
+      removeClip,
+      reorderClips,
+      state.clips,
+      state.loading,
+      state.session,
+    ],
   );
 }

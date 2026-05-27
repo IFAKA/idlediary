@@ -662,6 +662,25 @@ test("generated result redirects to saved detail after reload", async ({ page })
     .toBe(0);
 });
 
+test("successful generation clears draft clips without starting a new recording", async ({ page }) => {
+  await recordOneClipAndOpenReview(page);
+  await page.getByRole("button", { name: "Make video" }).click();
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible({
+    timeout: 8_000,
+  });
+  await expect(page).toHaveURL("/result");
+
+  await page.goBack();
+
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "Review draft clips" }).getByText("+1")).toHaveCount(0);
+});
+
 test("reloading during generation returns to review with clips preserved", async ({ page }) => {
   await mockMediaCapture(page, { generationDelayMs: 10_000 });
   await openRecord(page);

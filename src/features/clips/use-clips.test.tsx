@@ -193,4 +193,20 @@ describe("useClips", () => {
     expect(latest?.clips.map((item) => item.id)).toEqual([clip.id]);
     expect(mocks.releaseClipObjectUrl).not.toHaveBeenCalled();
   });
+
+  it("can clear only local clip state after an external storage mutation succeeds", async () => {
+    const clip = makeClip("clip-1", 0);
+    mocks.listClips.mockResolvedValueOnce([clip]);
+
+    renderUseClips();
+    await waitFor(() => expect(latest?.loading).toBe(false));
+
+    act(() => {
+      latest!.clearLocalClips();
+    });
+
+    expect(latest?.clips).toEqual([]);
+    expect(mocks.clearClipsForSession).not.toHaveBeenCalled();
+    expect(mocks.releaseAllClipObjectUrls).toHaveBeenCalled();
+  });
 });
