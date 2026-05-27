@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, Film, Plus, RefreshCw } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clapperboard, RefreshCw } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,19 +56,26 @@ export function HomeScreen() {
 
   return (
     <main className="relative isolate h-[100svh] overflow-hidden bg-background safe-screen">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
+      <motion.div
+        className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col"
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -42 }}
+        initial={{ opacity: 0, x: -42 }}
+        transition={{ duration: 0.24, ease: "easeOut" }}
+      >
         <header className="shrink-0 flex items-start justify-between gap-4">
+          <Button asChild size="icon" variant="outline" aria-label="Back to camera">
+            <Link href="/">
+              <ArrowLeft className="size-5" />
+            </Link>
+          </Button>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               IdleDiary
             </p>
             <h1 className="mt-1 text-3xl font-semibold leading-tight">Generated videos</h1>
           </div>
-          <Button asChild size="icon" aria-label="Start recording">
-            <Link href="/">
-              <Plus className="size-5" />
-            </Link>
-          </Button>
+          <div className="size-11 shrink-0" aria-hidden="true" />
         </header>
 
         {state.status === "error" ? (
@@ -93,7 +101,7 @@ export function HomeScreen() {
             <EmptyHistory />
           )}
         </section>
-      </div>
+      </motion.div>
       <DebugDrawer />
     </main>
   );
@@ -103,18 +111,12 @@ function EmptyHistory() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <div className="mb-6 inline-flex size-14 items-center justify-center rounded-full border bg-black/35 text-primary">
-        <Film className="size-7" />
+        <Clapperboard className="size-7" />
       </div>
       <h2 className="text-2xl font-semibold">No generated videos yet</h2>
       <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
         Record a few two-second clips, review the draft, then generate your first diary video.
       </p>
-      <Button asChild className="mt-7 h-14 px-6 text-base">
-        <Link href="/">
-          <Plus className="size-5" />
-          Start recording
-        </Link>
-      </Button>
     </div>
   );
 }

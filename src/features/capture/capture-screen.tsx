@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Film, RotateCcw } from "lucide-react";
+import { Clapperboard, Layers2, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -29,6 +29,8 @@ type ScreenMode = "capture" | "review" | "generating" | "result";
 type DurableView = Exclude<ScreenMode, "generating">;
 
 const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+
+const routeSlideTransition = { duration: 0.24, ease: "easeOut" } as const;
 
 function requestedViewFromUrl(): DurableView {
   if (typeof window === "undefined") return "capture";
@@ -82,6 +84,7 @@ export function CaptureScreen() {
   const [isStartingCamera, setIsStartingCamera] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [vlog, setVlog] = useState<VlogRecord | null>(null);
+  const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
@@ -200,12 +203,14 @@ export function CaptureScreen() {
   }, [restoreRequestedView]);
 
   const showCapture = useCallback((action: "push" | "replace" = "push") => {
+    setSlideDirection("right");
     setVlog(null);
     setMode("capture");
     writeViewToUrl("capture", action);
   }, []);
 
   const showReview = useCallback((action: "push" | "replace" = "push") => {
+    setSlideDirection("right");
     setVlog(null);
     setMode("review");
     writeViewToUrl("review", action);
@@ -328,15 +333,18 @@ export function CaptureScreen() {
         ) : mode === "review" ? (
           <motion.div
             key="review"
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            initial={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.24, ease: "easeOut" }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 42 }}
+            initial={{ opacity: 0, x: 42 }}
+            transition={routeSlideTransition}
           >
             <ClipReviewPanel
               clips={clips.clips}
               isFinishing={isFinishing}
-              onBack={() => showCapture("push")}
+              onBack={() => {
+                setSlideDirection("right");
+                showCapture("push");
+              }}
               onClearDraft={async () => {
                 try {
                   await clearDraft();
@@ -380,10 +388,10 @@ export function CaptureScreen() {
           <motion.div
             key="capture"
             className="relative z-10 flex h-[100svh] flex-col safe-screen"
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -10 }}
-            initial={{ opacity: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: slideDirection === "right" ? -42 : 42 }}
+            initial={{ opacity: 0, x: 0 }}
+            transition={routeSlideTransition}
           >
             <header className="flex items-start justify-between gap-3">
               <div>
@@ -404,8 +412,9 @@ export function CaptureScreen() {
                   aria-label="Videos"
                   className="inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   href="/videos"
+                  onClick={() => setSlideDirection("left")}
                 >
-                  <Film className="size-5 text-primary" />
+                  <Clapperboard className="size-5 text-primary" />
                 </Link>
 
                 <RecordButton
@@ -506,7 +515,7 @@ function LatestDraftButton({
           </span>
         </>
       ) : (
-        <Film className="size-5 text-muted-foreground" />
+        <Layers2 className="size-5 text-muted-foreground" />
       )}
     </button>
   );
