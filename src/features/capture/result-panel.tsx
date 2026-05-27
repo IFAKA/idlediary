@@ -1,7 +1,8 @@
 "use client";
 
+import confetti from "canvas-confetti";
 import { Check, Share2 } from "lucide-react";
-import { motion } from "motion/react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { VlogRecord } from "@/features/clips/types";
 import { VlogPlayer } from "@/features/clips/vlog-player";
@@ -12,52 +13,12 @@ type ResultPanelProps = {
   onExport: () => void;
 };
 
-const confettiPieces = Array.from({ length: 34 }, (_, index) => ({
-  id: index,
-  color: ["#f58aa8", "#f5d56b", "#8dd9c7", "#b79cf2", "#ffffff"][index % 5],
-  delay: (index % 9) * 0.045,
-  left: 8 + ((index * 17) % 84),
-  rotate: (index % 2 === 0 ? 1 : -1) * (90 + (index % 7) * 18),
-  x: ((index * 29) % 180) - 90,
-  y: 220 + ((index * 23) % 180),
-}));
-
 export function ResultPanel({ vlog, onDone, onExport }: ResultPanelProps) {
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden top-level-screen">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[52svh] overflow-hidden"
-        data-testid="success-confetti"
-      >
-        {confettiPieces.map((piece) => (
-          <motion.span
-            key={piece.id}
-            className="absolute top-0 rounded-[2px]"
-            style={{
-              backgroundColor: piece.color,
-              height: piece.id % 3 === 0 ? 14 : 10,
-              left: `${piece.left}%`,
-              width: piece.id % 4 === 0 ? 5 : 8,
-            }}
-            animate={{
-              opacity: [0, 1, 1, 0],
-              rotate: [0, piece.rotate],
-              x: [0, piece.x],
-              y: [0, piece.y],
-            }}
-            initial={{ opacity: 0, y: -22 }}
-            transition={{
-              delay: piece.delay,
-              duration: 1.9,
-              ease: [0.16, 1, 0.3, 1],
-              times: [0, 0.12, 0.78, 1],
-            }}
-          />
-        ))}
-      </div>
+      <SuccessConfetti />
 
-      <div className="flex min-h-0 flex-1 items-center justify-center">
+      <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center">
         <VlogPlayer
           fullscreenLabel="Fullscreen generated video preview"
           openLabel="Open generated video fullscreen"
@@ -66,7 +27,7 @@ export function ResultPanel({ vlog, onDone, onExport }: ResultPanelProps) {
         />
       </div>
 
-      <div className="grid shrink-0 gap-3 pb-1 pt-6">
+      <div className="relative z-10 grid shrink-0 gap-3 pb-1 pt-6">
         <Button className="h-14 text-base" type="button" onClick={onExport}>
           <Share2 className="size-5" />
           Export
@@ -77,5 +38,72 @@ export function ResultPanel({ vlog, onDone, onExport }: ResultPanelProps) {
         </Button>
       </div>
     </div>
+  );
+}
+
+function SuccessConfetti() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+
+    const burst = confetti.create(canvas, {
+      resize: true,
+      useWorker: true,
+    });
+    const colors = ["#f58aa8", "#f5d56b", "#8dd9c7", "#b79cf2", "#ffffff"];
+    const base = {
+      colors,
+      disableForReducedMotion: true,
+      gravity: 0.74,
+      origin: { x: 0.5, y: 0.46 },
+      scalar: 0.92,
+      ticks: 155,
+    } satisfies confetti.Options;
+
+    burst({
+      ...base,
+      angle: 90,
+      particleCount: 82,
+      spread: 92,
+      startVelocity: 42,
+    });
+
+    const sideBursts = window.setTimeout(() => {
+      burst({
+        ...base,
+        angle: 64,
+        origin: { x: 0.42, y: 0.48 },
+        particleCount: 38,
+        spread: 58,
+        startVelocity: 34,
+      });
+      burst({
+        ...base,
+        angle: 116,
+        origin: { x: 0.58, y: 0.48 },
+        particleCount: 38,
+        spread: 58,
+        startVelocity: 34,
+      });
+    }, 170);
+
+    return () => {
+      window.clearTimeout(sideBursts);
+      burst.reset();
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+      data-testid="success-confetti"
+    />
   );
 }
