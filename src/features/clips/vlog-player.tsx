@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { getObjectUrlForVlog, retainVlogObjectUrl } from "@/features/clips/media-cache";
 import type { VlogRecord } from "@/features/clips/types";
 import { useHistoryOverlay } from "@/hooks/use-history-overlay";
+import { spring } from "@/lib/motion";
 
 type VlogPlayerProps = {
   vlog: VlogRecord;
@@ -23,6 +24,7 @@ export function VlogPlayer({
 }: VlogPlayerProps) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const src = useMemo(() => getObjectUrlForVlog(vlog), [vlog]);
+  const previewLayoutId = `vlog-preview-${vlog.id}`;
   const closePlayer = useHistoryOverlay({
     isOpen: isPlayerOpen,
     name: "vlog-preview",
@@ -35,9 +37,11 @@ export function VlogPlayer({
 
   return (
     <>
-      <button
+      <motion.button
         aria-label={openLabel}
         className="relative aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-lg border border-memory/30 bg-black outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        layoutId={previewLayoutId}
+        transition={spring}
         type="button"
         onClick={() => setIsPlayerOpen(true)}
       >
@@ -62,13 +66,14 @@ export function VlogPlayer({
             </span>
           </span>
         ) : null}
-      </button>
+      </motion.button>
 
       <BodyPortal>
         <AnimatePresence>
           {isPlayerOpen && src ? (
             <FullscreenVlogPlayer
               label={fullscreenLabel}
+              layoutId={previewLayoutId}
               src={src}
               onClose={closePlayer}
             />
@@ -81,10 +86,12 @@ export function VlogPlayer({
 
 function FullscreenVlogPlayer({
   label,
+  layoutId,
   src,
   onClose,
 }: {
   label: string;
+  layoutId: string;
   src: string;
   onClose: () => void;
 }) {
@@ -98,7 +105,11 @@ function FullscreenVlogPlayer({
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
     >
-      <div className="grid h-full w-full place-items-center overflow-hidden bg-black">
+      <motion.div
+        className="grid h-full w-full place-items-center overflow-hidden bg-black"
+        layoutId={layoutId}
+        transition={spring}
+      >
         <div className="relative aspect-[9/16] h-full max-h-full max-w-full overflow-hidden bg-black">
           <video
             aria-label={label}
@@ -118,7 +129,7 @@ function FullscreenVlogPlayer({
             <X className="size-5" strokeWidth={2.5} />
           </button>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
