@@ -86,6 +86,14 @@ describe("RecordButton", () => {
     });
     expect(activeMarker()).toHaveAttribute("data-record-marker", "1");
     expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "1");
+    expect(activeSegmentPulse()).toHaveAttribute(
+      "stroke-dasharray",
+      recordSegments()[0]?.getAttribute("stroke-dasharray"),
+    );
+    expect(activeSegmentPulse()).toHaveAttribute(
+      "stroke-dashoffset",
+      recordSegments()[0]?.getAttribute("stroke-dashoffset"),
+    );
 
     act(() => {
       vi.advanceTimersByTime(720);
