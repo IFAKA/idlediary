@@ -9,6 +9,8 @@ const clipUrls = new Map<string, CacheEntry>();
 const vlogUrls = new Map<string, CacheEntry>();
 const clipThumbnailUrls = new Map<string, CacheEntry>();
 const vlogThumbnailUrls = new Map<string, CacheEntry>();
+const blobVersions = new WeakMap<Blob, number>();
+let nextBlobVersion = 0;
 
 function clipVersion(clip: ClipRecord) {
   return `${clip.size}:${clip.createdAt}`;
@@ -21,7 +23,15 @@ function vlogVersion(vlog: VlogRecord) {
 function thumbnailVersion(record: ThumbnailFields) {
   if (!record.thumbnailBlob) return null;
 
+  let blobVersion = blobVersions.get(record.thumbnailBlob);
+  if (typeof blobVersion !== "number") {
+    nextBlobVersion += 1;
+    blobVersion = nextBlobVersion;
+    blobVersions.set(record.thumbnailBlob, blobVersion);
+  }
+
   return [
+    blobVersion,
     record.thumbnailBlob.size,
     record.thumbnailMimeType ?? record.thumbnailBlob.type,
     record.thumbnailWidth ?? "",

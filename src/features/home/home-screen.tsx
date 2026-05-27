@@ -9,7 +9,7 @@ import {
   HardDrive,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { ItemCounter } from "@/components/item-counter";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,8 @@ function formatMimeType(mimeType: string) {
 
 export function HomeScreen() {
   const [state, setState] = useState<HomeState>({ status: "loading", vlogs: [] });
+  const mountedRef = useRef(false);
+  const thumbnailBackfillsRef = useRef(new Set<string>());
   const videoCount = state.vlogs.length;
   const headerConfig = useMemo<AppHeaderConfig>(
     () => ({
@@ -100,8 +102,42 @@ export function HomeScreen() {
   useAppHeader(headerConfig);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const backfillVlogThumbnail = useCallback(async (vlogId: string) => {
+    if (thumbnailBackfillsRef.current.has(vlogId)) return;
+
+    thumbnailBackfillsRef.current.add(vlogId);
+    try {
+      const fullVlog = await getVlog(vlogId);
+      if (!fullVlog) return;
+
+      const thumbnail = await generateVideoThumbnail(fullVlog.blob, thumbnailSizes.vlog);
+      const updatedVlog = await saveVlogThumbnail(vlogId, thumbnail);
+      if (!updatedVlog || !mountedRef.current) return;
+
+      setState((current) => {
+        if (current.status !== "ready") return current;
+        return {
+          status: "ready",
+          vlogs: sortVlogsNewestFirst(
+            current.vlogs.map((item) => (item.id === updatedVlog.id ? updatedVlog : item)),
+          ),
+        };
+      });
+    } catch (error) {
+      reportError(error);
+    } finally {
+      thumbnailBackfillsRef.current.delete(vlogId);
+    }
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
-    const backfills = new Set<string>();
 
     listVlogSummaries()
       .then(async (vlogs) => {
@@ -127,30 +163,8 @@ export function HomeScreen() {
 
         void (async () => {
           for (const vlog of readyVlogs.filter((entry) => !entry.thumbnailBlob)) {
-            if (!mounted || backfills.has(vlog.id)) continue;
-            try {
-              backfills.add(vlog.id);
-              const fullVlog = await getVlog(vlog.id);
-              if (!fullVlog) continue;
-              const thumbnail = await generateVideoThumbnail(fullVlog.blob, thumbnailSizes.vlog);
-              const updatedVlog = await saveVlogThumbnail(vlog.id, thumbnail);
-                if (!mounted || !updatedVlog) return;
-                setState((current) => {
-                  if (current.status !== "ready") return current;
-                  return {
-                    status: "ready",
-                    vlogs: sortVlogsNewestFirst(
-                      current.vlogs.map((item) =>
-                        item.id === updatedVlog.id ? updatedVlog : item,
-                      ),
-                    ),
-                  };
-                });
-            } catch (error) {
-              reportError(error);
-            } finally {
-                backfills.delete(vlog.id);
-            }
+            if (!mounted) return;
+            void backfillVlogThumbnail(vlog.id);
           }
         })();
       })
@@ -168,7 +182,7 @@ export function HomeScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [backfillVlogThumbnail]);
 
   return (
     <main className="relative isolate h-[100svh] overflow-hidden bg-background">
@@ -194,7 +208,11 @@ export function HomeScreen() {
             <div className="h-full overflow-y-auto overscroll-contain pr-1">
               <div className="grid gap-3 pb-4 xl:grid-cols-2">
                 {state.vlogs.map((vlog) => (
-                  <VlogCard key={vlog.id} vlog={vlog} />
+                  <VlogCard
+                    key={vlog.id}
+                    vlog={vlog}
+                    onThumbnailError={backfillVlogThumbnail}
+                  />
                 ))}
               </div>
             </div>
@@ -228,8 +246,16 @@ function EmptyHistory() {
   );
 }
 
-function VlogCard({ vlog }: { vlog: VlogSummary }) {
+function VlogCard({
+  vlog,
+  onThumbnailError,
+}: {
+  vlog: VlogSummary;
+  onThumbnailError: (vlogId: string) => void;
+}) {
   const thumbnailSrc = useMemo(() => getThumbnailObjectUrlForVlog(vlog), [vlog]);
+  const [failedThumbnailSrc, setFailedThumbnailSrc] = useState<string | null>(null);
+  const thumbnailFailed = thumbnailSrc === failedThumbnailSrc;
 
   useEffect(() => {
     return () => releaseVlogObjectUrl(vlog.id);
@@ -243,13 +269,17 @@ function VlogCard({ vlog }: { vlog: VlogSummary }) {
     >
       <article className="contents">
         <div className="relative h-full w-full bg-black">
-          {thumbnailSrc ? (
+          {thumbnailSrc && !thumbnailFailed ? (
             <img
               alt=""
               className="h-full w-full object-cover"
               decoding="async"
               loading="lazy"
               src={thumbnailSrc}
+              onError={() => {
+                setFailedThumbnailSrc(thumbnailSrc);
+                onThumbnailError(vlog.id);
+              }}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-black text-white/60">

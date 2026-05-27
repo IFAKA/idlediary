@@ -15,9 +15,18 @@ import {
 const storageMocks = vi.hoisted(() => ({
   getVlogByGenerationFingerprint: vi.fn(),
 }));
+const thumbnailMocks = vi.hoisted(() => ({
+  generateVideoThumbnail: vi.fn(),
+}));
 
 vi.mock("@/features/clips/storage", () => ({
   getVlogByGenerationFingerprint: storageMocks.getVlogByGenerationFingerprint,
+}));
+vi.mock("@/features/clips/thumbnail", () => ({
+  generateVideoThumbnail: thumbnailMocks.generateVideoThumbnail,
+  thumbnailSizes: {
+    vlog: { width: 360, height: 640 },
+  },
 }));
 
 function clip(id: string): ClipRecord {
@@ -36,6 +45,7 @@ describe("generation export profile", () => {
   afterEach(() => {
     resetGenerationForTests();
     storageMocks.getVlogByGenerationFingerprint.mockReset();
+    thumbnailMocks.generateVideoThumbnail.mockReset();
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
   });
 
@@ -118,13 +128,24 @@ describe("generation export profile", () => {
     (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
       MockFFmpeg;
     storageMocks.getVlogByGenerationFingerprint.mockResolvedValue(null);
+    thumbnailMocks.generateVideoThumbnail.mockResolvedValue({
+      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 360,
+      thumbnailHeight: 640,
+    });
 
     const progress: GenerationProgress[] = [];
-    await generateVlog([clip("clip-1")], "session-1", (nextProgress) => {
+    const vlog = await generateVlog([clip("clip-1")], "session-1", (nextProgress) => {
       progress.push(nextProgress);
     });
 
     expect(execArgs).toEqual([buildFfmpegArgs()]);
+    expect(thumbnailMocks.generateVideoThumbnail).toHaveBeenCalledWith(
+      vlog.blob,
+      expect.objectContaining({ width: 360, height: 640 }),
+    );
+    expect(vlog.thumbnailBlob).toBeDefined();
     expect(progress.map((entry) => entry.label)).toEqual(
       expect.arrayContaining([
         "Opening your diary",

@@ -111,4 +111,22 @@ describe("media cache", () => {
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-0");
   });
+
+  it("refreshes a thumbnail URL when the blob changes without metadata changes", () => {
+    const clip = makeClip({
+      thumbnailBlob: new Blob(["bad!"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 256,
+      thumbnailHeight: 256,
+    });
+    const updated = {
+      ...clip,
+      thumbnailBlob: new Blob(["good"], { type: "image/webp" }),
+    };
+
+    expect(getThumbnailObjectUrlForClip(clip)).toBe("blob:mock-0");
+    expect(getThumbnailObjectUrlForClip(updated)).toBe("blob:mock-1");
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-0");
+  });
 });

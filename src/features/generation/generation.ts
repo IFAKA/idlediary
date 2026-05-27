@@ -4,6 +4,7 @@ import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
+import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbnail";
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
 import { exportProfile } from "@/features/video/export-profile";
 export { exportProfile } from "@/features/video/export-profile";
@@ -307,20 +308,23 @@ export async function generateVlog(
       bytes.byteOffset + bytes.byteLength,
     ) as ArrayBuffer;
     const blob = new Blob([output], { type: "video/mp4" });
-    const firstThumbnailClip = clips.find((clip) => clip.thumbnailBlob);
+    let thumbnailFields: Pick<
+      VlogRecord,
+      "thumbnailBlob" | "thumbnailMimeType" | "thumbnailWidth" | "thumbnailHeight"
+    > | null = null;
+
+    try {
+      thumbnailFields = await generateVideoThumbnail(blob, thumbnailSizes.vlog);
+    } catch (error) {
+      if (!(error instanceof AppError)) reportError(error);
+    }
+
     const vlog: VlogRecord = {
       id: crypto.randomUUID(),
       sessionId,
       blob,
       mimeType: "video/mp4",
-      ...(firstThumbnailClip
-        ? {
-            thumbnailBlob: firstThumbnailClip.thumbnailBlob,
-            thumbnailMimeType: firstThumbnailClip.thumbnailMimeType,
-            thumbnailWidth: firstThumbnailClip.thumbnailWidth,
-            thumbnailHeight: firstThumbnailClip.thumbnailHeight,
-          }
-        : {}),
+      ...(thumbnailFields ?? {}),
       clipCount: clips.length,
       title: suggestTitle(clips.length),
       caption: suggestCaption(clips.length),

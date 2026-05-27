@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   getThumbnailObjectUrlForVlog: vi.fn(),
   listVlogSummaries: vi.fn(),
   getVlog: vi.fn(),
-  markVlogHandled: vi.fn(),
+  markNeedsActionVlogsHandled: vi.fn(),
   releaseVlogObjectUrl: vi.fn(),
   saveVlogThumbnail: vi.fn(),
   generateVideoThumbnail: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock("./storage", async (importOriginal) => ({
   ...((await importOriginal()) as object),
   listVlogSummaries: mocks.listVlogSummaries,
   getVlog: mocks.getVlog,
-  markVlogHandled: mocks.markVlogHandled,
+  markNeedsActionVlogsHandled: mocks.markNeedsActionVlogsHandled,
   saveVlogThumbnail: mocks.saveVlogThumbnail,
 }));
 
@@ -121,7 +121,7 @@ describe("thumbnail rendering", () => {
     );
     mocks.listVlogSummaries.mockResolvedValue([]);
     mocks.getVlog.mockResolvedValue(null);
-    mocks.markVlogHandled.mockResolvedValue(null);
+    mocks.markNeedsActionVlogsHandled.mockResolvedValue([]);
     mocks.saveVlogThumbnail.mockResolvedValue(null);
     mocks.generateVideoThumbnail.mockResolvedValue({
       thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
@@ -197,5 +197,48 @@ describe("thumbnail rendering", () => {
     expect(cards[0]?.querySelector("video")).not.toBeInTheDocument();
     expect(cards[1]?.querySelector("img")).not.toBeInTheDocument();
     expect(cards[1]?.querySelector("video")).not.toBeInTheDocument();
+  });
+
+  it("regenerates a saved video thumbnail when the stored image fails to decode", async () => {
+    const badThumbnail = vlog({
+      thumbnailBlob: new Blob(["bad!"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 360,
+      thumbnailHeight: 640,
+    });
+    const regeneratedThumbnail = {
+      thumbnailBlob: new Blob(["good"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 360,
+      thumbnailHeight: 640,
+    };
+    mocks.listVlogSummaries.mockResolvedValueOnce([badThumbnail]);
+    mocks.getVlog.mockResolvedValue(badThumbnail);
+    mocks.generateVideoThumbnail.mockResolvedValueOnce(regeneratedThumbnail);
+    mocks.saveVlogThumbnail.mockResolvedValueOnce({
+      ...badThumbnail,
+      ...regeneratedThumbnail,
+    });
+
+    act(() => {
+      root.render(<HomeScreen />);
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('a[aria-label^="Open "] img')).toBeTruthy();
+    });
+
+    const image = container.querySelector('a[aria-label^="Open "] img');
+    act(() => {
+      image?.dispatchEvent(new Event("error"));
+    });
+
+    await waitFor(() => {
+      expect(mocks.generateVideoThumbnail).toHaveBeenCalledWith(
+        badThumbnail.blob,
+        expect.objectContaining({ width: 360, height: 640 }),
+      );
+    });
+    expect(mocks.saveVlogThumbnail).toHaveBeenCalledWith("vlog-1", regeneratedThumbnail);
   });
 });
