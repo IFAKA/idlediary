@@ -108,7 +108,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
                 {isActive ? (
                   <span
                     aria-hidden="true"
-                    className="absolute inset-y-0 -left-20 w-24 rotate-6 bg-memory/14 blur-sm animate-[generation-shine_2.4s_ease-in-out_infinite] motion-reduce:hidden"
+                    className="generation-step-shimmer motion-reduce:hidden"
                   />
                 ) : null}
                 <span
