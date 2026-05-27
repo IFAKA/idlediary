@@ -227,12 +227,12 @@ describe("thumbnail rendering", () => {
       expect(container.querySelectorAll('a[aria-label^="Open "]')).toHaveLength(2);
     });
 
-    expect(container.querySelector('a[aria-label="Open Two Seconds Today"]')).toHaveClass(
-      "new-video-card-highlight",
-    );
-    expect(container.querySelector('a[aria-label="Open Yesterday"]')).not.toHaveClass(
-      "new-video-card-highlight",
-    );
+    expect(
+      container.querySelector('a[aria-label="Open Two Seconds Today"]')?.parentElement,
+    ).toHaveClass("new-video-card-highlight");
+    expect(
+      container.querySelector('a[aria-label="Open Yesterday"]')?.parentElement,
+    ).not.toHaveClass("new-video-card-highlight");
   });
 
   it("does not publish a zero saved video count while loading history", async () => {

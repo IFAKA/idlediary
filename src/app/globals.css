@@ -266,40 +266,42 @@ button {
 
 @keyframes new-video-card-glow {
   0% {
-    border-color: hsl(var(--primary) / 0.68);
-    box-shadow:
-      0 0 0 0 hsl(var(--primary) / 0.5),
-      0 0 0 0 hsl(var(--primary) / 0);
-    transform: translateY(0);
+    opacity: 0;
+    transform: scale(0.985);
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
   }
 
   42% {
-    border-color: hsl(var(--primary) / 0.95);
+    opacity: 1;
     box-shadow:
-      0 0 0 4px hsl(var(--primary) / 0.2),
-      0 0 30px 0 hsl(var(--primary) / 0.34);
-    transform: translateY(-1px);
+      0 0 0 4px hsl(var(--primary) / 0.3),
+      0 0 26px 3px hsl(var(--primary) / 0.38);
+    transform: scale(1.018);
   }
 
   100% {
-    border-color: hsl(var(--memory) / 0.2);
-    box-shadow:
-      0 0 0 0 hsl(var(--primary) / 0),
-      0 0 0 0 hsl(var(--primary) / 0);
-    transform: translateY(0);
+    opacity: 0;
+    box-shadow: 0 0 0 12px hsl(var(--primary) / 0);
+    transform: scale(1.04);
   }
 }
 
-.new-video-card-highlight {
+.new-video-card-highlight::before {
+  pointer-events: none;
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 1px solid hsl(var(--primary) / 0.55);
+  border-radius: calc(0.5rem + 5px);
   animation: new-video-card-glow 1.8s ease-out 2;
-  will-change: border-color, box-shadow, transform;
+  will-change: opacity, box-shadow, transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .new-video-card-highlight {
+  .new-video-card-highlight::before {
     animation: none;
-    border-color: hsl(var(--primary) / 0.75);
-    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.35);
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.22);
+    opacity: 1;
     will-change: auto;
   }
 }
