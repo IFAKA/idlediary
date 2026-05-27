@@ -123,25 +123,23 @@ button {
 }
 
 .record-segment-pulse[data-record-segment-pulse-active="true"] {
-  animation: record-segment-pulse 460ms ease-out both;
+  animation: record-segment-pulse 520ms ease-out both;
   filter:
-    drop-shadow(0 0 4px hsl(var(--primary)))
-    drop-shadow(0 0 10px hsl(var(--primary)));
+    drop-shadow(0 0 3px hsl(var(--primary) / 0.68))
+    drop-shadow(0 0 8px hsl(var(--primary) / 0.38));
 }
 
 .record-marker-pulse[data-record-marker-active="true"] {
-  animation: record-marker-pulse 460ms ease-out both;
+  animation: record-marker-pulse 520ms ease-out both;
   filter:
-    drop-shadow(0 0 5px hsl(var(--primary)))
-    drop-shadow(0 0 12px rgba(235, 214, 255, 0.58));
+    drop-shadow(0 0 4px hsl(var(--primary) / 0.7))
+    drop-shadow(0 0 10px rgba(235, 214, 255, 0.44));
 }
 
 .record-poof-particle[data-record-poof-particle-active="true"] {
-  animation: record-poof-particle 480ms ease-out both;
+  animation: record-poof-particle 620ms ease-out both;
   animation-delay: var(--poof-delay);
-  filter:
-    drop-shadow(0 0 4px hsl(var(--primary)))
-    drop-shadow(0 0 8px rgba(235, 214, 255, 0.5));
+  filter: blur(0.7px);
 }
 
 @keyframes record-segment-pulse {
@@ -151,13 +149,13 @@ button {
   }
 
   22% {
-    opacity: 0.24;
-    stroke-width: 6.9;
+    opacity: 0.14;
+    stroke-width: 6.5;
   }
 
   100% {
     opacity: 0;
-    stroke-width: 7.4;
+    stroke-width: 6.9;
   }
 }
 
@@ -169,31 +167,38 @@ button {
   }
 
   20% {
-    opacity: 0.48;
-    transform: scale(1.18);
-    stroke-width: 1.25;
+    opacity: 0.28;
+    transform: scale(1.12);
+    stroke-width: 1.15;
   }
 
   100% {
     opacity: 0;
-    transform: scale(1.55);
-    stroke-width: 1.5;
+    transform: scale(1.36);
+    stroke-width: 1.35;
   }
 }
 
 @keyframes record-poof-particle {
   0% {
     opacity: 0;
-    transform: translate(0, 0) scale(0.7);
+    filter: blur(0.4px);
+    transform: translate(0, 0) scale(0.28) rotate(0deg);
   }
 
   18% {
-    opacity: 0.68;
+    opacity: var(--poof-opacity);
+  }
+
+  58% {
+    opacity: calc(var(--poof-opacity) * 0.48);
+    filter: blur(1.8px);
   }
 
   100% {
     opacity: 0;
-    transform: translate(var(--poof-x), var(--poof-y)) scale(0.2);
+    filter: blur(3px);
+    transform: translate(var(--poof-x), var(--poof-y)) scale(1.75) rotate(var(--poof-rotate));
   }
 }
 

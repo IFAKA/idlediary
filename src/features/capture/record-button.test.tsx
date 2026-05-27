@@ -88,7 +88,7 @@ describe("RecordButton", () => {
     expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "1");
 
     act(() => {
-      vi.advanceTimersByTime(560);
+      vi.advanceTimersByTime(720);
     });
     expect(activeMarker()).toBeNull();
     expect(activeSegmentPulse()).toBeNull();

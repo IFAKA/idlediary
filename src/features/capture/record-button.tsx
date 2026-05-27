@@ -16,7 +16,7 @@ type RecordButtonProps = {
 };
 
 const recordingMarkerSeconds = [1, 2, 3] as const;
-const markerPulseMs = 560;
+const markerPulseMs = 720;
 const ringCircumference = 282.743;
 const segmentGap = 10;
 const segmentStep = ringCircumference / recordingMarkerSeconds.length;
@@ -25,17 +25,20 @@ const segmentDashPattern = `${segmentLength} ${ringCircumference - segmentLength
 const markerRadius = 45;
 const progressSegmentDurationMs = twoSecondRecordMs / recordingMarkerSeconds.length;
 const poofParticles = [
-  { dx: 0, dy: -13, r: 1.3, delay: 0 },
-  { dx: 9, dy: -8, r: 1.05, delay: 34 },
-  { dx: 13, dy: 2, r: 0.95, delay: 62 },
-  { dx: -8, dy: -7, r: 0.9, delay: 48 },
-  { dx: -12, dy: 3, r: 0.8, delay: 82 },
+  { dx: 0, dy: -15, r: 3.8, delay: 0, rotate: -8, opacity: 0.42 },
+  { dx: 10, dy: -12, r: 3.1, delay: 36, rotate: 14, opacity: 0.34 },
+  { dx: -10, dy: -11, r: 3.4, delay: 58, rotate: -18, opacity: 0.36 },
+  { dx: 14, dy: -3, r: 2.7, delay: 82, rotate: 24, opacity: 0.3 },
+  { dx: -14, dy: -2, r: 2.8, delay: 96, rotate: -26, opacity: 0.32 },
+  { dx: 4, dy: 8, r: 2.4, delay: 112, rotate: 18, opacity: 0.26 },
 ] as const;
 
 type PoofParticleStyle = CSSProperties & {
   "--poof-x": string;
   "--poof-y": string;
   "--poof-delay": string;
+  "--poof-rotate": string;
+  "--poof-opacity": number;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -234,6 +237,8 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
                   "--poof-x": `${particle.dx}px`,
                   "--poof-y": `${particle.dy}px`,
                   "--poof-delay": `${particle.delay}ms`,
+                  "--poof-rotate": `${particle.rotate}deg`,
+                  "--poof-opacity": particle.opacity,
                 };
 
                 return (
@@ -244,7 +249,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
                     data-record-poof-particle-active={isActivePulse ? "true" : "false"}
                     cx={markerPoint.x}
                     cy={markerPoint.y}
-                    fill={particleIndex % 2 === 0 ? "hsl(var(--primary))" : "rgba(235,214,255,0.94)"}
+                    fill={particleIndex % 2 === 0 ? "rgba(248,244,255,0.72)" : "rgba(228,218,246,0.62)"}
                     r={particle.r}
                     style={particleStyle}
                   />
