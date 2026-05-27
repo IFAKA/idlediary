@@ -224,11 +224,14 @@ test("videos route shows generated videos entry point", async ({ page }) => {
 
   await expect(page.getByRole("heading", { exact: true, name: "Saved entries" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "No diary entries yet" })).toBeVisible();
-  const start = page.getByRole("link", { name: "Back to camera" });
+  const start = page.getByRole("link", { name: "Back to recording" });
   await expect(start).toBeVisible();
 
   const box = await start.boundingBox();
   expect(box?.height).toBeGreaterThanOrEqual(44);
+
+  await start.click();
+  await expect(page).toHaveURL("/");
 });
 
 test("root route opens the recording screen", async ({ page }) => {
@@ -259,8 +262,13 @@ test("mocked capture saves a three-second clip and enables draft review", async 
   await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
     "aria-disabled",
-    "true",
+    "false",
   );
+  await page.getByRole("button", { name: "Review draft clips" }).click();
+  await expect(page).toHaveURL("/draft");
+  await expect(page.getByRole("heading", { name: "No draft clips yet" })).toBeVisible();
+  await page.getByRole("button", { name: "Back to recording" }).click();
+  await expect(page).toHaveURL("/");
 
   await page.getByRole("button", { name: "Record three second clip" }).click();
   await expectClipRecorded(page, 1);
@@ -556,7 +564,7 @@ test("done after generation returns home and clears the needs action badge", asy
   await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
     "aria-disabled",
-    "true",
+    "false",
   );
   await expect(page.getByTestId("videos-needs-action-badge")).toHaveCount(0);
 
@@ -714,7 +722,7 @@ test("successful generation clears draft clips without starting a new recording"
   await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Review draft clips" })).toHaveAttribute(
     "aria-disabled",
-    "true",
+    "false",
   );
   await expect(page.getByRole("button", { name: "Review draft clips" }).getByText("+1")).toHaveCount(0);
 });

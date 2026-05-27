@@ -150,6 +150,12 @@ function EmptyHistory() {
       <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
         Record a few three-second clips, review the draft, then generate your first diary video.
       </p>
+      <Button asChild className="mt-6">
+        <Link href="/">
+          <ArrowLeft className="size-4" />
+          Back to recording
+        </Link>
+      </Button>
     </div>
   );
 }

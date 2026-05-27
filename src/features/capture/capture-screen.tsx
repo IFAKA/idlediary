@@ -92,11 +92,10 @@ export function CaptureScreen() {
   });
 
   const needsPermission = !camera.stream;
-  const canReview =
+  const canOpenDraft =
     mode === "capture" &&
     !isFinishing &&
     !clips.loading &&
-    clips.clips.length > 0 &&
     recorder.state !== "recording" &&
     recorder.state !== "saving";
   const clipLimitReached = clips.clips.length >= 20;
@@ -274,7 +273,7 @@ export function CaptureScreen() {
   };
 
   const openReview = () => {
-    if (!canReview) return;
+    if (!canOpenDraft) return;
     showReview("push");
   };
 
@@ -472,11 +471,11 @@ export function CaptureScreen() {
                   href="/videos"
                   onClick={() => setSlideDirection("left")}
                 >
-                  <Clapperboard className="size-5 text-memory" />
+                  <Clapperboard className="size-6 text-memory" />
                   {hasNeedsActionVlog ? (
                     <span
                       aria-hidden="true"
-                      className="absolute right-1.5 top-1.5 size-3 rounded-full bg-primary ring-2 ring-background"
+                      className="absolute -right-1 -top-1 size-4 rounded-full bg-primary ring-2 ring-background"
                       data-testid="videos-needs-action-badge"
                     />
                   ) : null}
@@ -497,7 +496,7 @@ export function CaptureScreen() {
                 <LatestDraftButton
                   clip={latestClip}
                   clipCount={clips.clips.length}
-                  disabled={!canReview}
+                  disabled={!canOpenDraft}
                   onOpen={openReview}
                 />
               </div>
@@ -553,7 +552,7 @@ function LatestDraftButton({
     <button
       aria-disabled={disabled}
       aria-label="Review draft clips"
-      className="relative inline-flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="relative inline-flex size-14 shrink-0 items-center justify-center rounded-lg border bg-black/45 text-foreground outline-none transition hover:bg-black/60 disabled:pointer-events-none disabled:cursor-default disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       data-disabled={disabled}
       disabled={disabled}
       type="button"
@@ -563,19 +562,19 @@ function LatestDraftButton({
         <>
           <video
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full rounded-[inherit] object-cover"
             muted
             playsInline
             preload="metadata"
             src={src}
           />
-          <span aria-hidden="true" className="absolute inset-0 bg-black/18" />
-          <span className="absolute right-1 top-1 rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground">
+          <span aria-hidden="true" className="absolute inset-0 rounded-[inherit] bg-black/18" />
+          <span className="absolute -right-1.5 -top-1.5 rounded-full bg-memory px-1.5 py-0.5 text-[10px] font-semibold leading-none text-memory-foreground ring-2 ring-background">
             +{clipCount}
           </span>
         </>
       ) : (
-        <Layers2 className="size-5 text-muted-foreground" />
+        <Layers2 className="size-6 text-muted-foreground" />
       )}
     </button>
   );
