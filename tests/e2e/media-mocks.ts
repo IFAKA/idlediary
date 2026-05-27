@@ -4,14 +4,18 @@ export async function mockMediaCapture(
   page: Page,
   {
     failingDeviceIds = [],
+    failingFacingModes = [],
     generationDelayMs = 250,
+    requireStoppedBeforeSwitch = false,
     videoInputs = [
       { deviceId: "back-camera", groupId: "back", kind: "videoinput", label: "Back Camera" },
       { deviceId: "front-camera", groupId: "front", kind: "videoinput", label: "Front Camera" },
     ],
   }: {
     failingDeviceIds?: string[];
+    failingFacingModes?: string[];
     generationDelayMs?: number;
+    requireStoppedBeforeSwitch?: boolean;
     videoInputs?: Array<{
       deviceId: string;
       groupId: string;
@@ -20,10 +24,11 @@ export async function mockMediaCapture(
     }>;
   } = {},
 ) {
-  await page.addInitScript(({ failingDeviceIds, generationDelayMs, videoInputs }) => {
+  await page.addInitScript(({ failingDeviceIds, failingFacingModes, generationDelayMs, requireStoppedBeforeSwitch, videoInputs }) => {
     const blob = new Blob(["mock-video"], { type: "video/webm" });
     const generatedBlob = new Blob(["mock-generated-video"], { type: "video/mp4" });
     const thumbnailBlob = new Blob(["mock-thumbnail"], { type: "image/webp" });
+    let activeVideoStreams = 0;
 
     class MockMediaRecorder extends EventTarget {
       static isTypeSupported() {
@@ -119,30 +124,59 @@ export async function mockMediaCapture(
         getUserMedia: async (constraints?: MediaStreamConstraints) => {
           const testWindow = window as typeof window & {
             __idleDiaryCameraConstraints?: MediaStreamConstraints[];
+            __idleDiaryStoppedTracksAtRequest?: number[];
+            __idleDiaryStoppedTracks?: number;
             __idleDiaryStartedStreams?: number;
           };
           testWindow.__idleDiaryCameraConstraints = [
             ...(testWindow.__idleDiaryCameraConstraints ?? []),
             constraints ?? {},
           ];
+          testWindow.__idleDiaryStoppedTracksAtRequest = [
+            ...(testWindow.__idleDiaryStoppedTracksAtRequest ?? []),
+            testWindow.__idleDiaryStoppedTracks ?? 0,
+          ];
           if (constraints?.video && typeof constraints.video !== "boolean") {
             const deviceId = constraints.video.deviceId;
+            const facingMode = constraints.video.facingMode;
             const exactDeviceId =
               deviceId && typeof deviceId === "object" && "exact" in deviceId
                 ? deviceId.exact
                 : null;
+            const requestedFacingMode =
+              typeof facingMode === "string"
+                ? facingMode
+                : facingMode && typeof facingMode === "object" && "ideal" in facingMode
+                  ? facingMode.ideal
+                  : null;
+            const targetFrontCamera =
+              exactDeviceId === "front-camera" || requestedFacingMode === "user";
+            if (requireStoppedBeforeSwitch && targetFrontCamera && activeVideoStreams > 0) {
+              throw new DOMException("busy", "NotReadableError");
+            }
             if (typeof exactDeviceId === "string" && failingDeviceIds.includes(exactDeviceId)) {
+              throw new DOMException("unavailable", "NotReadableError");
+            }
+            if (
+              typeof requestedFacingMode === "string" &&
+              failingFacingModes.includes(requestedFacingMode)
+            ) {
               throw new DOMException("unavailable", "NotReadableError");
             }
           }
 
           testWindow.__idleDiaryStartedStreams = (testWindow.__idleDiaryStartedStreams ?? 0) + 1;
+          activeVideoStreams += 1;
+          let streamStopped = false;
           const stream = new MediaStream();
           Object.defineProperty(stream, "getTracks", {
             configurable: true,
             value: () => [
               {
                 stop: () => {
+                  if (streamStopped) return;
+                  streamStopped = true;
+                  activeVideoStreams = Math.max(0, activeVideoStreams - 1);
                   const testWindow = window as typeof window & {
                     __idleDiaryStoppedTracks?: number;
                   };
@@ -157,7 +191,13 @@ export async function mockMediaCapture(
         enumerateDevices: async () => videoInputs,
       },
     });
-  }, { failingDeviceIds, generationDelayMs, videoInputs });
+  }, {
+    failingDeviceIds,
+    failingFacingModes,
+    generationDelayMs,
+    requireStoppedBeforeSwitch,
+    videoInputs,
+  });
 }
 
 export async function mockDeniedCamera(page: Page) {

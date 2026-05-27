@@ -11,6 +11,7 @@ import {
   useState,
   type MouseEvent,
   type PointerEvent,
+  type TouchEvent,
 } from "react";
 import { useAppHeader, type AppHeaderConfig } from "@/components/app-header-shell";
 import { ItemCountStack } from "@/components/item-counter";
@@ -391,6 +392,35 @@ export function CaptureScreen() {
     cameraSwipeStartRef.current = null;
   };
 
+  const handleCaptureTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1 || isInteractiveTarget(event.target)) {
+      cameraSwipeStartRef.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+    cameraSwipeStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      pointerId: -1,
+    };
+  };
+
+  const handleCaptureTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+
+    const hadSwipeStart = Boolean(cameraSwipeStartRef.current);
+    maybeSwitchCameraFromSwipe(touch.clientX, touch.clientY, -1);
+    if (hadSwipeStart && !cameraSwipeStartRef.current) {
+      event.preventDefault();
+    }
+  };
+
+  const handleCaptureTouchEnd = () => {
+    cameraSwipeStartRef.current = null;
+  };
+
   const openReview = () => {
     if (!canOpenDraft) return;
     showReview("push");
@@ -666,20 +696,29 @@ export function CaptureScreen() {
         ) : (
           <motion.div
             key="capture"
-            className="relative z-10 flex h-[100svh] flex-col top-level-screen"
+            className="relative z-10 flex h-[100svh] flex-col overflow-hidden top-level-screen"
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: slideDirection === "right" ? -42 : 42 }}
             initial={{ opacity: 0, x: 0 }}
             transition={routeSlideTransition}
-            onPointerCancel={() => {
-              cameraSwipeStartRef.current = null;
-            }}
-            onPointerDown={handleCapturePointerDown}
-            onPointerMove={handleCapturePointerMove}
-            onPointerUp={handleCapturePointerUp}
-            style={{ touchAction: "none" }}
           >
-            <div className="mt-auto">
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 z-0"
+              data-testid="camera-switch-swipe-layer"
+              style={{ touchAction: "none" }}
+              onPointerCancel={() => {
+                cameraSwipeStartRef.current = null;
+              }}
+              onPointerDown={handleCapturePointerDown}
+              onPointerMove={handleCapturePointerMove}
+              onPointerUp={handleCapturePointerUp}
+              onTouchCancel={handleCaptureTouchEnd}
+              onTouchEnd={handleCaptureTouchEnd}
+              onTouchMove={handleCaptureTouchMove}
+              onTouchStart={handleCaptureTouchStart}
+            />
+            <div className="relative z-10 mt-auto">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <Link
                   aria-disabled={!canOpenVideos}

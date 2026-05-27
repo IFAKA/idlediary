@@ -31,8 +31,11 @@ function videoConstraintsForFacingMode(facingMode: CameraFacingMode): MediaTrack
 
 function videoConstraintsForDevice(deviceId: string): MediaTrackConstraints {
   return {
-    ...videoConstraintsForFacingMode("environment"),
     deviceId: { exact: deviceId },
+    width: { ideal: exportProfile.width },
+    height: { ideal: exportProfile.height },
+    aspectRatio: { ideal: exportProfile.aspectRatio },
+    frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
   };
 }
 
@@ -161,23 +164,22 @@ export function useCamera() {
       const denied =
         cause instanceof DOMException &&
         (cause.name === "NotAllowedError" || cause.name === "PermissionDeniedError");
-      const appError = reportError(
-        new AppError({
-          code: denied ? "camera-permission-denied" : "camera-unavailable",
-          area: "capture",
-          message: denied ? "Camera permission denied" : "Could not open camera stream",
-          userMessage: denied
-            ? "Camera access is blocked. Allow camera and microphone in browser settings, then retry."
-            : "The camera could not be opened. Close other camera apps and retry.",
-          cause,
-          context: {
-            facingMode: errorFacingMode,
-            permissionState: state,
-            userAgent: navigator.userAgent,
-          },
-        }),
-      );
+      const appError = new AppError({
+        code: denied ? "camera-permission-denied" : "camera-unavailable",
+        area: "capture",
+        message: denied ? "Camera permission denied" : "Could not open camera stream",
+        userMessage: denied
+          ? "Camera access is blocked. Allow camera and microphone in browser settings, then retry."
+          : "The camera could not be opened. Close other camera apps and retry.",
+        cause,
+        context: {
+          facingMode: errorFacingMode,
+          permissionState: state,
+          userAgent: navigator.userAgent,
+        },
+      });
       if (setErrorOnFailure) {
+        reportError(appError);
         setPermission(denied ? "denied" : "prompt");
         setError(appError);
       }
@@ -202,30 +204,57 @@ export function useCamera() {
 
   const switchCamera = useCallback(async () => {
     const nextFacingMode = oppositeFacingMode(facingMode);
+    const previousFacingMode = facingMode;
+    const previousStream = streamRef.current;
 
-    if (!streamRef.current) {
+    if (!previousStream) {
       setFacingMode(nextFacingMode);
       return null;
     }
 
     setSwitching(true);
+    stopStream(previousStream);
+    streamRef.current = null;
+    setStream(null);
+
     try {
       const nextVideoInputs = videoInputs.length > 0 ? videoInputs : await refreshVideoInputs();
       const nextDevice = bestDeviceForFacingMode(nextVideoInputs, nextFacingMode);
 
       if (nextDevice) {
-        return await startWithVideoConstraints({
-          errorFacingMode: nextFacingMode,
-          setErrorOnFailure: false,
-          video: videoConstraintsForDevice(nextDevice.deviceId),
-        });
+        try {
+          return await startWithVideoConstraints({
+            errorFacingMode: nextFacingMode,
+            setErrorOnFailure: false,
+            video: videoConstraintsForDevice(nextDevice.deviceId),
+          });
+        } catch (error) {
+          addDebugEvent("camera-switch-device-failed", "capture", {
+            facingMode: nextFacingMode,
+            deviceLabel: nextDevice.label,
+            errorName: error instanceof Error ? error.name : "unknown",
+          });
+        }
       }
 
       return await startWithFacingMode(nextFacingMode, { setErrorOnFailure: false });
+    } catch (error) {
+      try {
+        return await startWithFacingMode(previousFacingMode, { setErrorOnFailure: false });
+      } catch {
+        throw error;
+      }
     } finally {
       setSwitching(false);
     }
-  }, [facingMode, refreshVideoInputs, startWithFacingMode, startWithVideoConstraints, videoInputs]);
+  }, [
+    facingMode,
+    refreshVideoInputs,
+    startWithFacingMode,
+    startWithVideoConstraints,
+    stopStream,
+    videoInputs,
+  ]);
 
   useEffect(() => {
     getCameraPermissionState().then(setPermission).catch(reportError);
