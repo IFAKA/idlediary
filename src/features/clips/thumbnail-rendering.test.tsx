@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppHeaderProvider } from "@/components/app-header-shell";
 import { ClipReviewPanel } from "@/features/capture/clip-review-panel";
 import { HomeScreen } from "@/features/home/home-screen";
 import type { ClipRecord, VlogRecord } from "./types";
@@ -90,6 +91,14 @@ async function waitFor(assertion: () => void) {
   }
 
   throw lastError;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
 }
 
 describe("thumbnail rendering", () => {
@@ -197,6 +206,31 @@ describe("thumbnail rendering", () => {
     expect(cards[0]?.querySelector("video")).not.toBeInTheDocument();
     expect(cards[1]?.querySelector("img")).not.toBeInTheDocument();
     expect(cards[1]?.querySelector("video")).not.toBeInTheDocument();
+  });
+
+  it("does not publish a zero saved video count while loading history", async () => {
+    const history = deferred<VlogRecord[]>();
+    const savedVlog = vlog();
+    mocks.listVlogSummaries.mockReturnValueOnce(history.promise);
+
+    act(() => {
+      root.render(
+        <AppHeaderProvider>
+          <HomeScreen />
+        </AppHeaderProvider>,
+      );
+    });
+
+    expect(container).not.toHaveTextContent("0 videos");
+
+    await act(async () => {
+      history.resolve([savedVlog]);
+      await history.promise;
+    });
+
+    await waitFor(() => {
+      expect(container).toHaveTextContent("1 video");
+    });
   });
 
   it("regenerates a saved video thumbnail when the stored image fails to decode", async () => {

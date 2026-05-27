@@ -30,7 +30,7 @@ import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
 
 type HomeState =
-  | { status: "loading"; vlogs: VlogSummary[]; error?: never }
+  | { status: "loading"; vlogs?: never; error?: never }
   | { status: "ready"; vlogs: VlogSummary[]; error?: never }
   | { status: "error"; vlogs: VlogSummary[]; error: string };
 
@@ -73,10 +73,10 @@ function formatMimeType(mimeType: string) {
 }
 
 export function HomeScreen() {
-  const [state, setState] = useState<HomeState>({ status: "loading", vlogs: [] });
+  const [state, setState] = useState<HomeState>({ status: "loading" });
   const mountedRef = useRef(false);
   const thumbnailBackfillsRef = useRef(new Set<string>());
-  const videoCount = state.vlogs.length;
+  const videoCount = state.status === "ready" ? state.vlogs.length : null;
   const headerConfig = useMemo<AppHeaderConfig>(
     () => ({
       eyebrow: "IdleDiary",
@@ -91,7 +91,11 @@ export function HomeScreen() {
       trailing: (
         <div className="px-1 py-1 text-right">
           <p className="whitespace-nowrap text-sm font-semibold">
-            <ItemCounter value={videoCount} /> {videoCount === 1 ? "video" : "videos"}
+            {videoCount === null ? null : (
+              <>
+                <ItemCounter value={videoCount} /> {videoCount === 1 ? "video" : "videos"}
+              </>
+            )}
           </p>
         </div>
       ),
