@@ -17,13 +17,13 @@ export function CameraPreview({ stream }: CameraPreviewProps) {
   }, [stream]);
 
   return (
-    <div className="absolute inset-0 bg-black">
+    <div className="absolute inset-0 flex items-center bg-black">
       {stream ? (
         <video
           ref={videoRef}
           aria-label="Camera preview"
           autoPlay
-          className="h-full w-full object-contain"
+          className="h-auto max-h-full w-full object-contain"
           muted
           playsInline
           onLoadedMetadata={(event) => {

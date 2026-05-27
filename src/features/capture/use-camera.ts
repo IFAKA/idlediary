@@ -41,10 +41,9 @@ export function useCamera() {
       const nextStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
-          width: { ideal: 720 },
-          height: { ideal: 1280 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
           frameRate: { ideal: 30, max: 30 },
-          aspectRatio: { ideal: 9 / 16 },
         },
         audio: true,
       });
