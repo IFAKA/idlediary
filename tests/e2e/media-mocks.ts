@@ -25,7 +25,7 @@ export async function mockMediaCapture(
   } = {},
 ) {
   await page.addInitScript(({ failingDeviceIds, failingFacingModes, generationDelayMs, requireStoppedBeforeSwitch, videoInputs }) => {
-    const blob = new Blob(["mock-video"], { type: "video/webm" });
+    const blob = new Blob(["mock-video"], { type: "video/mp4" });
     const generatedBlob = new Blob(["mock-generated-video"], { type: "video/mp4" });
     const thumbnailBlob = new Blob(["mock-thumbnail"], { type: "image/webp" });
     let activeVideoStreams = 0;
@@ -35,7 +35,7 @@ export async function mockMediaCapture(
         return true;
       }
 
-      readonly mimeType = "video/webm";
+      readonly mimeType = 'video/mp4;codecs="avc1.42E01E,mp4a.40.2"';
       state: RecordingState = "inactive";
       ondataavailable: ((event: BlobEvent) => void) | null = null;
       onerror: ((event: Event) => void) | null = null;
@@ -79,9 +79,9 @@ export async function mockMediaCapture(
       async exec(args: string[]) {
         const testWindow = window as typeof window & { __idleDiaryFfmpegExecArgs?: string[] };
         testWindow.__idleDiaryFfmpegExecArgs = args;
-        this.emit("log", { message: "scale -> crop -> fps -> setsar -> format" });
+        this.emit("log", { message: "concat demuxer stream copy" });
         this.emit("progress", { progress: 0.64 });
-        this.emit("log", { message: "AAC 48kHz stereo" });
+        this.emit("log", { message: "faststart remux" });
         this.emit("progress", { progress: 0.96 });
         await new Promise((resolve) => window.setTimeout(resolve, generationDelayMs));
       }

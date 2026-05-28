@@ -134,7 +134,7 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
         composition?.stop();
         activeSessionRef.current = null;
         setState("saving");
-        const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+        const blob = new Blob(chunks, { type: recorder.mimeType || "video/mp4" });
         addDebugEvent("recording-stopped", "capture", {
           size: blob.size,
           mimeType: blob.type,

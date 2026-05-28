@@ -58,14 +58,14 @@ describe("supportedRecordingMimeType", () => {
     expect(supportedRecordingMimeType()).toBe("");
   });
 
-  it("falls back to WebM when compatible MP4 is unavailable", () => {
+  it("does not fall back to WebM when compatible MP4 is unavailable", () => {
     MockMediaRecorder.supportedTypes = new Set([
       "video/webm;codecs=vp9,opus",
       "video/webm",
     ]);
     vi.stubGlobal("MediaRecorder", MockMediaRecorder);
 
-    expect(supportedRecordingMimeType()).toBe("video/webm;codecs=vp9,opus");
+    expect(supportedRecordingMimeType()).toBe("");
   });
 });
 
@@ -76,7 +76,7 @@ describe("createRecorder", () => {
     MockMediaRecorder.instances = [];
   });
 
-  it("records video-only MP4 when bare MP4 is the only MP4 option", () => {
+  it("throws recorder-unavailable when bare MP4 is the only MP4 option", () => {
     const videoTrack = { kind: "video" } as MediaStreamTrack;
     const audioTrack = { kind: "audio" } as MediaStreamTrack;
     const stream = new MockMediaStream([videoTrack, audioTrack]) as unknown as MediaStream;
@@ -84,12 +84,13 @@ describe("createRecorder", () => {
     vi.stubGlobal("MediaRecorder", MockMediaRecorder);
     vi.stubGlobal("MediaStream", MockMediaStream);
 
-    const recorder = createRecorder(stream);
-
-    expect(recorder).toBe(MockMediaRecorder.instances[0]);
-    expect(MockMediaRecorder.instances[0]?.options).toEqual({ mimeType: "video/mp4" });
-    expect(MockMediaRecorder.instances[0]?.stream.getVideoTracks()).toEqual([videoTrack]);
-    expect(MockMediaRecorder.instances[0]?.stream.getAudioTracks()).toEqual([]);
+    expect(() => createRecorder(stream)).toThrow(
+      expect.objectContaining({
+        code: "recorder-unavailable",
+        userMessage: "This device cannot record compatible MP4 video here.",
+      }),
+    );
+    expect(MockMediaRecorder.instances).toHaveLength(0);
   });
 
   it("keeps audio when an explicit playable audio codec is supported", () => {

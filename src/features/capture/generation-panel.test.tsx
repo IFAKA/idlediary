@@ -22,7 +22,7 @@ describe("GenerationPanel", () => {
     vi.useRealTimers();
   });
 
-  function renderPanel(progress = generationProgress("rendering", 52, { label: "Softening audio" })) {
+  function renderPanel(progress = generationProgress("rendering", 52, { label: "Assembling MP4" })) {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -39,7 +39,7 @@ describe("GenerationPanel", () => {
     expect(activeGenerationStage(generationProgress("loading", 8))).toBe("loading");
     expect(activeGenerationStage(generationProgress("writing", 18))).toBe("writing");
     expect(
-      activeGenerationStage(generationProgress("rendering", 24, { label: "Smoothing clips" })),
+      activeGenerationStage(generationProgress("rendering", 24, { label: "Assembling MP4" })),
     ).toBe("normalizing");
     expect(activeGenerationStage(generationProgress("saving", 94))).toBe("saving");
     expect(activeGenerationStage(generationProgress("done", 100))).toBe("saving");
@@ -47,10 +47,10 @@ describe("GenerationPanel", () => {
 
   it("distinguishes rendering labels before the encoding stage", () => {
     expect(
-      activeGenerationStage(generationProgress("rendering", 24, { label: "Smoothing clips" })),
+      activeGenerationStage(generationProgress("rendering", 24, { label: "Assembling MP4" })),
     ).toBe("normalizing");
     expect(
-      activeGenerationStage(generationProgress("rendering", 56, { label: "Softening audio" })),
+      activeGenerationStage(generationProgress("rendering", 56, { label: "Assembling MP4" })),
     ).toBe("normalizing");
     expect(
       activeGenerationStage(generationProgress("rendering", 78, { label: "Making playback ready" })),
@@ -76,19 +76,19 @@ describe("GenerationPanel", () => {
   it("keeps the friendly stages, privacy note, progress bar, and reduced-motion classes visible", () => {
     const view = renderPanel(
       generationProgress("rendering", 56, {
-        label: "Softening audio",
-        logs: ["scale -> crop -> fps -> setsar -> format"],
+        label: "Assembling MP4",
+        logs: ["concat demuxer stream copy"],
       }),
     );
 
     expect(view.textContent).toContain("Opening your diary");
     expect(view.textContent).toContain("Gathering moments");
-    expect(view.textContent).toContain("Polishing video");
+    expect(view.textContent).toContain("Assembling MP4");
     expect(view.textContent).toContain("Making playback ready");
     expect(view.textContent).toContain("Saving privately");
     expect(view.textContent).not.toContain("Rendering video");
     expect(view.textContent).toContain("Your clips and video stay private on this device.");
-    expect(view.textContent).not.toContain("scale -> crop -> fps -> setsar -> format");
+    expect(view.textContent).not.toContain("concat demuxer stream copy");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();
     expect(view.querySelector('[class*="motion-reduce:animate-none"]')).not.toBeNull();
   });

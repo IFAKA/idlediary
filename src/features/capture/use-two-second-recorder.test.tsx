@@ -17,7 +17,7 @@ class MockMediaRecorder extends EventTarget {
   }
 
   readonly stream: MediaStream;
-  readonly mimeType = "video/webm";
+  readonly mimeType = 'video/mp4;codecs="avc1.42E01E,mp4a.40.2"';
   state: RecordingState = "inactive";
   ondataavailable: ((event: BlobEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
@@ -36,7 +36,7 @@ class MockMediaRecorder extends EventTarget {
 
   stop() {
     this.state = "inactive";
-    this.ondataavailable?.({ data: new Blob(["clip"], { type: "video/webm" }) } as BlobEvent);
+    this.ondataavailable?.({ data: new Blob(["clip"], { type: "video/mp4" }) } as BlobEvent);
     this.onstop?.();
   }
 }

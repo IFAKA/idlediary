@@ -19,15 +19,7 @@ export type GenerationProgress = {
 };
 
 const maxLogLines = 8;
-const videoFilters = [
-  `scale=${exportProfile.width}:${exportProfile.height}:force_original_aspect_ratio=increase`,
-  `crop=${exportProfile.width}:${exportProfile.height}`,
-  `fps=${exportProfile.fps}`,
-  "setsar=1",
-  "format=yuv420p",
-];
-
-const technicalSummary = `${videoFilters.join(" -> ")} | H.264 MP4, AAC 48kHz stereo, faststart`;
+const technicalSummary = `MP4 concat demuxer | stream copy | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC, faststart`;
 
 const progressCopy: Record<
   GenerationProgress["step"],
@@ -49,8 +41,8 @@ const progressCopy: Record<
     technical: `${technicalSummary} | concat demuxer input list`,
   },
   rendering: {
-    label: "Smoothing clips",
-    detail: "Preparing smooth playback privately",
+    label: "Assembling MP4",
+    detail: "Joining compatible clips privately",
     technical: technicalSummary,
   },
   saving: {
@@ -75,12 +67,8 @@ let activeProgressSink: ((progress: GenerationProgress) => void) | null = null;
 let recentFfmpegLogs: string[] = [];
 let activeRenderValue = 24;
 
-export function buildVideoFilter() {
-  return videoFilters.join(",");
-}
-
 export function buildFfmpegArgs() {
-  const args = [
+  return [
     "-fflags",
     "+genpts",
     "-f",
@@ -93,22 +81,8 @@ export function buildFfmpegArgs() {
     "0:v:0",
     "-map",
     "0:a?",
-    "-vf",
-    buildVideoFilter(),
-    "-c:v",
-    exportProfile.videoCodec,
-    "-preset",
-    "veryfast",
-    "-r",
-    String(exportProfile.fps),
-    "-pix_fmt",
-    exportProfile.pixelFormat,
-    "-c:a",
-    exportProfile.audioCodec,
-    "-ar",
-    String(exportProfile.audioSampleRate),
-    "-ac",
-    String(exportProfile.audioChannels),
+    "-c",
+    "copy",
     "-movflags",
     "+faststart",
     "-avoid_negative_ts",
@@ -116,12 +90,6 @@ export function buildFfmpegArgs() {
     "-shortest",
     exportProfile.output,
   ];
-
-  if (exportProfile.audioFilter) {
-    args.splice(args.indexOf("-movflags"), 0, "-af", exportProfile.audioFilter);
-  }
-
-  return args;
 }
 
 function stableJson(value: unknown): string {
@@ -181,8 +149,7 @@ export function resetGenerationForTests() {
 
 function renderingLabelFor(value: number) {
   if (value >= 78) return "Making playback ready";
-  if (value >= 52) return "Softening audio";
-  return "Smoothing clips";
+  return "Assembling MP4";
 }
 
 function emitProgress(progress: GenerationProgress) {
@@ -243,9 +210,28 @@ async function loadFfmpeg() {
   return ffmpegPromise;
 }
 
-function extensionFor(mimeType: string) {
-  if (mimeType.includes("mp4")) return "mp4";
-  return "webm";
+export function isFastConcatCompatibleClip(clip: Pick<ClipRecord, "mimeType" | "blob">) {
+  const mimeType = clip.mimeType || clip.blob.type;
+  return /^video\/mp4(?:\s*;|$)/i.test(mimeType);
+}
+
+function validateFastConcatCompatibleClips(clips: ClipRecord[], sessionId: string) {
+  const incompatibleClips = clips.filter((clip) => !isFastConcatCompatibleClip(clip));
+  if (incompatibleClips.length === 0) return;
+
+  throw reportError(
+    new AppError({
+      code: "generation-unavailable",
+      area: "generation",
+      message: "Generation requires MP4/H.264/AAC clips for stream-copy concat",
+      userMessage: "This draft was recorded in an unsupported video format. Record new clips on a compatible device.",
+      context: {
+        sessionId,
+        incompatibleClipIds: incompatibleClips.map((clip) => clip.id),
+        mimeTypes: incompatibleClips.map((clip) => clip.mimeType || clip.blob.type || "unknown"),
+      },
+    }),
+  );
 }
 
 export async function generateVlog(
@@ -264,6 +250,7 @@ export async function generateVlog(
       }),
     );
   }
+  validateFastConcatCompatibleClips(clips, sessionId);
 
   try {
     activeProgressSink = onProgress;
@@ -290,7 +277,7 @@ export async function generateVlog(
 
     const listLines: string[] = [];
     for (const [index, clip] of clips.entries()) {
-      const input = `clip-${index}.${extensionFor(clip.mimeType)}`;
+      const input = `clip-${index}.mp4`;
       await ffmpeg.writeFile(input, await fetchFile(clip.blob));
       listLines.push(`file '${input}'`);
     }

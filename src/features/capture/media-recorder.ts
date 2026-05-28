@@ -4,9 +4,6 @@ const preferredTypes = [
   'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
   "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
   "video/mp4;codecs=avc1,mp4a.40.2",
-  "video/webm;codecs=vp9,opus",
-  "video/webm;codecs=vp8,opus",
-  "video/webm",
 ];
 
 const audioBitsPerSecond = 192_000;
@@ -16,14 +13,6 @@ export function supportedRecordingMimeType() {
     return "";
   }
   return preferredTypes.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
-}
-
-function canRecordBareMp4() {
-  return MediaRecorder.isTypeSupported("video/mp4");
-}
-
-function videoOnlyStream(stream: MediaStream) {
-  return new MediaStream(stream.getVideoTracks());
 }
 
 function recorderOptions(stream: MediaStream, mimeType?: string): MediaRecorderOptions {
@@ -49,10 +38,11 @@ export function createRecorder(stream: MediaStream) {
     return new MediaRecorder(stream, recorderOptions(stream, mimeType));
   }
 
-  if (canRecordBareMp4() && stream.getVideoTracks().length > 0) {
-    const videoStream = videoOnlyStream(stream);
-    return new MediaRecorder(videoStream, recorderOptions(videoStream, "video/mp4"));
-  }
-
-  return new MediaRecorder(stream, recorderOptions(stream));
+  throw new AppError({
+    code: "recorder-unavailable",
+    area: "capture",
+    message: "MediaRecorder cannot produce MP4/H.264/AAC clips",
+    userMessage: "This device cannot record compatible MP4 video here.",
+    context: { userAgent: navigator.userAgent },
+  });
 }

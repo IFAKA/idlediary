@@ -4,10 +4,5 @@ export const exportProfile = {
   height: 1280,
   fps: 30,
   aspectRatio: 9 / 16,
-  videoCodec: "libx264",
-  pixelFormat: "yuv420p",
-  audioCodec: "aac",
   audioSampleRate: 48_000,
-  audioChannels: 2,
-  audioFilter: null,
 } as const;

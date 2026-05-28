@@ -465,7 +465,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Make video" })).toBeVisible();
   await expect(
     page
-      .getByRole("heading", { name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/ }),
+      .getByRole("heading", { name: /Making video|Preparing|Opening your diary|Gathering moments|Assembling MP4|Making playback ready|Saving privately|Ready/ }),
   ).not.toBeVisible();
   await expect
     .poll(
@@ -481,7 +481,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await page.getByRole("button", { name: "Make video" }).click();
 
   const generationHeading = page.getByRole("heading", {
-    name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
+    name: /Making video|Preparing|Opening your diary|Gathering moments|Assembling MP4|Making playback ready|Saving privately|Ready/,
   });
   await expect(generationHeading.first()).toBeVisible();
   await expect(generationHeading).toHaveCount(1);
@@ -491,7 +491,7 @@ test("draft review stops the camera before generation", async ({ page }) => {
   await expect(page.locator("header").getByText(/^\d+ clips$/)).toHaveCount(0);
   await expect(page.getByText("Making your clips feel smooth")).toHaveCount(0);
   await expect(page.getByText("Your clips and video stay private on this device.")).toBeVisible();
-  await expect(page.getByText("scale -> crop -> fps -> setsar -> format")).toHaveCount(0);
+  await expect(page.getByText("concat demuxer stream copy")).toHaveCount(0);
   await expect
     .poll(() =>
       page.evaluate(
@@ -504,13 +504,22 @@ test("draft review stops the camera before generation", async ({ page }) => {
       expect.arrayContaining([
         "-fflags",
         "+genpts",
-        "-vf",
-        "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30,setsar=1,format=yuv420p",
+        "-c",
+        "copy",
         "-movflags",
         "+faststart",
         "vlog.mp4",
       ]),
     );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryFfmpegExecArgs?: string[] })
+            .__idleDiaryFfmpegExecArgs ?? [],
+      ),
+    )
+    .not.toContain("-vf");
   await expect(page).toHaveURL("/draft");
   await expect(page.getByRole("heading", { name: "No pressure" })).not.toBeVisible();
   await expect
@@ -908,7 +917,7 @@ test("reloading during generation returns to review with clips preserved", async
   await expect(
     page
       .getByRole("heading", {
-        name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
+        name: /Making video|Preparing|Opening your diary|Gathering moments|Assembling MP4|Making playback ready|Saving privately|Ready/,
       })
       .first(),
   ).toBeVisible();
@@ -920,7 +929,7 @@ test("reloading during generation returns to review with clips preserved", async
   await expect(page.getByRole("heading", { name: "Draft clips" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview clip 1" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/ }),
+    page.getByRole("heading", { name: /Making video|Preparing|Opening your diary|Gathering moments|Assembling MP4|Making playback ready|Saving privately|Ready/ }),
   ).not.toBeVisible();
 });
 
@@ -1008,7 +1017,7 @@ test("gallery reorders clips and generation receives UI order", async ({ page })
   await expect(
     page
       .getByRole("heading", {
-        name: /Making video|Preparing|Opening your diary|Gathering moments|Smoothing clips|Softening audio|Making playback ready|Saving privately|Ready/,
+        name: /Making video|Preparing|Opening your diary|Gathering moments|Assembling MP4|Making playback ready|Saving privately|Ready/,
       })
       .first(),
   ).toBeVisible();

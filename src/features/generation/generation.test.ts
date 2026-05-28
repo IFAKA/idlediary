@@ -3,10 +3,10 @@ import type { ClipRecord } from "@/features/clips/types";
 import {
   buildFfmpegArgs,
   buildGenerationFingerprint,
-  buildVideoFilter,
   exportProfile,
   generateVlog,
   generationProgress,
+  isFastConcatCompatibleClip,
   recentGenerationLogs,
   resetGenerationForTests,
   type GenerationProgress,
@@ -33,8 +33,8 @@ function clip(id: string): ClipRecord {
   return {
     id,
     sessionId: "session-1",
-    blob: new Blob(["clip"], { type: "video/webm" }),
-    mimeType: "video/webm",
+    blob: new Blob(["clip"], { type: "video/mp4" }),
+    mimeType: "video/mp4",
     durationMs: 3_000,
     createdAt: "2026-05-27T10:00:00.000Z",
     size: 4,
@@ -49,7 +49,7 @@ describe("generation export profile", () => {
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
   });
 
-  it("builds the vertical center-crop filter chain", () => {
+  it("keeps the vertical MP4 export profile", () => {
     expect(exportProfile).toEqual(
       expect.objectContaining({
         width: 720,
@@ -58,28 +58,22 @@ describe("generation export profile", () => {
         aspectRatio: 9 / 16,
       }),
     );
-    expect(buildVideoFilter()).toBe(
-      "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30,setsar=1,format=yuv420p",
-    );
   });
 
-  it("includes mobile-compatible H.264/AAC settings", () => {
+  it("uses stream copy concat/remux args without transcoding options", () => {
     const args = buildFfmpegArgs();
 
-    expect(args).toContain("-c:v");
-    expect(args).toContain("libx264");
-    expect(args).toContain("-pix_fmt");
-    expect(args).toContain("yuv420p");
-    expect(args).toContain("-r");
-    expect(args).toContain("30");
-    expect(args).toContain("-c:a");
-    expect(args).toContain("aac");
-    expect(args).toContain("-ar");
-    expect(args).toContain("48000");
-    expect(args).toContain("-ac");
-    expect(args).toContain("2");
+    expect(args).toEqual(expect.arrayContaining(["-c", "copy"]));
     expect(args).toContain("-movflags");
     expect(args).toContain("+faststart");
+    expect(args).not.toContain("-vf");
+    expect(args).not.toContain("libx264");
+    expect(args).not.toContain("aac");
+    expect(args).not.toContain("-preset");
+    expect(args).not.toContain("-r");
+    expect(args).not.toContain("-pix_fmt");
+    expect(args).not.toContain("-ar");
+    expect(args).not.toContain("-ac");
   });
 
   it("includes timestamp hardening without post-processing short-clip audio", () => {
@@ -108,9 +102,9 @@ describe("generation export profile", () => {
 
       async exec(args: string[]) {
         execArgs.push(args);
-        this.emit("log", { message: "scale -> crop -> fps -> setsar -> format" });
+        this.emit("log", { message: "concat demuxer stream copy" });
         this.emit("progress", { progress: 0.62 });
-        this.emit("log", { message: "AAC 48kHz stereo" });
+        this.emit("log", { message: "faststart remux" });
         this.emit("progress", { progress: 0.96 });
       }
 
@@ -150,15 +144,61 @@ describe("generation export profile", () => {
       expect.arrayContaining([
         "Opening your diary",
         "Gathering moments",
-        "Smoothing clips",
-        "Softening audio",
+        "Assembling MP4",
         "Making playback ready",
         "Saving privately",
         "Ready",
       ]),
     );
-    expect(progress.some((entry) => entry.technical.includes("H.264 MP4"))).toBe(true);
+    expect(progress.some((entry) => entry.technical.includes("stream copy"))).toBe(true);
     expect(progress.at(-1)?.logs).toHaveLength(2);
+  });
+
+  it("identifies MP4 clips as compatible for fast concat", () => {
+    expect(isFastConcatCompatibleClip(clip("clip-1"))).toBe(true);
+    expect(
+      isFastConcatCompatibleClip({
+        ...clip("clip-2"),
+        blob: new Blob(["clip"], { type: "video/webm" }),
+        mimeType: "video/webm",
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects non-MP4 clips before calling FFmpeg", async () => {
+    class MockFFmpeg {
+      on() {}
+      async load() {
+        throw new Error("ffmpeg should not load");
+      }
+      async writeFile() {}
+      async exec() {
+        throw new Error("ffmpeg should not run");
+      }
+      async readFile() {
+        return new Uint8Array([1, 2, 3]);
+      }
+    }
+    (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
+      MockFFmpeg;
+
+    await expect(
+      generateVlog(
+        [
+          {
+            ...clip("clip-1"),
+            blob: new Blob(["clip"], { type: "video/webm" }),
+            mimeType: "video/webm",
+          },
+        ],
+        "session-1",
+        () => undefined,
+      ),
+    ).rejects.toMatchObject({
+      code: "generation-unavailable",
+      userMessage: expect.stringContaining("unsupported video format"),
+    });
+    expect(storageMocks.getVlogByGenerationFingerprint).not.toHaveBeenCalled();
   });
 
   it("keeps recent FFmpeg logs bounded", () => {
@@ -194,7 +234,9 @@ describe("generation export profile", () => {
       buildGenerationFingerprint([{ ...first, createdAt: "2026-05-27T10:00:02.000Z" }, second]),
     );
     expect(buildGenerationFingerprint([first, second])).not.toBe(
-      buildGenerationFingerprint([{ ...first, mimeType: "video/mp4" }, second]),
+      buildGenerationFingerprint(
+        [{ ...first, mimeType: 'video/mp4;codecs="avc1.42E01E,mp4a.40.2"' }, second],
+      ),
     );
     expect(buildGenerationFingerprint([first, second])).not.toBe(
       buildGenerationFingerprint([first, second], { ...exportProfile, fps: 24 }),
