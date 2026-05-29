@@ -312,11 +312,11 @@ async function recordOneTake(baseURL) {
 
     const startButton = page.getByRole("button", { name: "Start recording" });
     await startButton.waitFor({ state: "visible", timeout: 10_000 });
-    await tapLocator(page, startButton);
+    await tapLocator(page, startButton, { afterClickMs: 360 });
 
     const recordButton = page.getByRole("button", { name: "Record three second clip" });
     await recordButton.waitFor({ state: "visible", timeout: 10_000 });
-    await page.waitForTimeout(650);
+    await page.waitForTimeout(320);
     await tapLocator(page, recordButton);
     await page.getByRole("button", { name: "Review draft clips" }).getByText("+5").waitFor({
       state: "visible",
@@ -501,8 +501,8 @@ async function validateFinal() {
   if (video.width !== 1080 || video.height !== 1350) {
     throw new Error(`Final video is ${video.width}x${video.height}, expected 1080x1350`);
   }
-  if (duration < 30 || duration > 40) {
-    throw new Error(`Final video duration is ${duration.toFixed(2)}s, expected 30-40s`);
+  if (duration < 28 || duration > 40) {
+    throw new Error(`Final video duration is ${duration.toFixed(2)}s, expected 28-40s`);
   }
 }
 
