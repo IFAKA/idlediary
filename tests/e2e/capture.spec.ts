@@ -434,7 +434,7 @@ test("mocked capture saves a three-second clip and enables draft review", async 
   await expect(page).toHaveURL("/");
 });
 
-test("first-record guide appears without a confirm action and persists after opening draft", async ({ page }) => {
+test("first-record guide appears without a confirm action and dismisses after a screen tap", async ({ page }) => {
   await mockMediaCapture(page);
   await openRecord(page);
 
@@ -446,7 +446,7 @@ test("first-record guide appears without a confirm action and persists after ope
   await expect(guide).toBeVisible();
   await expect(guide).toContainText("Your clip is in Draft clips.");
   await expect(guide.getByRole("button", { name: "Got it" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Review draft clips" }).click();
+  await page.mouse.click(20, 240);
   await expect(guide).toHaveCount(0);
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem("idlediary:first-record-guide-seen")))
@@ -454,6 +454,21 @@ test("first-record guide appears without a confirm action and persists after ope
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByRole("status", { name: "Draft clips guide" })).toHaveCount(0);
+});
+
+test("first-record guide auto-hides after a few seconds", async ({ page }) => {
+  await mockMediaCapture(page);
+  await openRecord(page);
+
+  await page.getByRole("button", { name: "Record three second clip" }).click();
+  await expectClipRecorded(page, 1);
+
+  const guide = page.getByRole("status", { name: "Draft clips guide" });
+  await expect(guide).toBeVisible();
+  await expect(guide).toHaveCount(0, { timeout: 5000 });
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem("idlediary:first-record-guide-seen")))
+    .toBe("true");
 });
 
 test("opening draft from the first-record guide marks it seen", async ({ page }) => {
