@@ -46,7 +46,7 @@ function normalizeScene(scene: string | undefined): LaunchScene {
 }
 
 async function loadManifest() {
-  const response = await fetch("/demo-clips/manifest.json", { cache: "no-store" });
+  const response = await fetch("/demo-clips/manifest.json");
   if (!response.ok) {
     throw new Error("Demo clip manifest is missing. Run npm run launch-video first.");
   }
@@ -55,7 +55,7 @@ async function loadManifest() {
 }
 
 async function blobFromPublicPath(path: string) {
-  const response = await fetch(path, { cache: "no-store" });
+  const response = await fetch(path);
   if (!response.ok) {
     throw new Error(`Demo asset could not be loaded: ${path}`);
   }

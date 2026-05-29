@@ -82,7 +82,7 @@ async function recordDemoClip(
   window.clearInterval(progressTimer);
   setProgress(100);
   setState("saving");
-  const response = await fetch(src, { cache: "no-store" });
+  const response = await fetch(src);
   if (!response.ok) throw new Error(`Demo clip could not be loaded: ${src}`);
   const blob = await response.blob();
   setState("success");
@@ -99,7 +99,7 @@ async function createDemoVlog(
   clipCount: number,
   clipDurationMs: number,
 ): Promise<VlogRecord> {
-  const response = await fetch(src, { cache: "no-store" });
+  const response = await fetch(src);
   if (!response.ok) throw new Error(`Demo result could not be loaded: ${src}`);
   const blob = await response.blob();
   const seconds = Math.round((clipCount * clipDurationMs) / 1000);

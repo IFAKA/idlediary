@@ -5,6 +5,7 @@ node_modules
 .next
 next-env.d.ts
 out
+public/offline-assets.json
 
 # production
 build

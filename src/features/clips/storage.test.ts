@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClipRecord, VlogRecord } from "./types";
 import {
   deleteVlog,
+  getOrCreateSession,
   getOrCreateTodaySession,
   getVlog,
   hasNeedsActionVlog,
@@ -261,7 +262,7 @@ describe("storage media split", () => {
     expect("blob" in summaries[0]!).toBe(false);
     expect(summaries[0]?.thumbnailBlob).toBeDefined();
     expect(fullVlog?.blob).toBeDefined();
-    expect((await getOrCreateTodaySession()).generatedVlogId).toBe(legacyVlog.id);
+    expect((await getOrCreateSession(legacyClip.sessionId)).generatedVlogId).toBe(legacyVlog.id);
 
     const rawClip = await getRawStoreRecord<Record<string, unknown>>("clips", legacyClip.id);
     const rawVlog = await getRawStoreRecord<Record<string, unknown>>("vlogs", legacyVlog.id);
