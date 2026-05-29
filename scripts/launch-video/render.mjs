@@ -307,7 +307,7 @@ async function recordOneTake(baseURL) {
 
     const logoButton = page.getByRole("button", { name: "Nudge app icon" });
     await logoButton.waitFor({ state: "visible", timeout: 10_000 });
-    await page.waitForTimeout(2200);
+    await page.waitForTimeout(1850);
     await tapLocator(page, logoButton, { xRatio: 0.74, yRatio: 0.28 });
 
     const startButton = page.getByRole("button", { name: "Start recording" });
