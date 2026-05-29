@@ -36,23 +36,15 @@ describe("shouldPublishGenerationProgress", () => {
 });
 
 describe("camera video constraints", () => {
-  it("requests ideal native photo dimensions for facing mode capture", () => {
+  it("requests the camera source format without forcing preview dimensions", () => {
     expect(videoConstraintsForFacingMode("environment")).toEqual({
-      width: { ideal: 720 },
-      height: { ideal: 960 },
-      aspectRatio: { ideal: 3 / 4 },
-      resizeMode: { ideal: "crop-and-scale" },
       frameRate: { ideal: 30, max: 30 },
       facingMode: { ideal: "environment" },
     });
   });
 
-  it("keeps exact device selection with ideal native photo dimensions", () => {
+  it("keeps exact device selection without forcing preview dimensions", () => {
     expect(videoConstraintsForDevice("front-camera")).toEqual({
-      width: { ideal: 720 },
-      height: { ideal: 960 },
-      aspectRatio: { ideal: 3 / 4 },
-      resizeMode: { ideal: "crop-and-scale" },
       frameRate: { ideal: 30, max: 30 },
       deviceId: { exact: "front-camera" },
     });
