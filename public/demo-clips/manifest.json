@@ -1,0 +1,57 @@
+[
+  {
+    "id": "coffee",
+    "label": "Coffee",
+    "src": "/demo-clips/coffee.mp4",
+    "pageUrl": "https://mixkit.co/free-stock-video/cup-being-filled-with-coffee-in-a-coffee-machine-41865/",
+    "license": "Mixkit Stock Video Free License",
+    "durationMs": 3250,
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "video/mp4"
+  },
+  {
+    "id": "laptop",
+    "label": "Laptop",
+    "src": "/demo-clips/laptop.mp4",
+    "pageUrl": "https://mixkit.co/free-stock-video/working-on-a-macbook-pro-41183/",
+    "license": "Mixkit Stock Video Free License",
+    "durationMs": 3250,
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "video/mp4"
+  },
+  {
+    "id": "street",
+    "label": "Street",
+    "src": "/demo-clips/street.mp4",
+    "pageUrl": "https://mixkit.co/free-stock-video/sunset-in-the-distance-walking-through-the-city-40741/",
+    "license": "Mixkit Stock Video Free License",
+    "durationMs": 3250,
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "video/mp4"
+  },
+  {
+    "id": "sunset",
+    "label": "Sunset",
+    "src": "/demo-clips/sunset.mp4",
+    "pageUrl": "https://mixkit.co/free-stock-video/sunset-perspective-in-the-city-3983/",
+    "license": "Mixkit Stock Video Free License",
+    "durationMs": 3250,
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "video/mp4"
+  },
+  {
+    "id": "gym",
+    "label": "Gym",
+    "src": "/demo-clips/gym.mp4",
+    "pageUrl": "https://mixkit.co/free-stock-video/a-healthy-couple-running-on-a-treadmill-1321/",
+    "license": "Mixkit Stock Video Free License",
+    "durationMs": 3250,
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "video/mp4"
+  }
+]
