@@ -313,14 +313,14 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                   <g>
                     <motion.path
                       key={tearKey}
-                      d="M342 256 C362 276 376 297 376 318 C376 344 359 362 340 362 C321 362 307 345 307 322 C307 302 322 279 342 256 Z"
+                      d="M402 256 C425 285 437 307 437 329 C437 354 421 371 402 371 C383 371 369 354 373 331 C377 308 392 283 402 256 Z"
                       fill="#a9c7ff"
                       opacity="0.9"
                       data-testid="intro-logo-tear"
-                      initial={{ opacity: 0, x: 6, y: -5, scale: 0.72 }}
+                      initial={{ opacity: 0, x: 0, y: -5, scale: 0.72 }}
                       animate={{
                         opacity: [0, 0.9, 0.72, 0],
-                        x: [6, 12, 14, 16],
+                        x: [0, 3, 5, 7],
                         y: [0, 16, 38, 60],
                         scale: [0.72, 1.1, 1.02, 0.92],
                       }}
