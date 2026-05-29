@@ -11,6 +11,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "demo:record": "demo-director record demo/main.demo.ts",
+    "demo:inspect": "demo-director inspect dist/demo/main.mp4",
+    "demo:doctor": "demo-director doctor demo/main.demo.ts",
     "launch-video": "node scripts/launch-video/render.mjs",
     "launch-video:clean": "node scripts/launch-video/clean.mjs"
   },
@@ -36,9 +39,11 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "tailwind-merge": "^3.4.0",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "vercel": "^54.5.0"
   },
   "devDependencies": {
+    "@faka/demo-director": "file:../agentic-demo-director/packages/cli",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/jest-dom": "^6.9.1",

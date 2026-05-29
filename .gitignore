@@ -9,6 +9,7 @@ out
 # production
 build
 dist
+.demo-director-cache
 
 # local env
 .env*
