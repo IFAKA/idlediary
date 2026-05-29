@@ -57,10 +57,10 @@ describe("FirstLaunchIntro", () => {
     }
   }
 
-  it("shows a tear after three quick icon taps", () => {
+  it("shows a tear after two fast icon taps", () => {
     renderIntro();
 
-    tapIconAt([0, 400, 800]);
+    tapIconAt([0, 420]);
 
     expect(container.querySelector('[data-testid="intro-logo-tear"]')).toBeInTheDocument();
   });
@@ -68,7 +68,7 @@ describe("FirstLaunchIntro", () => {
   it("does not show a tear for slow icon taps", () => {
     renderIntro();
 
-    tapIconAt([0, 1500, 3000]);
+    tapIconAt([0, 900, 1800]);
 
     expect(container.querySelector('[data-testid="intro-logo-tear"]')).not.toBeInTheDocument();
   });
@@ -77,7 +77,7 @@ describe("FirstLaunchIntro", () => {
     mockReducedMotion(true);
     renderIntro();
 
-    tapIconAt([0, 400, 800]);
+    tapIconAt([0, 420]);
 
     expect(container.querySelector('[data-testid="intro-logo-tear"]')).not.toBeInTheDocument();
   });

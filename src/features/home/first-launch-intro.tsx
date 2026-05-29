@@ -58,6 +58,8 @@ const blinkDelay = buttonMountDelay + 0.58;
 const blinkDuration = 0.34;
 const blinkEase = [0.25, 1, 0.5, 1] as const;
 const pupilTravel = 22;
+const cryTapCount = 2;
+const cryTapWindowMs = 700;
 
 function clampImpact(value: number) {
   return Math.max(-1, Math.min(1, value));
@@ -156,8 +158,11 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
     if (shouldReduceMotion || prefersReducedMotionNow()) return;
 
     const now = performance.now();
-    iconTapTimesRef.current = [...iconTapTimesRef.current.filter((time) => now - time <= 1400), now];
-    const shouldCry = iconTapTimesRef.current.length >= 3;
+    iconTapTimesRef.current = [
+      ...iconTapTimesRef.current.filter((time) => now - time <= cryTapWindowMs),
+      now,
+    ];
+    const shouldCry = iconTapTimesRef.current.length >= cryTapCount;
     if (shouldCry) {
       iconTapTimesRef.current = [];
       setTearKey(now);
@@ -239,7 +244,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
             />
             <motion.button
               ref={iconRef}
-              className="relative flex size-28 cursor-pointer select-none items-center justify-center rounded-[1.85rem] border border-primary/30 bg-background/88 p-1.5 shadow-[0_24px_80px_hsl(var(--primary)/0.24)] outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-[390px]:size-32"
+              className="relative flex size-28 cursor-pointer select-none items-center justify-center rounded-[1.85rem] border border-primary/30 bg-background/88 p-1.5 shadow-[0_24px_80px_hsl(var(--primary)/0.24)] outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-[390px]:size-32 [&_*]:select-none"
               animate={shouldReduceMotion ? undefined : iconControls}
               onClick={(event) => {
                 event.stopPropagation();
@@ -308,15 +313,16 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                   <g clipPath="url(#intro-icon-blink-clip)">
                     <motion.path
                       key={tearKey}
-                      d="M371 242 C352 266 346 280 346 293 C346 312 357 324 371 324 C385 324 396 312 396 293 C396 280 390 266 371 242 Z"
+                      d="M340 252 C316 282 308 301 308 318 C308 343 322 360 340 360 C358 360 372 343 372 318 C372 301 364 282 340 252 Z"
                       fill="#a9c7ff"
                       opacity="0.9"
                       data-testid="intro-logo-tear"
-                      initial={{ opacity: 0, y: -4, scale: 0.72 }}
+                      initial={{ opacity: 0, x: 2, y: -6, scale: 0.68 }}
                       animate={{
                         opacity: [0, 0.9, 0.72, 0],
-                        y: [0, 12, 30, 46],
-                        scale: [0.72, 1, 0.94, 0.86],
+                        x: [2, 1, -1, -2],
+                        y: [0, 15, 36, 58],
+                        scale: [0.68, 1.08, 1, 0.9],
                       }}
                       transition={{ duration: 0.82, ease: "easeOut", times: [0, 0.18, 0.72, 1] }}
                     />
