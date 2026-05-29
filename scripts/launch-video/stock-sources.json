@@ -1,0 +1,57 @@
+[
+  {
+    "id": "coffee",
+    "label": "Coffee",
+    "pageUrl": "https://mixkit.co/free-stock-video/cup-being-filled-with-coffee-in-a-coffee-machine-41865/",
+    "downloadUrl": "https://assets.mixkit.co/videos/41865/41865-720.mp4",
+    "license": "Mixkit Stock Video Free License",
+    "expectedWidth": 720,
+    "expectedHeight": 1280,
+    "startMs": 4000,
+    "durationMs": 3000
+  },
+  {
+    "id": "laptop",
+    "label": "Laptop",
+    "pageUrl": "https://mixkit.co/free-stock-video/working-on-a-macbook-pro-41183/",
+    "downloadUrl": "https://assets.mixkit.co/videos/41183/41183-720.mp4",
+    "license": "Mixkit Stock Video Free License",
+    "expectedWidth": 720,
+    "expectedHeight": 1280,
+    "startMs": 1200,
+    "durationMs": 3000
+  },
+  {
+    "id": "street",
+    "label": "Street",
+    "pageUrl": "https://mixkit.co/free-stock-video/sunset-in-the-distance-walking-through-the-city-40741/",
+    "downloadUrl": "https://assets.mixkit.co/videos/40741/40741-720.mp4",
+    "license": "Mixkit Stock Video Free License",
+    "expectedWidth": 720,
+    "expectedHeight": 1280,
+    "startMs": 1500,
+    "durationMs": 3000
+  },
+  {
+    "id": "sunset",
+    "label": "Sunset",
+    "pageUrl": "https://mixkit.co/free-stock-video/sunset-perspective-in-the-city-3983/",
+    "downloadUrl": "https://assets.mixkit.co/videos/3983/3983-720.mp4",
+    "license": "Mixkit Stock Video Free License",
+    "expectedWidth": 720,
+    "expectedHeight": 1280,
+    "startMs": 4200,
+    "durationMs": 3000
+  },
+  {
+    "id": "gym",
+    "label": "Gym",
+    "pageUrl": "https://mixkit.co/free-stock-video/a-healthy-couple-running-on-a-treadmill-1321/",
+    "downloadUrl": "https://assets.mixkit.co/videos/1321/1321-720.mp4",
+    "license": "Mixkit Stock Video Free License",
+    "expectedWidth": 720,
+    "expectedHeight": 1280,
+    "startMs": 6500,
+    "durationMs": 3000
+  }
+]
