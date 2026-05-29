@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { AppHeaderProvider } from "@/components/app-header-shell";
 import { PwaRegister } from "./pwa-register";
 import "./globals.css";
@@ -33,6 +34,7 @@ export default function RootLayout({
           {children}
           <PwaRegister />
         </AppHeaderProvider>
+        <Analytics />
       </body>
     </html>
   );
