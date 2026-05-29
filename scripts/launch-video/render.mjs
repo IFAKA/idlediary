@@ -361,7 +361,7 @@ async function recordOneTake(baseURL) {
     await page
       .getByRole("button", { name: "Open generated video fullscreen" })
       .waitFor({ state: "visible", timeout: 12_000 });
-    await page.waitForTimeout(8250);
+    await page.waitForTimeout(5700);
 
     const done = page.getByRole("button", { name: "Done" });
     await tapLocator(page, done);
