@@ -154,6 +154,24 @@ describe("CameraPreview", () => {
     expect(container.querySelector('[data-testid="camera-preview-placeholder"]')).not.toBeInTheDocument();
   });
 
+  it("fills the vertical canvas when the browser provides a portrait camera stream", () => {
+    const stream = makeStream();
+    act(() => {
+      root.render(<CameraPreview stream={stream} />);
+    });
+
+    const video = container.querySelector('[data-testid="camera-preview-source"]') as HTMLVideoElement;
+    setVideoSize(video, 720, 1280);
+
+    act(() => {
+      video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }));
+      video.dispatchEvent(new Event("loadeddata", { bubbles: true }));
+      vi.advanceTimersByTime(16);
+    });
+
+    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 720, 1280, 0, 0, 720, 1280);
+  });
+
   it("resets the placeholder when the stream changes or clears", () => {
     const firstStream = makeStream();
     act(() => {
