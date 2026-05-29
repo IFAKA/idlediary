@@ -121,7 +121,7 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
   };
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black">
+    <div className="absolute inset-0 flex items-start justify-center bg-black">
       <motion.div
         aria-hidden="true"
         className={PREVIEW_BACKDROP_CLASS}

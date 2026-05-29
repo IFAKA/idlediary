@@ -249,7 +249,11 @@ test("capture preview uses the vertical export frame", async ({ page }) => {
 
   const frame = page.locator('[data-testid="camera-preview-frame"]:has([aria-label="Camera preview"])');
   await expect(frame).toBeVisible();
-  await expect(page.getByRole("button", { name: "Record three second clip" })).toBeVisible();
+  const recordButton = page.getByRole("button", { name: "Record three second clip" });
+  await expect(recordButton).toBeVisible();
+  const switchCamera = page.getByRole("button", { name: "Switch camera" });
+  await expect(switchCamera).toBeVisible();
+  await expect(switchCamera).toBeEnabled();
 
   await expect
     .poll(async () => {
@@ -267,9 +271,17 @@ test("capture preview uses the vertical export frame", async ({ page }) => {
       return box.width / box.height;
     })
     .toBeCloseTo(9 / 16, 2);
+  await expect
+    .poll(async () => {
+      const box = await frame.boundingBox();
+      return box?.y ?? Number.POSITIVE_INFINITY;
+    })
+    .toBeLessThanOrEqual(28);
+  await switchCamera.click();
+  await expect(recordButton).toBeVisible();
 });
 
-test("record screen switches camera from the header and vertical swipe", async ({ page }) => {
+test("record screen switches camera from the header and vertical and horizontal swipes", async ({ page }) => {
   await mockMediaCapture(page, { requireStoppedBeforeSwitch: true });
   await openRecord(page);
 
@@ -327,6 +339,24 @@ test("record screen switches camera from the header and vertical swipe", async (
   await swipeLayer.dispatchEvent("touchend");
 
   await expect.poll(requestedCameras).toEqual(["environment", "front-camera", "back-camera"]);
+
+  await swipeLayer.dispatchEvent("touchstart", {
+    touches: [{ clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, identifier: 2 }],
+  });
+  await swipeLayer.dispatchEvent("touchmove", {
+    cancelable: true,
+    touches: [
+      { clientX: box.x + box.width / 2 + 112, clientY: box.y + box.height / 2, identifier: 2 },
+    ],
+  });
+  await swipeLayer.dispatchEvent("touchend");
+
+  await expect.poll(requestedCameras).toEqual([
+    "environment",
+    "front-camera",
+    "back-camera",
+    "front-camera",
+  ]);
 });
 
 test("record screen hides camera switch when only one camera is available", async ({ page }) => {
@@ -402,6 +432,42 @@ test("mocked capture saves a three-second clip and enables draft review", async 
   );
   await expect(page.getByRole("button", { name: "Review draft clips" }).getByText("+1")).toBeVisible();
   await expect(page).toHaveURL("/");
+});
+
+test("first-record guide appears once and persists dismissal", async ({ page }) => {
+  await mockMediaCapture(page);
+  await openRecord(page);
+
+  await expect(page.getByRole("status", { name: "Draft clips guide" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Record three second clip" }).click();
+  await expectClipRecorded(page, 1);
+
+  const guide = page.getByRole("status", { name: "Draft clips guide" });
+  await expect(guide).toBeVisible();
+  await expect(guide).toContainText("Your clip is in Draft clips.");
+  await guide.getByRole("button", { name: "Got it" }).click();
+  await expect(guide).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem("idlediary:first-record-guide-seen")))
+    .toBe("true");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("status", { name: "Draft clips guide" })).toHaveCount(0);
+});
+
+test("opening draft from the first-record guide marks it seen", async ({ page }) => {
+  await mockMediaCapture(page);
+  await openRecord(page);
+
+  await page.getByRole("button", { name: "Record three second clip" }).click();
+  await expectClipRecorded(page, 1);
+  await expect(page.getByRole("status", { name: "Draft clips guide" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Review draft clips" }).click();
+  await expect(page).toHaveURL("/draft");
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem("idlediary:first-record-guide-seen")))
+    .toBe("true");
 });
 
 test("record button cancels an active take without adding a draft clip", async ({ page }) => {
@@ -756,7 +822,7 @@ test("success page has no header close button", async ({ page }) => {
   await expect(page.getByTestId("generated-video-open-affordance")).toBeVisible();
 
   await expect(page.getByRole("button", { name: "Back to recording" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "New recording" })).toHaveCount(0);
@@ -843,10 +909,10 @@ test("generated result reload returns home and leaves the saved video needing ac
   await expect(page.getByText("Needs action")).toHaveCount(0);
 });
 
-test("export on result keeps the result open and clears the needs action badge", async ({ page }) => {
+test("share on result keeps the result open and clears the needs action badge", async ({ page }) => {
   await generateOneVideo(page);
 
-  await page.getByRole("button", { name: "Export" }).click();
+  await page.getByRole("button", { name: "Share" }).click();
 
   await expect(page).toHaveURL("/result");
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible();

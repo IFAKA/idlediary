@@ -19,17 +19,24 @@ function oppositeFacingMode(facingMode: CameraFacingMode): CameraFacingMode {
   return facingMode === "environment" ? "user" : "environment";
 }
 
-function videoConstraintsForFacingMode(facingMode: CameraFacingMode): MediaTrackConstraints {
+const idealVideoConstraints = {
+  width: { ideal: exportProfile.width },
+  height: { ideal: exportProfile.height },
+  aspectRatio: { ideal: exportProfile.aspectRatio },
+  frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
+} satisfies MediaTrackConstraints;
+
+export function videoConstraintsForFacingMode(facingMode: CameraFacingMode): MediaTrackConstraints {
   return {
+    ...idealVideoConstraints,
     facingMode: { ideal: facingMode },
-    frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
   };
 }
 
-function videoConstraintsForDevice(deviceId: string): MediaTrackConstraints {
+export function videoConstraintsForDevice(deviceId: string): MediaTrackConstraints {
   return {
+    ...idealVideoConstraints,
     deviceId: { exact: deviceId },
-    frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
   };
 }
 

@@ -19,17 +19,28 @@ type ThumbnailOptions = {
   height: number;
 };
 
-function waitForVideoEvent(video: HTMLVideoElement, eventName: keyof HTMLMediaElementEventMap) {
-  return new Promise<void>((resolve, reject) => {
+const videoLoadStageTimeoutMs = 3500;
+
+function waitForVideoEvent(
+  video: HTMLVideoElement,
+  eventName: keyof HTMLMediaElementEventMap,
+  timeoutMs = videoLoadStageTimeoutMs,
+) {
+  return new Promise<"event" | "timeout">((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      resolve("timeout");
+    }, timeoutMs);
     const onEvent = () => {
       cleanup();
-      resolve();
+      resolve("event");
     };
     const onError = () => {
       cleanup();
       reject(video.error ?? new Error(`Video ${eventName} failed`));
     };
     const cleanup = () => {
+      window.clearTimeout(timeoutId);
       video.removeEventListener(eventName, onEvent);
       video.removeEventListener("error", onError);
     };
@@ -41,12 +52,40 @@ function waitForVideoEvent(video: HTMLVideoElement, eventName: keyof HTMLMediaEl
 
 function canvasToBlob(
   canvas: HTMLCanvasElement,
-  mimeType: "image/webp" | "image/jpeg",
-  quality: number,
+  mimeType?: "image/jpeg",
+  quality?: number,
 ) {
   return new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, mimeType, quality);
   });
+}
+
+async function exportThumbnailBlob(canvas: HTMLCanvasElement) {
+  const jpegBlob = await canvasToBlob(canvas, "image/jpeg", 0.86);
+  if (jpegBlob && jpegBlob.size > 0) {
+    return {
+      blob: jpegBlob,
+      mimeType: jpegBlob.type || "image/jpeg",
+    };
+  }
+
+  const pngBlob = await canvasToBlob(canvas);
+  if (pngBlob && pngBlob.size > 0) {
+    return {
+      blob: pngBlob,
+      mimeType: pngBlob.type || "image/png",
+    };
+  }
+
+  return null;
+}
+
+function hasDrawableVideoFrame(video: HTMLVideoElement) {
+  return (
+    video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+    video.videoWidth > 0 &&
+    video.videoHeight > 0
+  );
 }
 
 export async function generateVideoThumbnail(
@@ -90,7 +129,15 @@ export async function generateVideoThumbnail(
     video.src = src;
     video.load();
 
-    await waitForVideoEvent(video, "loadedmetadata");
+    const metadataResult = await waitForVideoEvent(video, "loadedmetadata");
+    if (metadataResult === "timeout") {
+      throw new Error("Video metadata load timed out");
+    }
+
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      await waitForVideoEvent(video, "loadeddata");
+    }
+
     const seekTime =
       Number.isFinite(video.duration) && video.duration > 0
         ? Math.min(0.1, Math.max(video.duration - 0.05, 0))
@@ -99,19 +146,19 @@ export async function generateVideoThumbnail(
     if (Math.abs(video.currentTime - seekTime) > 0.001) {
       video.currentTime = seekTime;
       await waitForVideoEvent(video, "seeked");
-    } else if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      await waitForVideoEvent(video, "loadeddata");
     }
 
+    if (!hasDrawableVideoFrame(video)) {
+      throw new Error("Video frame was not drawable for thumbnail generation");
+    }
     drawCoverFrame(video, canvas, video.videoWidth, video.videoHeight);
 
-    const webpBlob = await canvasToBlob(canvas, "image/webp", 0.78);
-    const thumbnailBlob = webpBlob ?? (await canvasToBlob(canvas, "image/jpeg", 0.82));
-    if (!thumbnailBlob) throw new Error("Canvas thumbnail export failed");
+    const thumbnail = await exportThumbnailBlob(canvas);
+    if (!thumbnail) throw new Error("Canvas thumbnail export failed");
 
     return {
-      thumbnailBlob,
-      thumbnailMimeType: thumbnailBlob.type || (webpBlob ? "image/webp" : "image/jpeg"),
+      thumbnailBlob: thumbnail.blob,
+      thumbnailMimeType: thumbnail.mimeType,
       thumbnailWidth: width,
       thumbnailHeight: height,
     };

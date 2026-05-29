@@ -129,6 +129,7 @@ const minimumVisibleSavingStepMs = 500;
 const minimumVisibleDoneStepMs = 900;
 const cameraSwipeMinDistance = 56;
 const cameraSwipeAxisRatio = 1.2;
+export const FIRST_RECORD_GUIDE_SEEN_KEY = "idlediary:first-record-guide-seen";
 const introGenerationProgress = [
   makeGenerationProgress("loading", 8),
   makeGenerationProgress("writing", 14),
@@ -204,6 +205,16 @@ function isInteractiveTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest("button, a, input, textarea, select"));
 }
 
+function hasSeenFirstRecordGuide() {
+  if (typeof window === "undefined") return true;
+  return window.localStorage.getItem(FIRST_RECORD_GUIDE_SEEN_KEY) === "true";
+}
+
+function markFirstRecordGuideSeen() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(FIRST_RECORD_GUIDE_SEEN_KEY, "true");
+}
+
 export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {}) {
   const isDemo = Boolean(demo);
   const camera = useCamera();
@@ -220,11 +231,13 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [resultExitDirection, setResultExitDirection] = useState<"up" | "bottom">("up");
   const [hasNeedsActionVlog, setHasNeedsActionVlog] = useState(false);
+  const [showFirstRecordGuide, setShowFirstRecordGuide] = useState(false);
   const shouldReduceMotion = useReducedMotion() === true;
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
   const demoSeededAfterCapture = useRef(false);
   const cameraSwipeStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const previousClipCountRef = useRef<number | null>(null);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     ...makeGenerationProgress("idle", 0),
   });
@@ -362,6 +375,42 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   }, [initialViewReady, mode]);
 
   useEffect(() => {
+    if (clips.loading) return;
+
+    const previousClipCount = previousClipCountRef.current;
+    previousClipCountRef.current = clips.clips.length;
+
+    if (
+      previousClipCount !== 0 ||
+      clips.clips.length !== 1 ||
+      mode !== "capture" ||
+      recorderState === "recording" ||
+      recorderState === "saving" ||
+      hasSeenFirstRecordGuide()
+    ) {
+      return;
+    }
+
+    setShowFirstRecordGuide(true);
+  }, [clips.clips.length, clips.loading, mode, recorderState]);
+
+  useEffect(() => {
+    if (!showFirstRecordGuide) return;
+
+    const timeout = window.setTimeout(() => {
+      markFirstRecordGuideSeen();
+      setShowFirstRecordGuide(false);
+    }, 7000);
+
+    return () => window.clearTimeout(timeout);
+  }, [showFirstRecordGuide]);
+
+  const dismissFirstRecordGuide = useCallback(() => {
+    markFirstRecordGuideSeen();
+    setShowFirstRecordGuide(false);
+  }, []);
+
+  useEffect(() => {
     if (isDemo) return;
 
     const onPopState = () => {
@@ -401,7 +450,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     await clips.clearClips();
   };
 
-  const handleResultExport = async () => {
+  const handleResultShare = async () => {
     if (!vlog) return;
 
     try {
@@ -486,10 +535,14 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
 
       const deltaX = clientX - start.x;
       const deltaY = clientY - start.y;
-      if (
-        Math.abs(deltaY) < cameraSwipeMinDistance ||
-        Math.abs(deltaY) < Math.abs(deltaX) * cameraSwipeAxisRatio
-      ) {
+      const isVerticalSwipe =
+        Math.abs(deltaY) >= cameraSwipeMinDistance &&
+        Math.abs(deltaY) >= Math.abs(deltaX) * cameraSwipeAxisRatio;
+      const isHorizontalSwipe =
+        Math.abs(deltaX) >= cameraSwipeMinDistance &&
+        Math.abs(deltaX) >= Math.abs(deltaY) * cameraSwipeAxisRatio;
+
+      if (!isVerticalSwipe && !isHorizontalSwipe) {
         return;
       }
 
@@ -552,6 +605,9 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
 
   const openReview = () => {
     if (!canOpenDraft) return;
+    if (showFirstRecordGuide) {
+      dismissFirstRecordGuide();
+    }
     showReview("push");
   };
 
@@ -769,7 +825,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
       <AnimatePresence initial={false}>
         <motion.div
           key={mode === "capture" && camera.stream ? "camera-preview" : "processing-backdrop"}
-          className="absolute inset-x-0 bottom-0 top-[var(--app-header-background-start)]"
+          className="absolute inset-0"
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: mode === "capture" ? 1.015 : 1 }}
           initial={{ opacity: 0, scale: 1.01 }}
@@ -807,7 +863,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
             <ResultPanel
               vlog={vlog}
               onDone={() => void handleResultDone()}
-              onExport={() => void handleResultExport()}
+              onShare={() => void handleResultShare()}
             />
           </motion.div>
         ) : mode === "review" ? (
@@ -884,7 +940,20 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
               onTouchMove={handleCaptureTouchMove}
               onTouchStart={handleCaptureTouchStart}
             />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[max(10rem,calc(env(safe-area-inset-top)+8.5rem))] bg-gradient-to-b from-black/72 via-black/34 to-transparent"
+              data-testid="capture-header-gradient"
+            />
             <div className="relative z-10 mt-auto">
+              <AnimatePresence>
+                {showFirstRecordGuide ? (
+                  <FirstRecordGuide
+                    reducedMotion={shouldReduceMotion}
+                    onDismiss={dismissFirstRecordGuide}
+                  />
+                ) : null}
+              </AnimatePresence>
               <div className="mb-5 flex items-center justify-between gap-3">
                 <Link
                   aria-disabled={!canOpenVideos}
@@ -984,6 +1053,46 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
       </AnimatePresence>
       {mode === "generating" ? null : <DebugDrawer />}
     </AppViewportShell>
+  );
+}
+
+function FirstRecordGuide({
+  onDismiss,
+  reducedMotion,
+}: {
+  onDismiss: () => void;
+  reducedMotion: boolean;
+}) {
+  return (
+    <motion.div
+      role="status"
+      aria-label="Draft clips guide"
+      className="mb-3 ml-auto mr-0 w-[min(17rem,calc(100vw_-_2rem))] rounded-lg border border-white/22 bg-black/72 p-3 text-white shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-md"
+      data-testid="first-record-guide"
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.98 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 10, scale: 0.98 }}
+      transition={reducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+    >
+      <div className="relative">
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-5 right-6 size-3 rotate-45 border-b border-r border-white/22 bg-black/72"
+        />
+        <p className="text-sm font-semibold leading-5">Your clip is in Draft clips.</p>
+        <p className="mt-1 text-xs leading-5 text-white/74">
+          Tap the stack to review and make a video.
+        </p>
+        <Button
+          className="mt-3 h-9 w-full border-white/20 bg-white/92 text-sm text-black hover:bg-white"
+          type="button"
+          variant="outline"
+          onClick={onDismiss}
+        >
+          Got it
+        </Button>
+      </div>
+    </motion.div>
   );
 }
 

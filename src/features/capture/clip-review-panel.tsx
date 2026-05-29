@@ -545,8 +545,15 @@ function ClipPreview({
         )}
       </button>
       {hasError ? (
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center text-[10px] font-semibold text-destructive">
-          Can&apos;t load
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/42 text-white"
+          data-testid="clip-video-placeholder"
+        >
+          <span className="relative inline-flex size-10 items-center justify-center rounded-full border border-white/25 bg-black/44 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+            <Clapperboard className="size-5 text-memory" />
+            <Play className="absolute -right-1 -bottom-1 size-4 rounded-full bg-white/90 p-0.5 text-black" />
+          </span>
         </span>
       ) : null}
       <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/72 px-2 py-1 text-xs font-semibold text-white">

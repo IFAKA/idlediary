@@ -182,6 +182,31 @@ describe("thumbnail rendering", () => {
     expect(second?.querySelector("video")).toHaveAttribute("src", "blob:clip-video");
   });
 
+  it("shows a neutral placeholder when the draft fallback video fails", () => {
+    const withoutThumbnail = clip();
+
+    act(() => {
+      root.render(
+        <ClipReviewPanel
+          clips={[withoutThumbnail]}
+          isFinishing={false}
+          onBack={() => undefined}
+          onClearDraft={async () => true}
+          onDeleteClip={async () => true}
+          onMakeVideo={() => undefined}
+          onReorderClips={async () => true}
+        />,
+      );
+    });
+
+    act(() => {
+      container.querySelector("video")?.dispatchEvent(new Event("error"));
+    });
+
+    expect(container).not.toHaveTextContent("Can't load");
+    expect(container.querySelector('[data-testid="clip-video-placeholder"]')).toBeInTheDocument();
+  });
+
   it("saved video cards prefer image thumbnails and fall back to video", async () => {
     const withThumbnail = vlog({
       thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),

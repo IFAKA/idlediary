@@ -11,10 +11,10 @@ import { VlogPlayer } from "@/features/clips/vlog-player";
 type ResultPanelProps = {
   vlog: VlogRecord;
   onDone: () => void;
-  onExport: () => void;
+  onShare: () => void;
 };
 
-export function ResultPanel({ vlog, onDone, onExport }: ResultPanelProps) {
+export function ResultPanel({ vlog, onDone, onShare }: ResultPanelProps) {
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden top-level-screen">
       <SuccessConfetti />
@@ -29,9 +29,9 @@ export function ResultPanel({ vlog, onDone, onExport }: ResultPanelProps) {
       </div>
 
       <div className="relative z-10 grid shrink-0 gap-3 pb-1 pt-6">
-        <Button className="h-14 text-base" type="button" onClick={onExport}>
+        <Button className="h-14 text-base" type="button" onClick={onShare}>
           <Share2 className="size-5" />
-          Export
+          Share
         </Button>
         <Button type="button" variant="secondary" onClick={onDone}>
           <Check className="size-4" />

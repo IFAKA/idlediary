@@ -6,7 +6,8 @@ const preferredTypes = [
   "video/mp4;codecs=avc1,mp4a.40.2",
 ];
 
-const audioBitsPerSecond = 192_000;
+export const audioBitsPerSecond = 192_000;
+export const videoBitsPerSecond = 5_000_000;
 
 export function supportedRecordingMimeType() {
   if (typeof MediaRecorder === "undefined") {
@@ -18,6 +19,7 @@ export function supportedRecordingMimeType() {
 function recorderOptions(stream: MediaStream, mimeType?: string): MediaRecorderOptions {
   return {
     ...(mimeType ? { mimeType } : {}),
+    videoBitsPerSecond,
     ...(stream.getAudioTracks().length > 0 ? { audioBitsPerSecond } : {}),
   };
 }

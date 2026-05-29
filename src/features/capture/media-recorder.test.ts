@@ -109,6 +109,7 @@ describe("createRecorder", () => {
     expect(MockMediaRecorder.instances[0]?.options).toEqual({
       mimeType: 'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
       audioBitsPerSecond: 192_000,
+      videoBitsPerSecond: 5_000_000,
     });
     expect(MockMediaRecorder.instances[0]?.stream.getAudioTracks()).toEqual([audioTrack]);
   });

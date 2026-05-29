@@ -164,7 +164,7 @@ function SavedVideoDetail({
       <div className="grid shrink-0 gap-3 pb-1 pt-6">
         <Button className="h-14 text-base" type="button" onClick={() => shareVlog(vlog)}>
           <Share2 className="size-5" />
-          Export
+          Share
         </Button>
         <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="outline" onClick={() => downloadVlog(vlog)}>
@@ -204,7 +204,7 @@ function LoadingVideoDetail() {
       <div className="grid shrink-0 gap-3 pb-1 pt-6">
         <Button className="h-14 text-base" disabled type="button">
           <Share2 className="size-5" />
-          Export
+          Share
         </Button>
         <div className="grid grid-cols-2 gap-3">
           <Button disabled type="button" variant="outline">
