@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { addDebugEvent } from "@/features/errors/debug-store";
-import { drawContainFrame } from "@/features/video/cover-frame";
-import { exportProfile } from "@/features/video/export-profile";
+import { drawCoverFrame } from "@/features/video/cover-frame";
+import { cameraPreviewProfile } from "./camera-profile";
 
 type CameraPreviewProps = {
   demoVideoSrc?: string;
@@ -77,7 +77,7 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
     if (!video || !canvas) return;
 
     if (video.videoWidth > 0 && video.videoHeight > 0) {
-      drawContainFrame(video, canvas, video.videoWidth, video.videoHeight);
+      drawCoverFrame(video, canvas, video.videoWidth, video.videoHeight);
     }
 
     animationFrameRef.current = window.requestAnimationFrame(drawPreviewFrame);
@@ -144,8 +144,8 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
         className="relative max-h-full max-w-full overflow-hidden bg-black"
         data-testid="camera-preview-frame"
         style={{
-          aspectRatio: exportProfile.aspectRatio,
-          height: "min(100%, calc(var(--app-viewport-width) * 16 / 9))",
+          aspectRatio: cameraPreviewProfile.aspectRatio,
+          height: "min(100%, calc(var(--app-viewport-width) * 4 / 3))",
           width: "auto",
         }}
       >
@@ -155,8 +155,8 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
               ref={canvasRef}
               aria-label="Camera preview"
               className="h-full w-full"
-              height={exportProfile.height}
-              width={exportProfile.width}
+              height={cameraPreviewProfile.height}
+              width={cameraPreviewProfile.width}
             />
             <div
               aria-hidden="true"
@@ -185,9 +185,9 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
                 addDebugEvent("camera-preview-metadata", "capture", {
                   videoWidth: video.videoWidth,
                   videoHeight: video.videoHeight,
-                  compositionWidth: exportProfile.width,
-                  compositionHeight: exportProfile.height,
-                  compositionAspectRatio: exportProfile.aspectRatio,
+                  compositionWidth: cameraPreviewProfile.width,
+                  compositionHeight: cameraPreviewProfile.height,
+                  compositionAspectRatio: cameraPreviewProfile.aspectRatio,
                   rawAspectRatio: nextAspectRatio,
                 });
                 maybeRevealPreview();

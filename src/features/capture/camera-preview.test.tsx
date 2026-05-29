@@ -94,11 +94,11 @@ describe("CameraPreview", () => {
     expect(placeholder).toHaveAttribute("data-preview-ready", "false");
     expect(video).toHaveProperty("srcObject", stream);
     expect(canvas).toHaveAttribute("width", "720");
-    expect(canvas).toHaveAttribute("height", "1280");
+    expect(canvas).toHaveAttribute("height", "960");
     expect(
       (container.querySelector('[data-testid="camera-preview-frame"]') as HTMLElement).style
         .aspectRatio,
-    ).toBe("0.5625");
+    ).toBe("0.75");
 
     setVideoSize(video);
     act(() => {
@@ -110,9 +110,9 @@ describe("CameraPreview", () => {
       vi.advanceTimersByTime(16);
     });
 
-    expect(clearRect).toHaveBeenCalledWith(0, 0, 720, 1280);
-    expect(fillRect).toHaveBeenCalledWith(0, 0, 720, 1280);
-    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720, 0, 437.5, 720, 405);
+    expect(clearRect).not.toHaveBeenCalled();
+    expect(fillRect).not.toHaveBeenCalled();
+    expect(drawImage).toHaveBeenCalledWith(video, 370, 0, 540, 720, 0, 0, 720, 960);
 
     act(() => {
       vi.advanceTimersByTime(173);
@@ -137,8 +137,8 @@ describe("CameraPreview", () => {
       expect.objectContaining({
         rawAspectRatio: 1280 / 720,
         compositionWidth: 720,
-        compositionHeight: 1280,
-        compositionAspectRatio: 9 / 16,
+        compositionHeight: 960,
+        compositionAspectRatio: 3 / 4,
       }),
     );
     expect(debugEvents.addDebugEvent).toHaveBeenCalledWith(
@@ -154,14 +154,14 @@ describe("CameraPreview", () => {
     expect(container.querySelector('[data-testid="camera-preview-placeholder"]')).not.toBeInTheDocument();
   });
 
-  it("fills the vertical canvas when the browser provides a portrait camera stream", () => {
+  it("fills the native photo canvas when the browser provides a matching camera stream", () => {
     const stream = makeStream();
     act(() => {
       root.render(<CameraPreview stream={stream} />);
     });
 
     const video = container.querySelector('[data-testid="camera-preview-source"]') as HTMLVideoElement;
-    setVideoSize(video, 720, 1280);
+    setVideoSize(video, 720, 960);
 
     act(() => {
       video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }));
@@ -169,7 +169,7 @@ describe("CameraPreview", () => {
       vi.advanceTimersByTime(16);
     });
 
-    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 720, 1280, 0, 0, 720, 1280);
+    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 720, 960, 0, 0, 720, 960);
   });
 
   it("resets the placeholder when the stream changes or clears", () => {
