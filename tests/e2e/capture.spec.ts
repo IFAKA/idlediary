@@ -243,7 +243,7 @@ test("root route opens the recording screen", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Record three second clip" })).toBeVisible();
 });
 
-test("capture preview uses the vertical export frame", async ({ page }) => {
+test("capture preview uses the native photo frame", async ({ page }) => {
   await mockMediaCapture(page);
   await openRecord(page);
 
@@ -261,16 +261,16 @@ test("capture preview uses the vertical export frame", async ({ page }) => {
       if (!box) return 0;
       return box.width / box.height;
     })
-    .toBeCloseTo(9 / 16, 2);
+    .toBeCloseTo(3 / 4, 2);
   await expect(page.locator('[aria-label="Camera preview"]')).toHaveAttribute("width", "720");
-  await expect(page.locator('[aria-label="Camera preview"]')).toHaveAttribute("height", "1280");
+  await expect(page.locator('[aria-label="Camera preview"]')).toHaveAttribute("height", "960");
   await expect
     .poll(async () => {
       const box = await page.locator('[aria-label="Camera preview"]').boundingBox();
       if (!box) return 0;
       return box.width / box.height;
     })
-    .toBeCloseTo(9 / 16, 2);
+    .toBeCloseTo(3 / 4, 2);
   await expect
     .poll(async () => {
       const box = await frame.boundingBox();

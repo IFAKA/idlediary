@@ -5,6 +5,7 @@ import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import { exportProfile } from "@/features/video/export-profile";
+import { cameraPreviewProfile } from "./camera-profile";
 import { getCameraPermissionState, type CameraPermissionState } from "./permissions";
 
 export type CameraFacingMode = "environment" | "user";
@@ -24,9 +25,9 @@ function oppositeFacingMode(facingMode: CameraFacingMode): CameraFacingMode {
 }
 
 const idealVideoConstraints = {
-  width: { ideal: exportProfile.width },
-  height: { ideal: exportProfile.height },
-  aspectRatio: { ideal: exportProfile.aspectRatio },
+  width: { ideal: cameraPreviewProfile.width },
+  height: { ideal: cameraPreviewProfile.height },
+  aspectRatio: { ideal: cameraPreviewProfile.aspectRatio },
   resizeMode: { ideal: "crop-and-scale" },
   frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
 } satisfies CameraVideoConstraints;
@@ -34,9 +35,9 @@ const idealVideoConstraints = {
 function strictPortraitVideoConstraintsFor(video: CameraVideoConstraints): CameraVideoConstraints {
   return {
     ...video,
-    width: { exact: exportProfile.width },
-    height: { exact: exportProfile.height },
-    aspectRatio: { exact: exportProfile.aspectRatio },
+    width: { exact: cameraPreviewProfile.width },
+    height: { exact: cameraPreviewProfile.height },
+    aspectRatio: { exact: cameraPreviewProfile.aspectRatio },
     resizeMode: { exact: "crop-and-scale" },
   };
 }
