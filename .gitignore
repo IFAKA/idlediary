@@ -6,6 +6,7 @@ node_modules
 next-env.d.ts
 out
 public/offline-assets.json
+public/demo-clips/
 
 # production
 build

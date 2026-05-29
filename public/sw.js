@@ -9,14 +9,6 @@ const REQUIRED_ASSETS = [
   ...APP_SHELL,
   "/ffmpeg/ffmpeg-core.js",
   "/ffmpeg/ffmpeg-core.wasm",
-  "/demo-clips/manifest.json",
-  "/demo-clips/coffee-preview.mp4",
-  "/demo-clips/coffee.mp4",
-  "/demo-clips/laptop.mp4",
-  "/demo-clips/street.mp4",
-  "/demo-clips/sunset.mp4",
-  "/demo-clips/gym.mp4",
-  "/demo-clips/result.mp4",
 ];
 const STATIC_ASSET_PATTERN =
   /\.(?:css|js|mjs|png|jpg|jpeg|webp|svg|ico|json|woff2?|wasm|mp4)$/;
