@@ -123,7 +123,7 @@ button {
   border: 1px solid rgb(255 255 255 / 68%);
   background: rgb(255 255 255 / 24%);
   box-shadow: 0 0 32px rgb(255 255 255 / 24%);
-  animation: demo-tap-ripple 400ms ease-out forwards;
+  animation: demo-tap-ripple 700ms ease-out forwards;
 }
 
 @keyframes demo-tap-ripple {

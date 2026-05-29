@@ -7,6 +7,7 @@ import { drawCoverFrame } from "@/features/video/cover-frame";
 import { exportProfile } from "@/features/video/export-profile";
 
 type CameraPreviewProps = {
+  demoVideoSrc?: string;
   stream: MediaStream | null;
 };
 
@@ -28,11 +29,17 @@ function getStreamKey(stream: MediaStream | null) {
   return nextStreamKey;
 }
 
-export function CameraPreview({ stream }: CameraPreviewProps) {
-  return <CameraPreviewSurface key={getStreamKey(stream)} stream={stream} />;
+export function CameraPreview({ demoVideoSrc, stream }: CameraPreviewProps) {
+  return (
+    <CameraPreviewSurface
+      key={demoVideoSrc ?? getStreamKey(stream)}
+      demoVideoSrc={demoVideoSrc}
+      stream={stream}
+    />
+  );
 }
 
-function CameraPreviewSurface({ stream }: CameraPreviewProps) {
+function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -46,9 +53,9 @@ function CameraPreviewSurface({ stream }: CameraPreviewProps) {
 
   useEffect(() => {
     if (videoRef.current) {
-      videoRef.current.srcObject = stream;
+      videoRef.current.srcObject = demoVideoSrc ? null : stream;
     }
-  }, [stream]);
+  }, [demoVideoSrc, stream]);
 
   useEffect(() => {
     return () => {
@@ -83,7 +90,7 @@ function CameraPreviewSurface({ stream }: CameraPreviewProps) {
 
   const maybeRevealPreview = () => {
     if (
-      !stream ||
+      (!stream && !demoVideoSrc) ||
       previewReady ||
       revealStartedRef.current ||
       !metadataLoadedRef.current ||
@@ -142,7 +149,7 @@ function CameraPreviewSurface({ stream }: CameraPreviewProps) {
           width: "auto",
         }}
       >
-        {stream ? (
+        {stream || demoVideoSrc ? (
           <>
             <canvas
               ref={canvasRef}
@@ -157,8 +164,10 @@ function CameraPreviewSurface({ stream }: CameraPreviewProps) {
               autoPlay
               className="pointer-events-none absolute left-0 top-0 size-px opacity-0"
               data-testid="camera-preview-source"
+              loop={Boolean(demoVideoSrc)}
               muted
               playsInline
+              src={demoVideoSrc}
               onCanPlay={markCanPlay}
               onLoadedData={markCanPlay}
               onLoadedMetadata={(event) => {

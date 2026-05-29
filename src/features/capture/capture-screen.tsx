@@ -32,6 +32,7 @@ import {
 } from "@/features/generation/generation";
 import {
   clearGeneratedVlogForSession,
+  getLatestVlogForSession,
   hasNeedsActionVlog as checkHasNeedsActionVlog,
   markVlogHandled,
   saveVlogAndClearSessionDraft,
@@ -49,10 +50,64 @@ import { useTwoSecondRecorder } from "./use-two-second-recorder";
 
 type ScreenMode = "capture" | "review" | "generating" | "result";
 type DurableView = Exclude<ScreenMode, "generating">;
+type DemoScene = "record" | "draft" | "generate" | "result";
+
+type CaptureScreenDemoConfig = {
+  captureClipSrc: string;
+  previewSrc: string;
+  resultSrc: string;
+  scene: DemoScene;
+  sessionId: string;
+};
 
 const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 const wait = (durationMs: number) =>
   new Promise<void>((resolve) => window.setTimeout(resolve, durationMs));
+
+async function recordDemoClip(
+  src: string,
+  setState: (state: "idle" | "recording" | "saving" | "success") => void,
+  setProgress: (progress: number) => void,
+) {
+  setState("recording");
+  setProgress(0);
+  const startedAt = performance.now();
+  const progressTimer = window.setInterval(() => {
+    setProgress(Math.min(100, Math.round(((performance.now() - startedAt) / 3000) * 100)));
+  }, 80);
+  await wait(3000);
+  window.clearInterval(progressTimer);
+  setProgress(100);
+  setState("saving");
+  const response = await fetch(src, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Demo clip could not be loaded: ${src}`);
+  const blob = await response.blob();
+  setState("success");
+  window.setTimeout(() => {
+    setProgress(0);
+    setState("idle");
+  }, 650);
+  return blob;
+}
+
+async function createDemoVlog(sessionId: string, src: string, clipCount: number): Promise<VlogRecord> {
+  const response = await fetch(src, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Demo result could not be loaded: ${src}`);
+  const blob = await response.blob();
+  return {
+    id: "launch-demo-vlog",
+    sessionId,
+    blob,
+    mimeType: "video/mp4",
+    clipCount,
+    title: `${clipCount} Tiny Moments`,
+    caption: `A quiet ${clipCount * 3}-second diary from today.`,
+    createdAt: new Date().toISOString(),
+    needsAction: false,
+    size: blob.size,
+    generationFingerprint: "launch-demo-result",
+  };
+}
 
 const routeSlideTransition = { duration: 0.24, ease: "easeOut" } as const;
 const notificationBadgeSpring = { type: "spring", stiffness: 680, damping: 24, mass: 0.55 } as const;
@@ -79,6 +134,12 @@ const generationProgressOrder: Record<GenerationProgress["step"], number> = {
   done: 5,
   error: 6,
 };
+
+function durableViewForDemoScene(scene: DemoScene): DurableView {
+  if (scene === "draft" || scene === "generate") return "review";
+  if (scene === "result") return "result";
+  return "capture";
+}
 
 export function shouldPublishGenerationProgress(
   currentProgress: Pick<GenerationProgress, "step" | "value">,
@@ -134,10 +195,15 @@ function isInteractiveTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest("button, a, input, textarea, select"));
 }
 
-export function CaptureScreen() {
+export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {}) {
+  const isDemo = Boolean(demo);
   const camera = useCamera();
-  const clips = useClips();
+  const clips = useClips({ sessionId: demo?.sessionId });
   const recorder = useTwoSecondRecorder(camera.stream);
+  const [demoRecordingState, setDemoRecordingState] = useState<
+    "idle" | "recording" | "saving" | "success"
+  >("idle");
+  const [demoRecordingProgress, setDemoRecordingProgress] = useState(0);
   const [mode, setMode] = useState<ScreenMode>("capture");
   const [initialViewReady, setInitialViewReady] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
@@ -152,14 +218,16 @@ export function CaptureScreen() {
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     ...makeGenerationProgress("idle", 0),
   });
+  const recorderState = demo ? demoRecordingState : recorder.state;
+  const recorderProgress = demo ? demoRecordingProgress : recorder.progress;
 
-  const needsPermission = !camera.stream;
+  const needsPermission = !isDemo && !camera.stream;
   const canOpenDraft =
     mode === "capture" &&
     !isFinishing &&
     !clips.loading &&
-    recorder.state !== "recording" &&
-    recorder.state !== "saving";
+    recorderState !== "recording" &&
+    recorderState !== "saving";
   const canOpenVideos = canOpenDraft;
   const canSwitchCamera =
     mode === "capture" &&
@@ -167,8 +235,8 @@ export function CaptureScreen() {
     camera.hasMultipleCameras &&
     !camera.switching &&
     !isFinishing &&
-    recorder.state !== "recording" &&
-    recorder.state !== "saving";
+    recorderState !== "recording" &&
+    recorderState !== "saving";
   const clipLimitReached = clips.clips.length >= 20;
   const latestClip = clips.clips.length > 0 ? clips.clips[clips.clips.length - 1] : null;
   const draftClipCount = clips.loading ? null : clips.clips.length;
@@ -210,19 +278,24 @@ export function CaptureScreen() {
       }
 
       if (requestedView === "result") {
+        if (demo) {
+          setVlog(await getLatestVlogForSession(demo.sessionId));
+          setMode("result");
+          return;
+        }
         setVlog(null);
         setMode("capture");
-        writeViewToUrl("capture", "replace");
+        if (!isDemo) writeViewToUrl("capture", "replace");
         return;
       }
 
       setVlog(null);
       setMode("capture");
       if (window.location.pathname !== "/") {
-        writeViewToUrl("capture", "replace");
+        if (!isDemo) writeViewToUrl("capture", "replace");
       }
     },
-    [clips.loading, clips.session],
+    [clips.loading, clips.session, demo, isDemo],
   );
 
   useEffect(() => {
@@ -231,6 +304,7 @@ export function CaptureScreen() {
 
   useEffect(() => {
     if (
+      isDemo ||
       !initialViewReady ||
       mode !== "capture" ||
       camera.stream ||
@@ -238,22 +312,25 @@ export function CaptureScreen() {
     ) return;
     cameraStartAttempted.current = true;
     void startCamera();
-  }, [camera.stream, initialViewReady, mode, startCamera]);
+  }, [camera.stream, initialViewReady, isDemo, mode, startCamera]);
 
   useEffect(() => {
-    if (mode === "capture") return;
+    if (mode === "capture" || isDemo) return;
 
     cameraStartAttempted.current = false;
     if (camera.stream) {
       camera.stop();
     }
-  }, [camera, mode]);
+  }, [camera, isDemo, mode]);
 
   useEffect(() => {
     if (initialViewResolved.current || clips.loading || !clips.session) return;
     initialViewResolved.current = true;
-    void restoreRequestedView().finally(() => setInitialViewReady(true));
-  }, [clips.loading, clips.session, restoreRequestedView]);
+    const demoView = demo ? durableViewForDemoScene(demo.scene) : undefined;
+    void restoreRequestedView(demoView).finally(() =>
+      setInitialViewReady(true),
+    );
+  }, [clips.loading, clips.session, demo, restoreRequestedView]);
 
   useEffect(() => {
     if (!initialViewReady || mode !== "capture") return;
@@ -279,34 +356,34 @@ export function CaptureScreen() {
       if (mode === "result" && vlog && window.location.pathname === "/result") {
         return;
       }
-      void restoreRequestedView();
+      void restoreRequestedView(demo ? durableViewForDemoScene(demo.scene) : undefined);
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [mode, restoreRequestedView, vlog]);
+  }, [demo, mode, restoreRequestedView, vlog]);
 
   const showCapture = useCallback((action: "push" | "replace" = "push") => {
     setSlideDirection("right");
     setVlog(null);
     setMode("capture");
-    writeViewToUrl("capture", action);
-  }, []);
+    if (!isDemo) writeViewToUrl("capture", action);
+  }, [isDemo]);
 
   const showReview = useCallback((action: "push" | "replace" = "push") => {
     setSlideDirection("right");
     setResultExitDirection("up");
     setVlog(null);
     setMode("review");
-    writeViewToUrl("review", action);
-  }, []);
+    if (!isDemo) writeViewToUrl("review", action);
+  }, [isDemo]);
 
   const showResult = useCallback((nextVlog: VlogRecord, action: "push" | "replace" = "replace") => {
     setResultExitDirection("up");
     setVlog(nextVlog);
     setMode("result");
-    writeViewToUrl("result", action);
-  }, []);
+    if (!isDemo) writeViewToUrl("result", action);
+  }, [isDemo]);
 
   const clearDraft = async () => {
     await clips.clearClips();
@@ -346,7 +423,9 @@ export function CaptureScreen() {
     }
 
     try {
-      const blob = await recorder.record();
+      const blob = demo
+        ? await recordDemoClip(demo.captureClipSrc, setDemoRecordingState, setDemoRecordingProgress)
+        : await recorder.record();
       if (blob !== null) {
         await clips.addClip(blob, 3000);
       }
@@ -356,7 +435,8 @@ export function CaptureScreen() {
   };
 
   const handleRecordButtonClick = () => {
-    if (recorder.state === "recording") {
+    if (recorderState === "recording") {
+      if (demo) return;
       recorder.cancel();
       return;
     }
@@ -462,8 +542,32 @@ export function CaptureScreen() {
       setGenerationProgress(makeGenerationProgress("idle", 0));
       setMode("generating");
       await waitForPaint();
-      camera.stop();
+      if (!isDemo) camera.stop();
       await waitForPaint();
+      if (demo) {
+        const demoProgress = [
+          makeGenerationProgress("loading", 8),
+          makeGenerationProgress("writing", 18),
+          makeGenerationProgress("rendering", 42),
+          makeGenerationProgress("rendering", 78, { label: "Making playback ready" }),
+          makeGenerationProgress("saving", 92),
+        ];
+        for (const nextProgress of demoProgress) {
+          setGenerationProgress(nextProgress);
+          await wait(700);
+        }
+        setGenerationProgress(makeGenerationProgress("done", 100));
+        await wait(minimumVisibleDoneStepMs);
+        const nextVlog = await createDemoVlog(
+          demo.sessionId,
+          demo.resultSrc,
+          selectedClips.length,
+        );
+        await saveVlogAndClearSessionDraft(nextVlog);
+        clips.clearLocalClips();
+        showResult(nextVlog, "replace");
+        return;
+      }
       let realtimeProgressEnabled = false;
       let latestProgress = makeGenerationProgress("idle", 0);
       let displayedProgress = makeGenerationProgress("idle", 0);
@@ -645,7 +749,10 @@ export function CaptureScreen() {
           initial={{ opacity: 0, scale: 1.01 }}
           transition={{ duration: 0.28, ease: "easeOut" }}
         >
-          <CameraPreview stream={mode === "capture" ? camera.stream : null} />
+          <CameraPreview
+            demoVideoSrc={mode === "capture" ? demo?.previewSrc : undefined}
+            stream={mode === "capture" ? camera.stream : null}
+          />
         </motion.div>
       </AnimatePresence>
       <AnimatePresence mode="wait">
@@ -803,11 +910,11 @@ export function CaptureScreen() {
                 <RecordButton
                   disabled={
                     needsPermission ||
-                    recorder.state === "saving" ||
+                    recorderState === "saving" ||
                     clipLimitReached
                   }
-                  progress={recorder.progress}
-                  state={recorder.state}
+                  progress={recorderProgress}
+                  state={recorderState}
                   onClick={handleRecordButtonClick}
                 />
 

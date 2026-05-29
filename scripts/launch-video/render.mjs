@@ -16,7 +16,7 @@ const finalPath = resolve(distDir, "idlediary-launch-4x5.mp4");
 const sceneSpecs = [
   { id: "intro", durationMs: 3000 },
   { id: "record", durationMs: 5000, action: "record" },
-  { id: "draft", durationMs: 4000 },
+  { id: "draft", durationMs: 8000, action: "preview-drag" },
   { id: "generate", durationMs: 5000, action: "make-video" },
   { id: "result", durationMs: 8000 },
 ];
@@ -251,7 +251,29 @@ async function tapLocator(page, locator) {
   if (!box) throw new Error("Tap target is not visible");
   const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await page.evaluate(({ x, y }) => window.__idleDiaryDemoTap?.(x, y), point);
-  await page.mouse.click(point.x, point.y);
+  await page.waitForTimeout(100);
+  await locator.click({ force: true });
+}
+
+async function dragLocatorToLocator(page, source, target) {
+  const sourceBox = await source.boundingBox();
+  const targetBox = await target.boundingBox();
+  if (!sourceBox || !targetBox) throw new Error("Drag targets are not visible");
+  const start = {
+    x: sourceBox.x + sourceBox.width / 2,
+    y: sourceBox.y + sourceBox.height / 2,
+  };
+  const end = {
+    x: targetBox.x + targetBox.width / 2,
+    y: targetBox.y + targetBox.height / 2,
+  };
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.waitForTimeout(260);
+  await page.mouse.move((start.x + end.x) / 2, (start.y + end.y) / 2, { steps: 8 });
+  await page.mouse.move(end.x, end.y, { steps: 8 });
+  await page.waitForTimeout(120);
+  await page.mouse.up();
 }
 
 async function recordScenes(baseURL) {
@@ -268,22 +290,57 @@ async function recordScenes(baseURL) {
       });
       const page = await context.newPage();
       await page.goto(`${baseURL}/demo/launch?scene=${scene.id}`, { waitUntil: "networkidle" });
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(700);
+      const sceneStartedAt = Date.now();
       if (scene.action === "record") {
-        await tapLocator(page, page.getByRole("button", { name: "Record three second clip" }));
+        const recordButton = page.getByRole("button", { name: "Record three second clip" });
+        await recordButton.waitFor({ state: "visible", timeout: 10_000 });
+        await tapLocator(page, recordButton);
+      }
+      if (scene.action === "preview-drag") {
+        const firstClip = page.getByRole("button", { name: "Preview clip 1" });
+        await firstClip.waitFor({ state: "visible", timeout: 10_000 });
+        await page.waitForTimeout(700);
+        await dragLocatorToLocator(
+          page,
+          page.locator("[data-clip-id] button").nth(1),
+          page.locator("[data-clip-id] button").nth(3),
+        );
+        await page.waitForTimeout(700);
+        await tapLocator(page, firstClip);
+        const close = page.getByRole("button", { name: "Close fullscreen preview" });
+        await close.waitFor({ state: "visible", timeout: 5_000 });
+        await page.waitForTimeout(2000);
+        await tapLocator(page, close);
+        await page.keyboard.press("Escape");
       }
       if (scene.action === "make-video") {
-        await tapLocator(page, page.getByRole("button", { name: "Make video" }));
+        const makeVideo = page.getByRole("button", { name: "Make video" });
+        await makeVideo.waitFor({ state: "visible", timeout: 10_000 });
+        await tapLocator(page, makeVideo);
       }
-      await page.waitForTimeout(scene.durationMs);
+      if (scene.id === "result") {
+        await page
+          .getByRole("button", { name: "Open generated video fullscreen" })
+          .waitFor({ state: "visible", timeout: 10_000 });
+      }
+      await page.waitForTimeout(Math.max(700, scene.durationMs - (Date.now() - sceneStartedAt)));
       const video = page.video();
       await context.close();
       if (!video) throw new Error(`No recorded video for ${scene.id}`);
       const sourceTakePath = await video.path();
       const normalizedTakePath = resolve(takesDir, `${scene.id}.mp4`);
+      const rawTakeProbe = await probe(sourceTakePath);
+      const rawTakeDuration = Number(rawTakeProbe.format.duration);
+      const sceneDurationSeconds = scene.durationMs / 1000;
+      const trimStart = Math.max(0, rawTakeDuration - sceneDurationSeconds);
       await run("ffmpeg", [
+        "-ss",
+        trimStart.toFixed(3),
         "-i",
         sourceTakePath,
+        "-t",
+        String(sceneDurationSeconds),
         "-vf",
         "scale=390:844,fps=30,format=yuv420p",
         "-an",
@@ -345,7 +402,7 @@ async function buildAudioBed() {
     "-f",
     "lavfi",
     "-t",
-    "4",
+    "8",
     "-i",
     "anullsrc=channel_layout=stereo:sample_rate=48000",
     "-f",

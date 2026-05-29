@@ -383,8 +383,7 @@ export function resetStorageForTests() {
   dbPromise = null;
 }
 
-export async function getOrCreateTodaySession() {
-  const id = new Date().toISOString().slice(0, 10);
+export async function getOrCreateSession(id: string) {
   try {
     const db = await getDb();
     const existing = await db.get("sessions", id);
@@ -410,6 +409,10 @@ export async function getOrCreateTodaySession() {
       }),
     );
   }
+}
+
+export async function getOrCreateTodaySession() {
+  return getOrCreateSession(new Date().toISOString().slice(0, 10));
 }
 
 export async function listClips(sessionId: string) {

@@ -45,7 +45,7 @@ test.describe("launch demo route", () => {
     });
 
     await page.goto("/demo/launch?scene=record");
-    await expect(page.getByTestId("demo-camera-preview")).toBeVisible();
+    await expect(page.getByTestId("camera-preview-frame")).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => window.__idleDiaryStartedStreams ?? 0))
       .toBe(0);

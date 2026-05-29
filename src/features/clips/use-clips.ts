@@ -5,6 +5,7 @@ import { reportError } from "@/features/errors/report-error";
 import {
   clearClipsForSession,
   deleteClip,
+  getOrCreateSession,
   getOrCreateTodaySession,
   listClips,
   saveClip,
@@ -111,7 +112,7 @@ function clipReducer(state: ClipState, action: ClipAction): ClipState {
   return state;
 }
 
-export function useClips() {
+export function useClips({ sessionId }: { sessionId?: string } = {}) {
   const [state, dispatch] = useReducer(clipReducer, initialState);
   const stateRef = useRef(state);
   const requestVersionRef = useRef(0);
@@ -140,12 +141,12 @@ export function useClips() {
     }
   }, [state.clips]);
 
-  const refresh = useCallback(async (sessionId?: string) => {
+  const refresh = useCallback(async (targetSessionId = sessionId) => {
     const requestVersion = ++requestVersionRef.current;
-    const activeSession = sessionId
-      ? stateRef.current.session?.id === sessionId
+    const activeSession = targetSessionId
+      ? stateRef.current.session?.id === targetSessionId
         ? stateRef.current.session
-        : { id: sessionId, startedAt: "", updatedAt: "" }
+        : await getOrCreateSession(targetSessionId)
       : await getOrCreateTodaySession();
     const loaded = await listClips(activeSession.id);
 
@@ -154,13 +155,17 @@ export function useClips() {
     if (currentSessionId && currentSessionId !== activeSession.id) return;
 
     dispatch({ type: "loaded", session: activeSession, clips: loaded });
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     let mounted = true;
     const requestVersion = ++requestVersionRef.current;
 
-    getOrCreateTodaySession()
+    const createSession = sessionId
+      ? getOrCreateSession(sessionId)
+      : getOrCreateTodaySession();
+
+    createSession
       .then(async (created) => {
         const loaded = await listClips(created.id);
         if (!mounted || requestVersion !== requestVersionRef.current) return;
@@ -176,10 +181,12 @@ export function useClips() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [sessionId]);
 
   const addClip = useCallback(async (blob: Blob, durationMs: number) => {
-    const activeSession = stateRef.current.session ?? (await getOrCreateTodaySession());
+    const activeSession =
+      stateRef.current.session ??
+      (sessionId ? await getOrCreateSession(sessionId) : await getOrCreateTodaySession());
     dispatch({ type: "session", session: activeSession });
     const currentClips = stateRef.current.clips;
     const clip: ClipRecord = {
@@ -203,16 +210,18 @@ export function useClips() {
     ++requestVersionRef.current;
     dispatch({ type: "add", clip });
     return clip;
-  }, []);
+  }, [sessionId]);
 
   const reorderClips = useCallback(async (clipIds: string[]) => {
-    const activeSession = stateRef.current.session ?? (await getOrCreateTodaySession());
+    const activeSession =
+      stateRef.current.session ??
+      (sessionId ? await getOrCreateSession(sessionId) : await getOrCreateTodaySession());
     dispatch({ type: "session", session: activeSession });
 
     await saveClipOrder(activeSession.id, clipIds);
     ++requestVersionRef.current;
     dispatch({ type: "reorder", clipIds });
-  }, []);
+  }, [sessionId]);
 
   const removeClip = useCallback(async (id: string) => {
     await deleteClip(id);
@@ -222,12 +231,14 @@ export function useClips() {
   }, []);
 
   const clearClips = useCallback(async () => {
-    const activeSession = stateRef.current.session ?? (await getOrCreateTodaySession());
+    const activeSession =
+      stateRef.current.session ??
+      (sessionId ? await getOrCreateSession(sessionId) : await getOrCreateTodaySession());
     await clearClipsForSession(activeSession.id);
     ++requestVersionRef.current;
     releaseAllClipObjectUrls();
     dispatch({ type: "clear" });
-  }, []);
+  }, [sessionId]);
 
   const clearLocalClips = useCallback(() => {
     ++requestVersionRef.current;

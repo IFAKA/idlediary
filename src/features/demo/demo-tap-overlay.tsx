@@ -26,7 +26,7 @@ export function DemoTapOverlay() {
       setRipples((current) => [...current, { id, x, y }]);
       window.setTimeout(() => {
         setRipples((current) => current.filter((ripple) => ripple.id !== id));
-      }, 420);
+      }, 740);
     };
 
     return () => {
