@@ -83,8 +83,8 @@ async function makeDemoVlog(clipCount: number): Promise<VlogRecord> {
     blob,
     mimeType: "video/mp4",
     clipCount,
-    title: "5 Tiny Moments",
-    caption: "A quiet 15-second diary from today.",
+    title: `${clipCount} Tiny Moments`,
+    caption: `A quiet ${clipCount * 3}-second diary from today.`,
     createdAt: new Date(Date.UTC(2026, 0, 1, 10, 0, 0)).toISOString(),
     needsAction: false,
     size: blob.size,
@@ -106,6 +106,16 @@ async function seedDemoClips() {
   }
 
   return clips;
+}
+
+async function seedRemainingDemoClipsAfterFirstCapture() {
+  const manifest = await loadManifest();
+  const clips = await Promise.all(
+    manifest.slice(1).map((item, index) => makeDemoClip(item, index + 1)),
+  );
+  for (const clip of clips) {
+    await saveClip(clip);
+  }
 }
 
 export function LaunchDemoScreen({ scene: rawScene }: { scene?: string }) {
@@ -148,6 +158,8 @@ export function LaunchDemoScreen({ scene: rawScene }: { scene?: string }) {
       previewSrc: "/demo-clips/coffee.mp4",
       resultSrc: "/demo-clips/result.mp4",
       scene: scene === "intro" ? "record" : scene,
+      seedRemainingClipsAfterFirstCapture:
+        scene === "intro" ? seedRemainingDemoClipsAfterFirstCapture : undefined,
       sessionId: demoSessionId,
     }),
     [scene],

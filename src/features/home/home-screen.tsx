@@ -57,7 +57,7 @@ function formatCompletedAt(value: string) {
 }
 
 function formatDuration(clipCount: number) {
-  const seconds = clipCount * 2;
+  const seconds = clipCount * 3;
   return `${seconds}s`;
 }
 

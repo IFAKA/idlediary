@@ -13,11 +13,7 @@ const takesDir = resolve(distDir, "takes");
 const publicClipsDir = resolve(root, "public/demo-clips");
 const manifestPath = resolve(root, "scripts/launch-video/stock-sources.json");
 const finalPath = resolve(distDir, "idlediary-launch-4x5.mp4");
-const sceneSpecs = [
-  { id: "intro", durationMs: 8000, action: "intro-record", trim: "start" },
-  { id: "draft", durationMs: 8000, action: "preview-drag" },
-  { id: "generate", durationMs: 13000, action: "make-video" },
-];
+const finalDraftSourceIds = ["coffee", "sunset", "laptop", "gym"];
 
 function run(command, args, options = {}) {
   return new Promise((resolvePromise, reject) => {
@@ -185,7 +181,13 @@ async function normalizeClip(source, sourcePath, outputPath) {
 
 async function buildResultVideo(sources) {
   const listPath = resolve(distDir, "result-inputs.txt");
-  const lines = sources.map((source) => `file '${resolve(publicClipsDir, `${source.id}.mp4`).replaceAll("'", "'\\''")}'`);
+  const sourceById = new Map(sources.map((source) => [source.id, source]));
+  const finalSources = finalDraftSourceIds.map((id) => {
+    const source = sourceById.get(id);
+    if (!source) throw new Error(`Missing final draft source: ${id}`);
+    return source;
+  });
+  const lines = finalSources.map((source) => `file '${resolve(publicClipsDir, `${source.id}.mp4`).replaceAll("'", "'\\''")}'`);
   await writeFile(listPath, `${lines.join("\n")}\n`);
   await run("ffmpeg", [
     "-f",
@@ -249,11 +251,12 @@ async function tapLocator(page, locator) {
   if (!box) throw new Error("Tap target is not visible");
   const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await page.evaluate(({ x, y }) => window.__idleDiaryDemoTap?.(x, y), point);
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(140);
   await locator.click({ force: true });
+  await page.waitForTimeout(620);
 }
 
-async function dragLocatorToLocator(page, source, target) {
+async function dragLocatorToLocator(page, source, target, { ripple = false } = {}) {
   const sourceBox = await source.boundingBox();
   const targetBox = await target.boundingBox();
   if (!sourceBox || !targetBox) throw new Error("Drag targets are not visible");
@@ -265,6 +268,10 @@ async function dragLocatorToLocator(page, source, target) {
     x: targetBox.x + targetBox.width / 2,
     y: targetBox.y + targetBox.height / 2,
   };
+  if (ripple) {
+    await page.evaluate(({ x, y }) => window.__idleDiaryDemoTap?.(x, y), start);
+    await page.waitForTimeout(160);
+  }
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await page.waitForTimeout(260);
@@ -274,122 +281,124 @@ async function dragLocatorToLocator(page, source, target) {
   await page.mouse.up();
 }
 
-async function recordScenes(baseURL) {
+async function recordOneTake(baseURL) {
   const browser = await chromium.launch();
-  const takePaths = [];
+  let takePath;
   try {
-    for (const scene of sceneSpecs) {
-      const context = await browser.newContext({
-        viewport: { width: 390, height: 844 },
-        deviceScaleFactor: 3,
-        isMobile: true,
-        hasTouch: true,
-        recordVideo: { dir: takesDir, size: { width: 390, height: 844 } },
-      });
-      const page = await context.newPage();
-      await page.goto(`${baseURL}/demo/launch?scene=${scene.id}`, { waitUntil: "networkidle" });
-      await page.waitForTimeout(700);
-      const sceneStartedAt = Date.now();
-      if (scene.action === "intro-record") {
-        const logoButton = page.getByRole("button", { name: "Nudge app icon" });
-        await logoButton.waitFor({ state: "visible", timeout: 10_000 });
-        await tapLocator(page, logoButton);
-        await page.waitForTimeout(700);
-        const startButton = page.getByRole("button", { name: "Start recording" });
-        await startButton.waitFor({ state: "visible", timeout: 10_000 });
-        await tapLocator(page, startButton);
-        await page.waitForTimeout(700);
-        const recordButton = page.getByRole("button", { name: "Record three second clip" });
-        await recordButton.waitFor({ state: "visible", timeout: 10_000 });
-        await tapLocator(page, recordButton);
-      }
-      if (scene.action === "record") {
-        const recordButton = page.getByRole("button", { name: "Record three second clip" });
-        await recordButton.waitFor({ state: "visible", timeout: 10_000 });
-        await tapLocator(page, recordButton);
-      }
-      if (scene.action === "preview-drag") {
-        const firstClip = page.getByRole("button", { name: "Preview clip 1" });
-        await firstClip.waitFor({ state: "visible", timeout: 10_000 });
-        await page.waitForTimeout(700);
-        await dragLocatorToLocator(
-          page,
-          page.locator("[data-clip-id] button").nth(1),
-          page.locator("[data-clip-id] button").nth(3),
-        );
-        await page.waitForTimeout(700);
-        await tapLocator(page, firstClip);
-        const close = page.getByRole("button", { name: "Close fullscreen preview" });
-        await close.waitFor({ state: "visible", timeout: 5_000 });
-        await page.waitForTimeout(2000);
-        await tapLocator(page, close);
-        await page.keyboard.press("Escape");
-      }
-      if (scene.action === "make-video") {
-        const makeVideo = page.getByRole("button", { name: "Make video" });
-        await makeVideo.waitFor({ state: "visible", timeout: 10_000 });
-        await tapLocator(page, makeVideo);
-        await page
-          .getByRole("button", { name: "Open generated video fullscreen" })
-          .waitFor({ state: "visible", timeout: 10_000 });
-      }
-      await page.waitForTimeout(Math.max(700, scene.durationMs - (Date.now() - sceneStartedAt)));
-      const video = page.video();
-      await context.close();
-      if (!video) throw new Error(`No recorded video for ${scene.id}`);
-      const sourceTakePath = await video.path();
-      const normalizedTakePath = resolve(takesDir, `${scene.id}.mp4`);
-      const rawTakeProbe = await probe(sourceTakePath);
-      const rawTakeDuration = Number(rawTakeProbe.format.duration);
-      const sceneDurationSeconds = scene.durationMs / 1000;
-      const trimStart =
-        scene.trim === "start" ? 0 : Math.max(0, rawTakeDuration - sceneDurationSeconds);
-      await run("ffmpeg", [
-        "-ss",
-        trimStart.toFixed(3),
-        "-i",
-        sourceTakePath,
-        "-t",
-        String(sceneDurationSeconds),
-        "-vf",
-        "scale=390:844,fps=30,format=yuv420p",
-        "-an",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "18",
-        "-movflags",
-        "+faststart",
-        "-y",
-        normalizedTakePath,
-      ]);
-      takePaths.push(normalizedTakePath);
-    }
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+      recordVideo: { dir: takesDir, size: { width: 390, height: 844 } },
+    });
+    const page = await context.newPage();
+    await page.goto(`${baseURL}/demo/launch?scene=intro`, { waitUntil: "networkidle" });
+
+    const logoButton = page.getByRole("button", { name: "Nudge app icon" });
+    await logoButton.waitFor({ state: "visible", timeout: 10_000 });
+    await page.waitForTimeout(2200);
+    await tapLocator(page, logoButton);
+
+    const startButton = page.getByRole("button", { name: "Start recording" });
+    await startButton.waitFor({ state: "visible", timeout: 10_000 });
+    await tapLocator(page, startButton);
+
+    const recordButton = page.getByRole("button", { name: "Record three second clip" });
+    await recordButton.waitFor({ state: "visible", timeout: 10_000 });
+    await tapLocator(page, recordButton);
+    await page.getByRole("button", { name: "Review draft clips" }).getByText("+5").waitFor({
+      state: "visible",
+      timeout: 10_000,
+    });
+    await page.waitForTimeout(450);
+
+    const draftButton = page.getByRole("button", { name: "Review draft clips" });
+    await tapLocator(page, draftButton);
+    await expectClipButtons(page, 5);
+
+    await dragLocatorToLocator(
+      page,
+      page.locator("[data-clip-id] button").nth(1),
+      page.locator("[data-clip-id] button").nth(3),
+      { ripple: true },
+    );
+    await page.waitForTimeout(650);
+
+    await dragLocatorToLocator(
+      page,
+      page.locator("[data-clip-id] button").nth(1),
+      page.getByTestId("review-action-bar"),
+      { ripple: true },
+    );
+    const deleteClip = page.getByRole("button", { name: "Delete clip" });
+    await deleteClip.waitFor({ state: "visible", timeout: 5_000 });
+    await tapLocator(page, deleteClip);
+    await expectClipButtons(page, 4);
+
+    const firstClip = page.getByRole("button", { name: "Preview clip 1" });
+    await tapLocator(page, firstClip);
+    const close = page.getByRole("button", { name: "Close fullscreen preview" });
+    await close.waitFor({ state: "visible", timeout: 5_000 });
+    await page.waitForTimeout(900);
+    await tapLocator(page, close);
+
+    const makeVideo = page.getByRole("button", { name: "Make video" });
+    await makeVideo.waitFor({ state: "visible", timeout: 10_000 });
+    await tapLocator(page, makeVideo);
+    await page
+      .getByRole("button", { name: "Open generated video fullscreen" })
+      .waitFor({ state: "visible", timeout: 12_000 });
+    await page.waitForTimeout(900);
+
+    const done = page.getByRole("button", { name: "Done" });
+    await tapLocator(page, done);
+    const videos = page.getByRole("link", { name: "Videos" });
+    await videos.waitFor({ state: "visible", timeout: 10_000 });
+    await tapLocator(page, videos);
+    await page.getByRole("heading", { name: "4 Tiny Moments" }).waitFor({
+      state: "visible",
+      timeout: 10_000,
+    });
+    await page.waitForTimeout(1700);
+
+    const video = page.video();
+    await context.close();
+    if (!video) throw new Error("No recorded video for one-shot launch take");
+    const sourceTakePath = await video.path();
+    takePath = resolve(takesDir, "one-shot.mp4");
+    await run("ffmpeg", [
+      "-i",
+      sourceTakePath,
+      "-vf",
+      "scale=390:844,fps=30,format=yuv420p",
+      "-an",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "18",
+      "-movflags",
+      "+faststart",
+      "-y",
+      takePath,
+    ]);
   } finally {
     await browser.close();
   }
-  return takePaths;
+  if (!takePath) throw new Error("One-shot take was not recorded");
+  return takePath;
 }
 
-async function concatVisualTakes(takePaths) {
-  const listPath = resolve(distDir, "take-inputs.txt");
-  await writeFile(listPath, `${takePaths.map((path) => `file '${path.replaceAll("'", "'\\''")}'`).join("\n")}\n`);
-  const timelinePath = resolve(distDir, "timeline-visual.mp4");
-  await run("ffmpeg", [
-    "-f",
-    "concat",
-    "-safe",
-    "0",
-    "-i",
-    listPath,
-    "-c",
-    "copy",
-    "-y",
-    timelinePath,
-  ]);
-  return timelinePath;
+async function expectClipButtons(page, count) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const actual = await page.getByRole("button", { name: /^Preview clip / }).count();
+    if (actual === count) return;
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`Expected ${count} draft clip buttons`);
 }
 
 async function buildAudioBed() {
@@ -398,7 +407,7 @@ async function buildAudioBed() {
     "-f",
     "lavfi",
     "-t",
-    "3",
+    "4",
     "-i",
     "anullsrc=channel_layout=stereo:sample_rate=48000",
     "-i",
@@ -406,23 +415,23 @@ async function buildAudioBed() {
     "-f",
     "lavfi",
     "-t",
-    "2",
+    "7",
     "-i",
     "anullsrc=channel_layout=stereo:sample_rate=48000",
     "-f",
     "lavfi",
     "-t",
-    "8",
+    "3",
     "-i",
     "anullsrc=channel_layout=stereo:sample_rate=48000",
     "-f",
     "lavfi",
     "-t",
-    "5",
+    "4",
     "-i",
     "anullsrc=channel_layout=stereo:sample_rate=48000",
     "-t",
-    "8",
+    "12",
     "-i",
     resolve(publicClipsDir, "result.mp4"),
     "-filter_complex",
@@ -518,8 +527,7 @@ await writeFile(
   )}\n`,
 );
 
-const takePaths = await withServer(recordScenes);
-const timelinePath = await concatVisualTakes(takePaths);
+const timelinePath = await withServer(recordOneTake);
 const audioPath = await buildAudioBed();
 await composeFinal(timelinePath, audioPath);
 await validateFinal();

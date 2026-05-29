@@ -57,6 +57,7 @@ type CaptureScreenDemoConfig = {
   previewSrc: string;
   resultSrc: string;
   scene: DemoScene;
+  seedRemainingClipsAfterFirstCapture?: () => Promise<void>;
   sessionId: string;
 };
 
@@ -214,6 +215,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   const shouldReduceMotion = useReducedMotion() === true;
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
+  const demoSeededAfterCapture = useRef(false);
   const cameraSwipeStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     ...makeGenerationProgress("idle", 0),
@@ -352,16 +354,18 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   }, [initialViewReady, mode]);
 
   useEffect(() => {
+    if (isDemo) return;
+
     const onPopState = () => {
       if (mode === "result" && vlog && window.location.pathname === "/result") {
         return;
       }
-      void restoreRequestedView(demo ? durableViewForDemoScene(demo.scene) : undefined);
+      void restoreRequestedView();
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [demo, mode, restoreRequestedView, vlog]);
+  }, [isDemo, mode, restoreRequestedView, vlog]);
 
   const showCapture = useCallback((action: "push" | "replace" = "push") => {
     setSlideDirection("right");
@@ -428,6 +432,14 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
         : await recorder.record();
       if (blob !== null) {
         await clips.addClip(blob, 3000);
+        if (
+          demo?.seedRemainingClipsAfterFirstCapture &&
+          !demoSeededAfterCapture.current
+        ) {
+          demoSeededAfterCapture.current = true;
+          await demo.seedRemainingClipsAfterFirstCapture();
+          await clips.refresh(demo.sessionId);
+        }
       }
     } catch (error) {
       reportError(error);
