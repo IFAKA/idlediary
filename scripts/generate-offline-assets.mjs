@@ -1,10 +1,11 @@
-import { readdir, stat, writeFile } from "node:fs/promises";
+import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
 const root = process.cwd();
 const publicDir = join(root, "public");
 const nextStaticDir = join(root, ".next", "static");
 const outputPath = join(publicDir, "offline-assets.json");
+const buildIdPath = join(root, ".next", "BUILD_ID");
 
 const excludedPublicPaths = new Set(["/sw.js", "/offline-assets.json"]);
 const appRoutes = ["/", "/videos", "/draft", "/result", "/demo/launch"];
@@ -50,12 +51,21 @@ async function readPublicAssets() {
     .filter((asset) => !excludedPublicPaths.has(asset));
 }
 
+async function readBuildId() {
+  try {
+    return (await readFile(buildIdPath, "utf8")).trim();
+  } catch {
+    return null;
+  }
+}
+
 const assets = [...new Set([...appRoutes, ...(await readPublicAssets()), ...(await readBuildStaticAssets())])].sort();
 await writeFile(
   outputPath,
   `${JSON.stringify(
     {
       generatedAt: new Date().toISOString(),
+      revision: process.env.NEXT_PUBLIC_OFFLINE_CACHE_VERSION ?? process.env.VERCEL_GIT_COMMIT_SHA ?? (await readBuildId()),
       assets,
     },
     null,

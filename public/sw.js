@@ -1,4 +1,6 @@
-const CACHE_NAME = "idlediary-v5";
+const CACHE_VERSION =
+  new URL(self.location.href).searchParams.get("v")?.replace(/[^a-zA-Z0-9._-]/g, "-") ?? "v5";
+const CACHE_NAME = `idlediary-${CACHE_VERSION}`;
 const OFFLINE_ASSETS_URL = "/offline-assets.json";
 const APP_ROUTES = ["/", "/videos", "/draft", "/result", "/demo/launch"];
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg", "/favicon.ico"];
