@@ -14,11 +14,9 @@ const publicClipsDir = resolve(root, "public/demo-clips");
 const manifestPath = resolve(root, "scripts/launch-video/stock-sources.json");
 const finalPath = resolve(distDir, "idlediary-launch-4x5.mp4");
 const sceneSpecs = [
-  { id: "intro", durationMs: 3000 },
-  { id: "record", durationMs: 5000, action: "record" },
+  { id: "intro", durationMs: 8000, action: "intro-record", trim: "start" },
   { id: "draft", durationMs: 8000, action: "preview-drag" },
-  { id: "generate", durationMs: 5000, action: "make-video" },
-  { id: "result", durationMs: 8000 },
+  { id: "generate", durationMs: 13000, action: "make-video" },
 ];
 
 function run(command, args, options = {}) {
@@ -292,6 +290,19 @@ async function recordScenes(baseURL) {
       await page.goto(`${baseURL}/demo/launch?scene=${scene.id}`, { waitUntil: "networkidle" });
       await page.waitForTimeout(700);
       const sceneStartedAt = Date.now();
+      if (scene.action === "intro-record") {
+        const logoButton = page.getByRole("button", { name: "Nudge app icon" });
+        await logoButton.waitFor({ state: "visible", timeout: 10_000 });
+        await tapLocator(page, logoButton);
+        await page.waitForTimeout(700);
+        const startButton = page.getByRole("button", { name: "Start recording" });
+        await startButton.waitFor({ state: "visible", timeout: 10_000 });
+        await tapLocator(page, startButton);
+        await page.waitForTimeout(700);
+        const recordButton = page.getByRole("button", { name: "Record three second clip" });
+        await recordButton.waitFor({ state: "visible", timeout: 10_000 });
+        await tapLocator(page, recordButton);
+      }
       if (scene.action === "record") {
         const recordButton = page.getByRole("button", { name: "Record three second clip" });
         await recordButton.waitFor({ state: "visible", timeout: 10_000 });
@@ -318,8 +329,6 @@ async function recordScenes(baseURL) {
         const makeVideo = page.getByRole("button", { name: "Make video" });
         await makeVideo.waitFor({ state: "visible", timeout: 10_000 });
         await tapLocator(page, makeVideo);
-      }
-      if (scene.id === "result") {
         await page
           .getByRole("button", { name: "Open generated video fullscreen" })
           .waitFor({ state: "visible", timeout: 10_000 });
@@ -333,7 +342,8 @@ async function recordScenes(baseURL) {
       const rawTakeProbe = await probe(sourceTakePath);
       const rawTakeDuration = Number(rawTakeProbe.format.duration);
       const sceneDurationSeconds = scene.durationMs / 1000;
-      const trimStart = Math.max(0, rawTakeDuration - sceneDurationSeconds);
+      const trimStart =
+        scene.trim === "start" ? 0 : Math.max(0, rawTakeDuration - sceneDurationSeconds);
       await run("ffmpeg", [
         "-ss",
         trimStart.toFixed(3),

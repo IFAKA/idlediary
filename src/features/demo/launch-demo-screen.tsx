@@ -111,15 +111,19 @@ async function seedDemoClips() {
 export function LaunchDemoScreen({ scene: rawScene }: { scene?: string }) {
   const scene = normalizeScene(rawScene);
   const [ready, setReady] = useState(scene === "intro");
+  const [introStarted, setIntroStarted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function prepare() {
       setReady(scene === "intro");
-      if (scene === "intro") return;
-
       await resetDemoStorage();
+      if (scene === "intro") {
+        if (!cancelled) setReady(true);
+        return;
+      }
+
       if (scene === "draft" || scene === "generate" || scene === "result") {
         const seededClips = await seedDemoClips();
         if (scene === "result") {
@@ -149,11 +153,11 @@ export function LaunchDemoScreen({ scene: rawScene }: { scene?: string }) {
     [scene],
   );
 
-  if (scene === "intro") {
+  if (scene === "intro" && !introStarted) {
     return (
       <>
         <AppViewportShell>
-          <FirstLaunchIntro onStart={() => undefined} />
+          <FirstLaunchIntro onStart={() => setIntroStarted(true)} />
         </AppViewportShell>
         <DemoTapOverlay />
       </>
