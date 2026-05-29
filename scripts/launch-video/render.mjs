@@ -326,7 +326,7 @@ async function recordOneTake(baseURL) {
       state: "visible",
       timeout: 5_000,
     });
-    await page.waitForTimeout(2600);
+    await page.waitForTimeout(1300);
 
     const draftButton = page.getByRole("button", { name: "Review draft clips" });
     await tapLocator(page, draftButton);
@@ -356,7 +356,7 @@ async function recordOneTake(baseURL) {
     await tapLocator(page, firstClip);
     const close = page.getByRole("button", { name: "Close fullscreen preview" });
     await close.waitFor({ state: "visible", timeout: 5_000 });
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(650);
     await tapLocator(page, close);
 
     const makeVideo = page.getByRole("button", { name: "Make video" });
@@ -365,7 +365,7 @@ async function recordOneTake(baseURL) {
     await page
       .getByRole("button", { name: "Open generated video fullscreen" })
       .waitFor({ state: "visible", timeout: 12_000 });
-    await page.waitForTimeout(5700);
+    await page.waitForTimeout(4800);
 
     const done = page.getByRole("button", { name: "Done" });
     await tapLocator(page, done);
@@ -373,7 +373,7 @@ async function recordOneTake(baseURL) {
       state: "visible",
       timeout: 5_000,
     });
-    await page.waitForTimeout(2600);
+    await page.waitForTimeout(1300);
     const videos = page.getByRole("link", { name: "Videos" });
     await videos.waitFor({ state: "visible", timeout: 10_000 });
     await tapLocator(page, videos, { beforeClickMs: 240 });

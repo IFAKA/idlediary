@@ -47,7 +47,7 @@ export default defineDemo({
       state: "visible",
       timeout: 5_000,
     });
-    await gesture.wait(2600);
+    await gesture.wait(1300);
 
     await gesture.tap(page.getByRole("button", { name: "Review draft clips" }));
     await expect(page.getByRole("button", { name: /^Preview clip / })).toHaveCount(5);
@@ -78,21 +78,21 @@ export default defineDemo({
     await gesture.tap(page.getByRole("button", { name: "Preview clip 1" }));
     const close = page.getByRole("button", { name: "Close fullscreen preview" });
     await close.waitFor({ state: "visible", timeout: 5_000 });
-    await gesture.wait(900);
+    await gesture.wait(650);
     await gesture.tap(close);
 
     await gesture.tap(page.getByRole("button", { name: "Make video" }));
     await page
       .getByRole("button", { name: "Open generated video fullscreen" })
       .waitFor({ state: "visible", timeout: 12_000 });
-    await gesture.wait(5700);
+    await gesture.wait(4800);
 
     await gesture.tap(page.getByRole("button", { name: "Done" }));
     await page.getByRole("status", { name: "Saved video guide" }).waitFor({
       state: "visible",
       timeout: 5_000,
     });
-    await gesture.wait(2600);
+    await gesture.wait(1300);
     await gesture.tap(page.getByRole("link", { name: "Videos" }), { beforeMs: 240 });
     await expect(page.getByRole("heading", { name: "4 Tiny Moments" })).toBeVisible({
       timeout: 10_000,
