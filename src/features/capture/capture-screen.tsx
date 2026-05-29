@@ -129,6 +129,7 @@ const minimumVisibleSavingStepMs = 500;
 const minimumVisibleDoneStepMs = 900;
 const cameraSwipeMinDistance = 56;
 const cameraSwipeAxisRatio = 1.2;
+const oneTimeGuideAutoDismissMs = 4000;
 export const FIRST_RECORD_GUIDE_SEEN_KEY = "idlediary:first-record-guide-seen";
 export const SAVED_VIDEO_GUIDE_SEEN_KEY = "idlediary:saved-video-guide-seen";
 const introGenerationProgress = [
@@ -414,7 +415,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     const timeout = window.setTimeout(() => {
       markFirstRecordGuideSeen();
       setShowFirstRecordGuide(false);
-    }, 7000);
+    }, oneTimeGuideAutoDismissMs);
 
     return () => window.clearTimeout(timeout);
   }, [showFirstRecordGuide]);
@@ -424,16 +425,20 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     setShowFirstRecordGuide(false);
   }, []);
 
+  const dismissSavedVideoGuide = useCallback(() => {
+    markSavedVideoGuideSeen();
+    setShowSavedVideoGuide(false);
+  }, []);
+
   useEffect(() => {
     if (!showSavedVideoGuide) return;
 
     const timeout = window.setTimeout(() => {
-      markSavedVideoGuideSeen();
-      setShowSavedVideoGuide(false);
-    }, 9000);
+      dismissSavedVideoGuide();
+    }, oneTimeGuideAutoDismissMs);
 
     return () => window.clearTimeout(timeout);
-  }, [showSavedVideoGuide]);
+  }, [dismissSavedVideoGuide, showSavedVideoGuide]);
 
   const showSavedVideoGuideOnce = useCallback(() => {
     if (hasSeenSavedVideoGuide()) return;
@@ -633,6 +638,17 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
 
   const handleCaptureTouchEnd = () => {
     cameraSwipeStartRef.current = null;
+  };
+
+  const handleCapturePointerDownCapture = () => {
+    if (showFirstRecordGuide) {
+      dismissFirstRecordGuide();
+      return;
+    }
+
+    if (showSavedVideoGuide) {
+      dismissSavedVideoGuide();
+    }
   };
 
   const openReview = () => {
@@ -955,6 +971,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
             exit={{ opacity: 0, x: slideDirection === "right" ? -42 : 42 }}
             initial={{ opacity: 0, x: 0 }}
             transition={routeSlideTransition}
+            onPointerDownCapture={handleCapturePointerDownCapture}
           >
             <div
               aria-hidden="true"
