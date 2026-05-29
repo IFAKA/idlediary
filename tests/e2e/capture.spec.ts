@@ -243,7 +243,7 @@ test("root route opens the recording screen", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Record three second clip" })).toBeVisible();
 });
 
-test("capture preview renders the camera source without canvas cropping", async ({ page }) => {
+test("capture preview renders the final recording crop", async ({ page }) => {
   await mockMediaCapture(page);
   await openRecord(page);
 
@@ -261,8 +261,8 @@ test("capture preview renders the camera source without canvas cropping", async 
       if (!box) return 0;
       return box.width / box.height;
     })
-    .toBeGreaterThan(0);
-  await expect(page.locator('[data-testid="recording-crop-guide"]')).toBeVisible();
+    .toBeCloseTo(9 / 16, 1);
+  await expect(page.locator('[data-testid="recording-crop-guide"]')).toHaveCount(0);
   await expect
     .poll(async () => {
       const box = await page.locator('[aria-label="Camera preview"]').boundingBox();

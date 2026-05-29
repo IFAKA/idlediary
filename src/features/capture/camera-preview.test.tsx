@@ -78,8 +78,9 @@ describe("CameraPreview", () => {
     expect(video).not.toBeNull();
     expect(placeholder).toHaveAttribute("data-preview-ready", "false");
     expect(video).toHaveProperty("srcObject", stream);
-    expect(frame.style.aspectRatio).toBe("0.75");
-    expect(container.querySelector('[data-testid="recording-crop-guide"]')).toBeInTheDocument();
+    expect(frame.style.aspectRatio).toBe("0.5625");
+    expect(video).toHaveClass("object-cover");
+    expect(container.querySelector('[data-testid="recording-crop-guide"]')).not.toBeInTheDocument();
 
     setVideoSize(video);
     act(() => {
@@ -87,7 +88,7 @@ describe("CameraPreview", () => {
       video.dispatchEvent(new Event("loadeddata", { bubbles: true }));
     });
 
-    expect(frame.style.aspectRatio).toBe(String(1280 / 720));
+    expect(frame.style.aspectRatio).toBe("0.5625");
 
     act(() => {
       vi.advanceTimersByTime(189);
@@ -127,7 +128,7 @@ describe("CameraPreview", () => {
     expect(container.querySelector('[data-testid="camera-preview-placeholder"]')).not.toBeInTheDocument();
   });
 
-  it("renders a portrait camera stream at its source aspect without canvas cropping", () => {
+  it("renders the camera stream inside the final recording crop", () => {
     const stream = makeStream();
     act(() => {
       root.render(<CameraPreview stream={stream} />);
@@ -142,7 +143,8 @@ describe("CameraPreview", () => {
       video.dispatchEvent(new Event("loadeddata", { bubbles: true }));
     });
 
-    expect(frame.style.aspectRatio).toBe(String(720 / 960));
+    expect(frame.style.aspectRatio).toBe("0.5625");
+    expect(video).toHaveClass("object-cover");
   });
 
   it("resets the placeholder when the stream changes or clears", () => {

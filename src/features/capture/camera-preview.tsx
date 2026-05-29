@@ -45,7 +45,6 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
   const revealStartedRef = useRef(false);
   const readyTimerRef = useRef<number | null>(null);
   const exitTimerRef = useRef<number | null>(null);
-  const [frameAspectRatio, setFrameAspectRatio] = useState<number | null>(null);
   const [previewReady, setPreviewReady] = useState(false);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
 
@@ -121,10 +120,10 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
         className="relative max-h-full max-w-full overflow-hidden bg-black"
         data-testid="camera-preview-frame"
         style={{
-          aspectRatio: frameAspectRatio ?? 3 / 4,
-          width: "min(100%, calc(var(--app-viewport-height) * var(--camera-preview-aspect, 0.75)))",
+          aspectRatio: exportProfile.aspectRatio,
+          width: "min(100%, calc(var(--app-viewport-height) * var(--camera-preview-aspect)))",
           maxHeight: "100%",
-          ["--camera-preview-aspect" as string]: String(frameAspectRatio ?? 3 / 4),
+          ["--camera-preview-aspect" as string]: String(exportProfile.aspectRatio),
         }}
       >
         {stream || demoVideoSrc ? (
@@ -133,7 +132,7 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
               ref={videoRef}
               aria-label="Camera preview"
               autoPlay
-              className="h-full w-full object-contain"
+              className="h-full w-full object-cover"
               data-testid="camera-preview-source"
               loop={Boolean(demoVideoSrc)}
               muted
@@ -148,7 +147,6 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
                     ? video.videoWidth / video.videoHeight
                     : null;
                 metadataLoadedRef.current = true;
-                setFrameAspectRatio(nextAspectRatio);
                 addDebugEvent("camera-preview-metadata", "capture", {
                   videoWidth: video.videoWidth,
                   videoHeight: video.videoHeight,
@@ -161,14 +159,6 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 border border-white/35 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.28)]"
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-1/2 h-full max-w-full -translate-x-1/2 -translate-y-1/2 border-x border-white/55 shadow-[0_0_0_999px_rgba(0,0,0,0.16)]"
-              data-testid="recording-crop-guide"
-              style={{
-                aspectRatio: exportProfile.aspectRatio,
-              }}
             />
           </>
         ) : null}
