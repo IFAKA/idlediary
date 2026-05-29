@@ -340,10 +340,11 @@ async function recordOneTake(baseURL) {
       page,
       page.locator("[data-clip-id] button").nth(1),
       page.getByTestId("review-action-bar"),
-      { ripple: true, holdMs: 520, midSteps: 24, endSteps: 28, releaseWaitMs: 320 },
+      { ripple: true, holdMs: 420, midSteps: 18, endSteps: 22, releaseWaitMs: 220 },
     );
     const deleteClip = page.getByRole("button", { name: "Delete clip" });
     await deleteClip.waitFor({ state: "visible", timeout: 5_000 });
+    await page.waitForTimeout(1200);
     await tapLocator(page, deleteClip);
     await expectClipButtons(page, 4);
 
@@ -360,13 +361,13 @@ async function recordOneTake(baseURL) {
     await page
       .getByRole("button", { name: "Open generated video fullscreen" })
       .waitFor({ state: "visible", timeout: 12_000 });
-    await page.waitForTimeout(3200);
+    await page.waitForTimeout(23_000);
 
     const done = page.getByRole("button", { name: "Done" });
     await tapLocator(page, done);
     const videos = page.getByRole("link", { name: "Videos" });
     await videos.waitFor({ state: "visible", timeout: 10_000 });
-    await tapLocator(page, videos);
+    await tapLocator(page, videos, { beforeClickMs: 360 });
     await page.getByRole("heading", { name: "4 Tiny Moments" }).waitFor({
       state: "visible",
       timeout: 10_000,
@@ -441,8 +442,10 @@ async function buildAudioBed() {
     "4",
     "-i",
     "anullsrc=channel_layout=stereo:sample_rate=48000",
+    "-stream_loop",
+    "2",
     "-t",
-    "12",
+    "32",
     "-i",
     resolve(publicClipsDir, "result.mp4"),
     "-filter_complex",
@@ -498,8 +501,8 @@ async function validateFinal() {
   if (video.width !== 1080 || video.height !== 1350) {
     throw new Error(`Final video is ${video.width}x${video.height}, expected 1080x1350`);
   }
-  if (duration < 20 || duration > 30) {
-    throw new Error(`Final video duration is ${duration.toFixed(2)}s, expected 20-30s`);
+  if (duration < 45 || duration > 55) {
+    throw new Error(`Final video duration is ${duration.toFixed(2)}s, expected 45-55s`);
   }
 }
 
