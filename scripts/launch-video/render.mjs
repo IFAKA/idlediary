@@ -322,7 +322,11 @@ async function recordOneTake(baseURL) {
       state: "visible",
       timeout: 10_000,
     });
-    await page.waitForTimeout(450);
+    await page.getByRole("status", { name: "Draft clips guide" }).waitFor({
+      state: "visible",
+      timeout: 5_000,
+    });
+    await page.waitForTimeout(2600);
 
     const draftButton = page.getByRole("button", { name: "Review draft clips" });
     await tapLocator(page, draftButton);
@@ -365,9 +369,14 @@ async function recordOneTake(baseURL) {
 
     const done = page.getByRole("button", { name: "Done" });
     await tapLocator(page, done);
+    await page.getByRole("status", { name: "Saved video guide" }).waitFor({
+      state: "visible",
+      timeout: 5_000,
+    });
+    await page.waitForTimeout(2600);
     const videos = page.getByRole("link", { name: "Videos" });
     await videos.waitFor({ state: "visible", timeout: 10_000 });
-    await tapLocator(page, videos, { beforeClickMs: 360 });
+    await tapLocator(page, videos, { beforeClickMs: 240 });
     await page.getByRole("heading", { name: "4 Tiny Moments" }).waitFor({
       state: "visible",
       timeout: 10_000,

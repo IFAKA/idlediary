@@ -112,6 +112,9 @@ test.describe("launch demo route", () => {
     await page.getByRole("button", { name: "Make video" }).click({ force: true });
     await expect(page.getByRole("button", { name: "Done" })).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: "Done" }).click();
+    await expect(page.getByRole("status", { name: "Saved video guide" })).toContainText(
+      "Your video is saved in Videos.",
+    );
     await page.getByRole("link", { name: "Videos" }).click();
 
     await expect(page.getByRole("heading", { name: "4 Tiny Moments" })).toBeVisible();
