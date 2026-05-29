@@ -28,6 +28,8 @@ type DemoClipManifestItem = {
 
 const demoSessionId = "launch-demo-session";
 const demoVlogId = "launch-demo-vlog";
+const demoDebugDisabledKey = "idleDiaryDebugDisabled";
+const demoClipDurationMs = 3250;
 
 function normalizeScene(scene: string | undefined): LaunchScene {
   if (
@@ -77,6 +79,7 @@ async function makeDemoClip(item: DemoClipManifestItem, order: number): Promise<
 
 async function makeDemoVlog(clipCount: number): Promise<VlogRecord> {
   const blob = await blobFromPublicPath("/demo-clips/result.mp4");
+  const seconds = Math.round((clipCount * demoClipDurationMs) / 1000);
   return {
     id: demoVlogId,
     sessionId: demoSessionId,
@@ -84,7 +87,7 @@ async function makeDemoVlog(clipCount: number): Promise<VlogRecord> {
     mimeType: "video/mp4",
     clipCount,
     title: `${clipCount} Tiny Moments`,
-    caption: `A quiet ${clipCount * 3}-second diary from today.`,
+    caption: `A quiet ${seconds}-second diary from today.`,
     createdAt: new Date(Date.UTC(2026, 0, 1, 10, 0, 0)).toISOString(),
     needsAction: false,
     size: blob.size,
@@ -124,6 +127,10 @@ export function LaunchDemoScreen({ scene: rawScene }: { scene?: string }) {
   const [introStarted, setIntroStarted] = useState(false);
 
   useEffect(() => {
+    window.sessionStorage.setItem(demoDebugDisabledKey, "true");
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function prepare() {
@@ -154,8 +161,9 @@ export function LaunchDemoScreen({ scene: rawScene }: { scene?: string }) {
 
   const demoConfig = useMemo(
     () => ({
+      captureClipDurationMs: demoClipDurationMs,
       captureClipSrc: "/demo-clips/coffee.mp4",
-      previewSrc: "/demo-clips/coffee.mp4",
+      previewSrc: "/demo-clips/coffee-preview.mp4",
       resultSrc: "/demo-clips/result.mp4",
       scene: scene === "intro" ? "record" : scene,
       seedRemainingClipsAfterFirstCapture:

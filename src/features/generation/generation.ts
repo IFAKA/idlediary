@@ -6,6 +6,7 @@ import { reportError } from "@/features/errors/report-error";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbnail";
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
+import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
 export { exportProfile } from "@/features/video/export-profile";
 
@@ -354,5 +355,6 @@ export function suggestTitle(clipCount: number) {
 }
 
 export function suggestCaption(clipCount: number) {
-  return `A quiet ${clipCount * 2}-second diary from today.`;
+  const seconds = Math.round((clipCount * (twoSecondRecordMs + recorderSettleMs)) / 1000);
+  return `A quiet ${seconds}-second diary from today.`;
 }

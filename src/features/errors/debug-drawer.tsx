@@ -30,6 +30,13 @@ export function DebugDrawer() {
     return null;
   }
 
+  if (
+    typeof window !== "undefined" &&
+    window.sessionStorage.getItem("idleDiaryDebugDisabled") === "true"
+  ) {
+    return null;
+  }
+
   const copyReport = async () => {
     await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
   };

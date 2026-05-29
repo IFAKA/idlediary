@@ -53,6 +53,7 @@ type DurableView = Exclude<ScreenMode, "generating">;
 type DemoScene = "record" | "draft" | "generate" | "result";
 
 type CaptureScreenDemoConfig = {
+  captureClipDurationMs?: number;
   captureClipSrc: string;
   previewSrc: string;
   resultSrc: string;
@@ -67,6 +68,7 @@ const wait = (durationMs: number) =>
 
 async function recordDemoClip(
   src: string,
+  durationMs: number,
   setState: (state: "idle" | "recording" | "saving" | "success") => void,
   setProgress: (progress: number) => void,
 ) {
@@ -74,9 +76,9 @@ async function recordDemoClip(
   setProgress(0);
   const startedAt = performance.now();
   const progressTimer = window.setInterval(() => {
-    setProgress(Math.min(100, Math.round(((performance.now() - startedAt) / 3000) * 100)));
+    setProgress(Math.min(100, Math.round(((performance.now() - startedAt) / durationMs) * 100)));
   }, 80);
-  await wait(3000);
+  await wait(durationMs);
   window.clearInterval(progressTimer);
   setProgress(100);
   setState("saving");
@@ -91,10 +93,16 @@ async function recordDemoClip(
   return blob;
 }
 
-async function createDemoVlog(sessionId: string, src: string, clipCount: number): Promise<VlogRecord> {
+async function createDemoVlog(
+  sessionId: string,
+  src: string,
+  clipCount: number,
+  clipDurationMs: number,
+): Promise<VlogRecord> {
   const response = await fetch(src, { cache: "no-store" });
   if (!response.ok) throw new Error(`Demo result could not be loaded: ${src}`);
   const blob = await response.blob();
+  const seconds = Math.round((clipCount * clipDurationMs) / 1000);
   return {
     id: "launch-demo-vlog",
     sessionId,
@@ -102,7 +110,7 @@ async function createDemoVlog(sessionId: string, src: string, clipCount: number)
     mimeType: "video/mp4",
     clipCount,
     title: `${clipCount} Tiny Moments`,
-    caption: `A quiet ${clipCount * 3}-second diary from today.`,
+    caption: `A quiet ${seconds}-second diary from today.`,
     createdAt: new Date().toISOString(),
     needsAction: false,
     size: blob.size,
@@ -428,10 +436,15 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
 
     try {
       const blob = demo
-        ? await recordDemoClip(demo.captureClipSrc, setDemoRecordingState, setDemoRecordingProgress)
+        ? await recordDemoClip(
+            demo.captureClipSrc,
+            demo.captureClipDurationMs ?? 3000,
+            setDemoRecordingState,
+            setDemoRecordingProgress,
+          )
         : await recorder.record();
       if (blob !== null) {
-        await clips.addClip(blob, 3000);
+        await clips.addClip(blob, demo?.captureClipDurationMs ?? 3000);
         if (
           demo?.seedRemainingClipsAfterFirstCapture &&
           !demoSeededAfterCapture.current
@@ -574,6 +587,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
           demo.sessionId,
           demo.resultSrc,
           selectedClips.length,
+          demo.captureClipDurationMs ?? 3000,
         );
         await saveVlogAndClearSessionDraft(nextVlog);
         clips.clearLocalClips();

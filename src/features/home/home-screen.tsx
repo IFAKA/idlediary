@@ -35,6 +35,7 @@ import {
 import type { VlogSummary } from "@/features/clips/types";
 import { DebugDrawer } from "@/features/errors/debug-drawer";
 import { reportError } from "@/features/errors/report-error";
+import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 
 type HomeState =
   | { status: "loading"; vlogs?: never; error?: never }
@@ -57,7 +58,7 @@ function formatCompletedAt(value: string) {
 }
 
 function formatDuration(clipCount: number) {
-  const seconds = clipCount * 3;
+  const seconds = Math.round((clipCount * (twoSecondRecordMs + recorderSettleMs)) / 1000);
   return `${seconds}s`;
 }
 

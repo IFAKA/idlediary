@@ -14,6 +14,7 @@ const publicClipsDir = resolve(root, "public/demo-clips");
 const manifestPath = resolve(root, "scripts/launch-video/stock-sources.json");
 const finalPath = resolve(distDir, "idlediary-launch-4x5.mp4");
 const finalDraftSourceIds = ["coffee", "sunset", "laptop", "gym"];
+const coffeePreviewDurationMs = 6500;
 
 function run(command, args, options = {}) {
   return new Promise((resolvePromise, reject) => {
@@ -246,17 +247,26 @@ async function withServer(callback) {
   }
 }
 
-async function tapLocator(page, locator) {
+async function tapLocator(page, locator, options = {}) {
   const box = await locator.boundingBox();
   if (!box) throw new Error("Tap target is not visible");
-  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const point = {
+    x: box.x + box.width * (options.xRatio ?? 0.5),
+    y: box.y + box.height * (options.yRatio ?? 0.5),
+  };
   await page.evaluate(({ x, y }) => window.__idleDiaryDemoTap?.(x, y), point);
-  await page.waitForTimeout(140);
+  await page.waitForTimeout(options.beforeClickMs ?? 140);
   await locator.click({ force: true });
-  await page.waitForTimeout(620);
+  await page.waitForTimeout(options.afterClickMs ?? 620);
 }
 
-async function dragLocatorToLocator(page, source, target, { ripple = false } = {}) {
+async function dragLocatorToLocator(page, source, target, {
+  ripple = false,
+  holdMs = 260,
+  midSteps = 8,
+  endSteps = 8,
+  releaseWaitMs = 120,
+} = {}) {
   const sourceBox = await source.boundingBox();
   const targetBox = await target.boundingBox();
   if (!sourceBox || !targetBox) throw new Error("Drag targets are not visible");
@@ -274,10 +284,10 @@ async function dragLocatorToLocator(page, source, target, { ripple = false } = {
   }
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.waitForTimeout(260);
-  await page.mouse.move((start.x + end.x) / 2, (start.y + end.y) / 2, { steps: 8 });
-  await page.mouse.move(end.x, end.y, { steps: 8 });
-  await page.waitForTimeout(120);
+  await page.waitForTimeout(holdMs);
+  await page.mouse.move((start.x + end.x) / 2, (start.y + end.y) / 2, { steps: midSteps });
+  await page.mouse.move(end.x, end.y, { steps: endSteps });
+  await page.waitForTimeout(releaseWaitMs);
   await page.mouse.up();
 }
 
@@ -298,7 +308,7 @@ async function recordOneTake(baseURL) {
     const logoButton = page.getByRole("button", { name: "Nudge app icon" });
     await logoButton.waitFor({ state: "visible", timeout: 10_000 });
     await page.waitForTimeout(2200);
-    await tapLocator(page, logoButton);
+    await tapLocator(page, logoButton, { xRatio: 0.74, yRatio: 0.28 });
 
     const startButton = page.getByRole("button", { name: "Start recording" });
     await startButton.waitFor({ state: "visible", timeout: 10_000 });
@@ -306,6 +316,7 @@ async function recordOneTake(baseURL) {
 
     const recordButton = page.getByRole("button", { name: "Record three second clip" });
     await recordButton.waitFor({ state: "visible", timeout: 10_000 });
+    await page.waitForTimeout(950);
     await tapLocator(page, recordButton);
     await page.getByRole("button", { name: "Review draft clips" }).getByText("+5").waitFor({
       state: "visible",
@@ -329,7 +340,7 @@ async function recordOneTake(baseURL) {
       page,
       page.locator("[data-clip-id] button").nth(1),
       page.getByTestId("review-action-bar"),
-      { ripple: true },
+      { ripple: true, holdMs: 520, midSteps: 24, endSteps: 28, releaseWaitMs: 320 },
     );
     const deleteClip = page.getByRole("button", { name: "Delete clip" });
     await deleteClip.waitFor({ state: "visible", timeout: 5_000 });
@@ -349,7 +360,7 @@ async function recordOneTake(baseURL) {
     await page
       .getByRole("button", { name: "Open generated video fullscreen" })
       .waitFor({ state: "visible", timeout: 12_000 });
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(3200);
 
     const done = page.getByRole("button", { name: "Done" });
     await tapLocator(page, done);
@@ -505,6 +516,14 @@ for (const source of sources) {
   console.log(`Preparing ${source.id}`);
   await download(source.downloadUrl, sourcePath);
   await normalizeClip(source, sourcePath, outputPath);
+
+  if (source.id === "coffee") {
+    await normalizeClip(
+      { ...source, durationMs: coffeePreviewDurationMs },
+      sourcePath,
+      resolve(publicClipsDir, "coffee-preview.mp4"),
+    );
+  }
 }
 
 await buildResultVideo(sources);
@@ -517,7 +536,7 @@ await writeFile(
       src: `/demo-clips/${source.id}.mp4`,
       pageUrl: source.pageUrl,
       license: source.license,
-      durationMs: 3000,
+      durationMs: source.durationMs,
       width: 1080,
       height: 1920,
       mimeType: "video/mp4",

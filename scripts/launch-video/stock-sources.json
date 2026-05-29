@@ -8,7 +8,7 @@
     "expectedWidth": 720,
     "expectedHeight": 1280,
     "startMs": 4000,
-    "durationMs": 3000
+    "durationMs": 3250
   },
   {
     "id": "laptop",
@@ -19,7 +19,7 @@
     "expectedWidth": 720,
     "expectedHeight": 1280,
     "startMs": 1200,
-    "durationMs": 3000
+    "durationMs": 3250
   },
   {
     "id": "street",
@@ -30,7 +30,7 @@
     "expectedWidth": 720,
     "expectedHeight": 1280,
     "startMs": 1500,
-    "durationMs": 3000
+    "durationMs": 3250
   },
   {
     "id": "sunset",
@@ -41,7 +41,7 @@
     "expectedWidth": 720,
     "expectedHeight": 1280,
     "startMs": 4200,
-    "durationMs": 3000
+    "durationMs": 3250
   },
   {
     "id": "gym",
@@ -52,6 +52,6 @@
     "expectedWidth": 720,
     "expectedHeight": 1280,
     "startMs": 6500,
-    "durationMs": 3000
+    "durationMs": 3250
   }
 ]

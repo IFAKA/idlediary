@@ -116,7 +116,7 @@ test.describe("launch demo route", () => {
 
     await expect(page.getByRole("heading", { name: "4 Tiny Moments" })).toBeVisible();
     await expect(page.getByText("4 clips")).toBeVisible();
-    await expect(page.getByText("12s")).toBeVisible();
+    await expect(page.getByText("13s")).toBeVisible();
   });
 });
 
