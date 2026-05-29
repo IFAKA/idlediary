@@ -30,10 +30,14 @@ describe("CameraPreview", () => {
   let container: HTMLDivElement;
   let root: Root;
   let drawImage: ReturnType<typeof vi.fn>;
+  let clearRect: ReturnType<typeof vi.fn>;
+  let fillRect: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     drawImage = vi.fn();
+    clearRect = vi.fn();
+    fillRect = vi.fn();
     debugEvents.addDebugEvent.mockClear();
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
       window.setTimeout(() => callback(performance.now()), 16),
@@ -46,7 +50,7 @@ describe("CameraPreview", () => {
     });
     Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
       configurable: true,
-      value: vi.fn(() => ({ drawImage })),
+      value: vi.fn(() => ({ clearRect, drawImage, fillRect })),
     });
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -106,7 +110,9 @@ describe("CameraPreview", () => {
       vi.advanceTimersByTime(16);
     });
 
-    expect(drawImage).toHaveBeenCalledWith(video, 437.5, 0, 405, 720, 0, 0, 720, 1280);
+    expect(clearRect).toHaveBeenCalledWith(0, 0, 720, 1280);
+    expect(fillRect).toHaveBeenCalledWith(0, 0, 720, 1280);
+    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720, 0, 437.5, 720, 405);
 
     act(() => {
       vi.advanceTimersByTime(173);

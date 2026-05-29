@@ -22,9 +22,6 @@ function oppositeFacingMode(facingMode: CameraFacingMode): CameraFacingMode {
 function videoConstraintsForFacingMode(facingMode: CameraFacingMode): MediaTrackConstraints {
   return {
     facingMode: { ideal: facingMode },
-    width: { ideal: exportProfile.width },
-    height: { ideal: exportProfile.height },
-    aspectRatio: { ideal: exportProfile.aspectRatio },
     frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
   };
 }
@@ -32,9 +29,6 @@ function videoConstraintsForFacingMode(facingMode: CameraFacingMode): MediaTrack
 function videoConstraintsForDevice(deviceId: string): MediaTrackConstraints {
   return {
     deviceId: { exact: deviceId },
-    width: { ideal: exportProfile.width },
-    height: { ideal: exportProfile.height },
-    aspectRatio: { ideal: exportProfile.aspectRatio },
     frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
   };
 }

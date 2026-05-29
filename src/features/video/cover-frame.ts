@@ -46,3 +46,25 @@ export function drawCoverFrame(
 
   context.drawImage(source, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 }
+
+export function drawContainFrame(
+  source: CanvasImageSource,
+  canvas: HTMLCanvasElement,
+  sourceWidth: number,
+  sourceHeight: number,
+) {
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas 2D context is unavailable");
+
+  const sourceRatio = sourceWidth / sourceHeight;
+  const targetRatio = canvas.width / canvas.height;
+  const dw = sourceRatio > targetRatio ? canvas.width : canvas.height * sourceRatio;
+  const dh = sourceRatio > targetRatio ? canvas.width / sourceRatio : canvas.height;
+  const dx = (canvas.width - dw) / 2;
+  const dy = (canvas.height - dh) / 2;
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "black";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(source, 0, 0, sourceWidth, sourceHeight, dx, dy, dw, dh);
+}

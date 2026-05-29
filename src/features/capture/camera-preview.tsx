@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { addDebugEvent } from "@/features/errors/debug-store";
-import { drawCoverFrame } from "@/features/video/cover-frame";
+import { drawContainFrame } from "@/features/video/cover-frame";
 import { exportProfile } from "@/features/video/export-profile";
 
 type CameraPreviewProps = {
@@ -77,7 +77,7 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
     if (!video || !canvas) return;
 
     if (video.videoWidth > 0 && video.videoHeight > 0) {
-      drawCoverFrame(video, canvas, video.videoWidth, video.videoHeight);
+      drawContainFrame(video, canvas, video.videoWidth, video.videoHeight);
     }
 
     animationFrameRef.current = window.requestAnimationFrame(drawPreviewFrame);
@@ -157,6 +157,10 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
               className="h-full w-full"
               height={exportProfile.height}
               width={exportProfile.width}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 border border-white/35 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.28)]"
             />
             <video
               ref={videoRef}
