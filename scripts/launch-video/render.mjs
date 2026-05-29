@@ -340,11 +340,11 @@ async function recordOneTake(baseURL) {
       page,
       page.locator("[data-clip-id] button").nth(1),
       page.getByTestId("review-action-bar"),
-      { ripple: true, holdMs: 420, midSteps: 18, endSteps: 22, releaseWaitMs: 220 },
+      { ripple: true, holdMs: 360, midSteps: 16, endSteps: 18, releaseWaitMs: 180 },
     );
     const deleteClip = page.getByRole("button", { name: "Delete clip" });
     await deleteClip.waitFor({ state: "visible", timeout: 5_000 });
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(900);
     await tapLocator(page, deleteClip);
     await expectClipButtons(page, 4);
 
@@ -361,7 +361,7 @@ async function recordOneTake(baseURL) {
     await page
       .getByRole("button", { name: "Open generated video fullscreen" })
       .waitFor({ state: "visible", timeout: 12_000 });
-    await page.waitForTimeout(23_000);
+    await page.waitForTimeout(8250);
 
     const done = page.getByRole("button", { name: "Done" });
     await tapLocator(page, done);
@@ -501,8 +501,8 @@ async function validateFinal() {
   if (video.width !== 1080 || video.height !== 1350) {
     throw new Error(`Final video is ${video.width}x${video.height}, expected 1080x1350`);
   }
-  if (duration < 45 || duration > 55) {
-    throw new Error(`Final video duration is ${duration.toFixed(2)}s, expected 45-55s`);
+  if (duration < 30 || duration > 40) {
+    throw new Error(`Final video duration is ${duration.toFixed(2)}s, expected 30-40s`);
   }
 }
 
