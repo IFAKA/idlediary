@@ -29,28 +29,14 @@ function setVideoSize(video: HTMLVideoElement, width = 1280, height = 720) {
 describe("CameraPreview", () => {
   let container: HTMLDivElement;
   let root: Root;
-  let drawImage: ReturnType<typeof vi.fn>;
-  let clearRect: ReturnType<typeof vi.fn>;
-  let fillRect: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    drawImage = vi.fn();
-    clearRect = vi.fn();
-    fillRect = vi.fn();
     debugEvents.addDebugEvent.mockClear();
-    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
-      window.setTimeout(() => callback(performance.now()), 16),
-    );
-    vi.stubGlobal("cancelAnimationFrame", (handle: number) => window.clearTimeout(handle));
     Object.defineProperty(HTMLMediaElement.prototype, "srcObject", {
       configurable: true,
       value: null,
       writable: true,
-    });
-    Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
-      configurable: true,
-      value: vi.fn(() => ({ clearRect, drawImage, fillRect })),
     });
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -86,19 +72,14 @@ describe("CameraPreview", () => {
     });
 
     const placeholder = container.querySelector('[data-testid="camera-preview-placeholder"]');
-    const canvas = container.querySelector('[aria-label="Camera preview"]') as HTMLCanvasElement;
-    const video = container.querySelector('[data-testid="camera-preview-source"]') as HTMLVideoElement;
+    const video = container.querySelector('[aria-label="Camera preview"]') as HTMLVideoElement;
+    const frame = container.querySelector('[data-testid="camera-preview-frame"]') as HTMLElement;
     expect(placeholder).not.toBeNull();
-    expect(canvas).not.toBeNull();
     expect(video).not.toBeNull();
     expect(placeholder).toHaveAttribute("data-preview-ready", "false");
     expect(video).toHaveProperty("srcObject", stream);
-    expect(canvas).toHaveAttribute("width", "720");
-    expect(canvas).toHaveAttribute("height", "960");
-    expect(
-      (container.querySelector('[data-testid="camera-preview-frame"]') as HTMLElement).style
-        .aspectRatio,
-    ).toBe("0.75");
+    expect(frame.style.aspectRatio).toBe("0.75");
+    expect(container.querySelector('[data-testid="recording-crop-guide"]')).toBeInTheDocument();
 
     setVideoSize(video);
     act(() => {
@@ -106,16 +87,10 @@ describe("CameraPreview", () => {
       video.dispatchEvent(new Event("loadeddata", { bubbles: true }));
     });
 
-    act(() => {
-      vi.advanceTimersByTime(16);
-    });
-
-    expect(clearRect).not.toHaveBeenCalled();
-    expect(fillRect).not.toHaveBeenCalled();
-    expect(drawImage).toHaveBeenCalledWith(video, 370, 0, 540, 720, 0, 0, 720, 960);
+    expect(frame.style.aspectRatio).toBe(String(1280 / 720));
 
     act(() => {
-      vi.advanceTimersByTime(173);
+      vi.advanceTimersByTime(189);
     });
 
     expect(container.querySelector('[data-testid="camera-preview-placeholder"]')).toHaveAttribute(
@@ -136,9 +111,7 @@ describe("CameraPreview", () => {
       "capture",
       expect.objectContaining({
         rawAspectRatio: 1280 / 720,
-        compositionWidth: 720,
-        compositionHeight: 960,
-        compositionAspectRatio: 3 / 4,
+        exportAspectRatio: 9 / 16,
       }),
     );
     expect(debugEvents.addDebugEvent).toHaveBeenCalledWith(
@@ -154,22 +127,22 @@ describe("CameraPreview", () => {
     expect(container.querySelector('[data-testid="camera-preview-placeholder"]')).not.toBeInTheDocument();
   });
 
-  it("fills the native photo canvas when the browser provides a matching camera stream", () => {
+  it("renders a portrait camera stream at its source aspect without canvas cropping", () => {
     const stream = makeStream();
     act(() => {
       root.render(<CameraPreview stream={stream} />);
     });
 
-    const video = container.querySelector('[data-testid="camera-preview-source"]') as HTMLVideoElement;
+    const video = container.querySelector('[aria-label="Camera preview"]') as HTMLVideoElement;
+    const frame = container.querySelector('[data-testid="camera-preview-frame"]') as HTMLElement;
     setVideoSize(video, 720, 960);
 
     act(() => {
       video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }));
       video.dispatchEvent(new Event("loadeddata", { bubbles: true }));
-      vi.advanceTimersByTime(16);
     });
 
-    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 720, 960, 0, 0, 720, 960);
+    expect(frame.style.aspectRatio).toBe(String(720 / 960));
   });
 
   it("resets the placeholder when the stream changes or clears", () => {
@@ -177,7 +150,7 @@ describe("CameraPreview", () => {
     act(() => {
       root.render(<CameraPreview stream={firstStream} />);
     });
-    const firstVideo = container.querySelector('[data-testid="camera-preview-source"]') as HTMLVideoElement;
+    const firstVideo = container.querySelector('[aria-label="Camera preview"]') as HTMLVideoElement;
 
     setVideoSize(firstVideo);
     act(() => {
@@ -200,7 +173,7 @@ describe("CameraPreview", () => {
       "data-preview-ready",
       "false",
     );
-    expect(container.querySelector('[data-testid="camera-preview-source"]')).toHaveProperty(
+    expect(container.querySelector('[aria-label="Camera preview"]')).toHaveProperty(
       "srcObject",
       secondStream,
     );
@@ -214,6 +187,5 @@ describe("CameraPreview", () => {
       "false",
     );
     expect(container.querySelector('[aria-label="Camera preview"]')).not.toBeInTheDocument();
-    expect(container.querySelector('[data-testid="camera-preview-source"]')).not.toBeInTheDocument();
   });
 });

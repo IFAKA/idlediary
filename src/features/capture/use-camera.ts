@@ -5,7 +5,6 @@ import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import { exportProfile } from "@/features/video/export-profile";
-import { cameraPreviewProfile } from "./camera-profile";
 import { getCameraPermissionState, type CameraPermissionState } from "./permissions";
 
 export type CameraFacingMode = "environment" | "user";
@@ -25,31 +24,8 @@ function oppositeFacingMode(facingMode: CameraFacingMode): CameraFacingMode {
 }
 
 const idealVideoConstraints = {
-  width: { ideal: cameraPreviewProfile.width },
-  height: { ideal: cameraPreviewProfile.height },
-  aspectRatio: { ideal: cameraPreviewProfile.aspectRatio },
-  resizeMode: { ideal: "crop-and-scale" },
   frameRate: { ideal: exportProfile.fps, max: exportProfile.fps },
 } satisfies CameraVideoConstraints;
-
-function strictPortraitVideoConstraintsFor(video: CameraVideoConstraints): CameraVideoConstraints {
-  return {
-    ...video,
-    width: { exact: cameraPreviewProfile.width },
-    height: { exact: cameraPreviewProfile.height },
-    aspectRatio: { exact: cameraPreviewProfile.aspectRatio },
-    resizeMode: { exact: "crop-and-scale" },
-  };
-}
-
-function canFallbackFromStrictPortraitConstraints(cause: unknown) {
-  return (
-    cause instanceof DOMException &&
-    (cause.name === "OverconstrainedError" ||
-      cause.name === "ConstraintNotSatisfiedError" ||
-      cause.name === "NotFoundError")
-  );
-}
 
 export function videoConstraintsForFacingMode(facingMode: CameraFacingMode): CameraVideoConstraints {
   return {
@@ -167,25 +143,10 @@ export function useCamera() {
     }
 
     try {
-      let nextStream: MediaStream;
-      try {
-        nextStream = await navigator.mediaDevices.getUserMedia({
-          video: strictPortraitVideoConstraintsFor(video),
-          audio: audioConstraints,
-        });
-      } catch (cause) {
-        if (!canFallbackFromStrictPortraitConstraints(cause)) {
-          throw cause;
-        }
-        addDebugEvent("camera-portrait-constraints-fallback", "capture", {
-          errorName: cause instanceof DOMException ? cause.name : "unknown",
-          requestedFacingMode: errorFacingMode,
-        });
-        nextStream = await navigator.mediaDevices.getUserMedia({
-          video,
-          audio: audioConstraints,
-        });
-      }
+      const nextStream = await navigator.mediaDevices.getUserMedia({
+        video,
+        audio: audioConstraints,
+      });
       const videoTrack = nextStream.getVideoTracks()[0];
       const audioTrack = nextStream.getAudioTracks()[0];
       const settings = videoTrack?.getSettings();

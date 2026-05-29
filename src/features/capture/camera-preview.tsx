@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { addDebugEvent } from "@/features/errors/debug-store";
-import { drawCoverFrame } from "@/features/video/cover-frame";
-import { cameraPreviewProfile } from "./camera-profile";
+import { exportProfile } from "@/features/video/export-profile";
 
 type CameraPreviewProps = {
   demoVideoSrc?: string;
@@ -41,13 +40,12 @@ export function CameraPreview({ demoVideoSrc, stream }: CameraPreviewProps) {
 
 function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
   const metadataLoadedRef = useRef(false);
   const canPlayRef = useRef(false);
   const revealStartedRef = useRef(false);
   const readyTimerRef = useRef<number | null>(null);
   const exitTimerRef = useRef<number | null>(null);
+  const [frameAspectRatio, setFrameAspectRatio] = useState<number | null>(null);
   const [previewReady, setPreviewReady] = useState(false);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
 
@@ -59,9 +57,6 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
 
   useEffect(() => {
     return () => {
-      if (animationFrameRef.current) {
-        window.cancelAnimationFrame(animationFrameRef.current);
-      }
       if (readyTimerRef.current) {
         window.clearTimeout(readyTimerRef.current);
       }
@@ -70,23 +65,6 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
       }
     };
   }, []);
-
-  const drawPreviewFrame = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    if (video.videoWidth > 0 && video.videoHeight > 0) {
-      drawCoverFrame(video, canvas, video.videoWidth, video.videoHeight);
-    }
-
-    animationFrameRef.current = window.requestAnimationFrame(drawPreviewFrame);
-  };
-
-  const startPreviewDrawing = () => {
-    if (animationFrameRef.current) return;
-    animationFrameRef.current = window.requestAnimationFrame(drawPreviewFrame);
-  };
 
   const maybeRevealPreview = () => {
     if (
@@ -116,7 +94,6 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
 
   const markCanPlay = () => {
     canPlayRef.current = true;
-    startPreviewDrawing();
     maybeRevealPreview();
   };
 
@@ -144,29 +121,19 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
         className="relative max-h-full max-w-full overflow-hidden bg-black"
         data-testid="camera-preview-frame"
         style={{
-          aspectRatio: cameraPreviewProfile.aspectRatio,
-          height: "min(100%, calc(var(--app-viewport-width) * 4 / 3))",
-          width: "auto",
+          aspectRatio: frameAspectRatio ?? 3 / 4,
+          width: "min(100%, calc(var(--app-viewport-height) * var(--camera-preview-aspect, 0.75)))",
+          maxHeight: "100%",
+          ["--camera-preview-aspect" as string]: String(frameAspectRatio ?? 3 / 4),
         }}
       >
         {stream || demoVideoSrc ? (
           <>
-            <canvas
-              ref={canvasRef}
-              aria-label="Camera preview"
-              className="h-full w-full"
-              height={cameraPreviewProfile.height}
-              width={cameraPreviewProfile.width}
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 border border-white/35 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.28)]"
-            />
             <video
               ref={videoRef}
-              aria-hidden="true"
+              aria-label="Camera preview"
               autoPlay
-              className="pointer-events-none absolute left-0 top-0 size-px opacity-0"
+              className="h-full w-full object-contain"
               data-testid="camera-preview-source"
               loop={Boolean(demoVideoSrc)}
               muted
@@ -181,16 +148,26 @@ function CameraPreviewSurface({ demoVideoSrc, stream }: CameraPreviewProps) {
                     ? video.videoWidth / video.videoHeight
                     : null;
                 metadataLoadedRef.current = true;
-                startPreviewDrawing();
+                setFrameAspectRatio(nextAspectRatio);
                 addDebugEvent("camera-preview-metadata", "capture", {
                   videoWidth: video.videoWidth,
                   videoHeight: video.videoHeight,
-                  compositionWidth: cameraPreviewProfile.width,
-                  compositionHeight: cameraPreviewProfile.height,
-                  compositionAspectRatio: cameraPreviewProfile.aspectRatio,
                   rawAspectRatio: nextAspectRatio,
+                  exportAspectRatio: exportProfile.aspectRatio,
                 });
                 maybeRevealPreview();
+              }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 border border-white/35 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.28)]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-1/2 h-full max-w-full -translate-x-1/2 -translate-y-1/2 border-x border-white/55 shadow-[0_0_0_999px_rgba(0,0,0,0.16)]"
+              data-testid="recording-crop-guide"
+              style={{
+                aspectRatio: exportProfile.aspectRatio,
               }}
             />
           </>
