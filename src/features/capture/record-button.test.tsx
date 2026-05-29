@@ -86,6 +86,14 @@ describe("RecordButton", () => {
     expect(recordRing()).toHaveAttribute("data-record-ring-hidden", "true");
   });
 
+  it("hides the segmented ring while idle or blocked", () => {
+    renderButton("idle");
+    expect(recordRing()).toHaveAttribute("data-record-ring-hidden", "true");
+
+    renderButton("error");
+    expect(recordRing()).toHaveAttribute("data-record-ring-hidden", "true");
+  });
+
   it("pulses each second marker during a three second recording", () => {
     renderButton("recording");
 

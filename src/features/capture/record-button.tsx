@@ -66,7 +66,7 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
   const isSaving = state === "saving";
   const isSuccess = state === "success";
   const isInactive = state === "idle" || state === "error";
-  const shouldHideRing = isSaving || isSuccess;
+  const shouldHideRing = isInactive || isSaving || isSuccess;
 
   const clearPulseTimers = useCallback(() => {
     for (const timer of pulseTimersRef.current) {
