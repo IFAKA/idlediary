@@ -316,7 +316,7 @@ async function recordOneTake(baseURL) {
 
     const recordButton = page.getByRole("button", { name: "Record three second clip" });
     await recordButton.waitFor({ state: "visible", timeout: 10_000 });
-    await page.waitForTimeout(950);
+    await page.waitForTimeout(650);
     await tapLocator(page, recordButton);
     await page.getByRole("button", { name: "Review draft clips" }).getByText("+5").waitFor({
       state: "visible",
@@ -340,11 +340,11 @@ async function recordOneTake(baseURL) {
       page,
       page.locator("[data-clip-id] button").nth(1),
       page.getByTestId("review-action-bar"),
-      { ripple: true, holdMs: 360, midSteps: 16, endSteps: 18, releaseWaitMs: 180 },
+      { ripple: true, holdMs: 320, midSteps: 14, endSteps: 16, releaseWaitMs: 140 },
     );
     const deleteClip = page.getByRole("button", { name: "Delete clip" });
     await deleteClip.waitFor({ state: "visible", timeout: 5_000 });
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(700);
     await tapLocator(page, deleteClip);
     await expectClipButtons(page, 4);
 
