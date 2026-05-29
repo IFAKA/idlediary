@@ -268,7 +268,7 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                 priority
               />
               <svg
-                className="pointer-events-none absolute inset-1.5 size-[calc(100%-0.75rem)] rounded-[1.48rem] min-[390px]:rounded-[1.58rem]"
+                className="pointer-events-none absolute inset-1.5 z-10 size-[calc(100%-0.75rem)] rounded-[1.48rem] min-[390px]:rounded-[1.58rem]"
                 viewBox="0 0 512 512"
                 aria-hidden="true"
               >
@@ -310,19 +310,19 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                   />
                 </g>
                 {tearKey !== null && !shouldReduceMotion ? (
-                  <g clipPath="url(#intro-icon-blink-clip)">
+                  <g>
                     <motion.path
                       key={tearKey}
-                      d="M340 252 C316 282 308 301 308 318 C308 343 322 360 340 360 C358 360 372 343 372 318 C372 301 364 282 340 252 Z"
+                      d="M342 256 C362 276 376 297 376 318 C376 344 359 362 340 362 C321 362 307 345 307 322 C307 302 322 279 342 256 Z"
                       fill="#a9c7ff"
                       opacity="0.9"
                       data-testid="intro-logo-tear"
-                      initial={{ opacity: 0, x: 2, y: -6, scale: 0.68 }}
+                      initial={{ opacity: 0, x: 6, y: -5, scale: 0.72 }}
                       animate={{
                         opacity: [0, 0.9, 0.72, 0],
-                        x: [2, 1, -1, -2],
-                        y: [0, 15, 36, 58],
-                        scale: [0.68, 1.08, 1, 0.9],
+                        x: [6, 12, 14, 16],
+                        y: [0, 16, 38, 60],
+                        scale: [0.72, 1.1, 1.02, 0.92],
                       }}
                       transition={{ duration: 0.82, ease: "easeOut", times: [0, 0.18, 0.72, 1] }}
                     />
