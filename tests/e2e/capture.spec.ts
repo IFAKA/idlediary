@@ -1144,6 +1144,24 @@ test("capture controls stay touch-sized and do not overlap on mobile", async ({ 
       expect(overlaps).toBe(false);
     }
   }
+
+  const recordButton = page.getByRole("button", { name: "Record three second clip" });
+  const ringBox = await page.getByTestId("record-button-ring").boundingBox();
+  const dotBox = await page.getByTestId("record-button-dot").boundingBox();
+  const recordBox = await recordButton.boundingBox();
+  expect(ringBox).not.toBeNull();
+  expect(dotBox).not.toBeNull();
+  expect(recordBox).not.toBeNull();
+
+  const centers = [ringBox!, dotBox!, recordBox!].map((box) => ({
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2,
+  }));
+
+  expect(Math.abs(centers[0]!.x - centers[1]!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(centers[0]!.y - centers[1]!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(centers[0]!.x - centers[2]!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(centers[0]!.y - centers[2]!.y)).toBeLessThanOrEqual(1);
 });
 
 test("debug report opens in a mobile drawer with copy available", async ({ page }) => {
