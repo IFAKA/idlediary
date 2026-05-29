@@ -41,6 +41,7 @@ describe("camera video constraints", () => {
       width: { ideal: 720 },
       height: { ideal: 1280 },
       aspectRatio: { ideal: 9 / 16 },
+      resizeMode: { ideal: "crop-and-scale" },
       frameRate: { ideal: 30, max: 30 },
       facingMode: { ideal: "environment" },
     });
@@ -51,6 +52,7 @@ describe("camera video constraints", () => {
       width: { ideal: 720 },
       height: { ideal: 1280 },
       aspectRatio: { ideal: 9 / 16 },
+      resizeMode: { ideal: "crop-and-scale" },
       frameRate: { ideal: 30, max: 30 },
       deviceId: { exact: "front-camera" },
     });
