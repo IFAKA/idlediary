@@ -130,6 +130,7 @@ const minimumVisibleDoneStepMs = 900;
 const cameraSwipeMinDistance = 56;
 const cameraSwipeAxisRatio = 1.2;
 export const FIRST_RECORD_GUIDE_SEEN_KEY = "idlediary:first-record-guide-seen";
+export const SAVED_VIDEO_GUIDE_SEEN_KEY = "idlediary:saved-video-guide-seen";
 const introGenerationProgress = [
   makeGenerationProgress("loading", 8),
   makeGenerationProgress("writing", 14),
@@ -215,6 +216,16 @@ function markFirstRecordGuideSeen() {
   window.localStorage.setItem(FIRST_RECORD_GUIDE_SEEN_KEY, "true");
 }
 
+function hasSeenSavedVideoGuide() {
+  if (typeof window === "undefined") return true;
+  return window.localStorage.getItem(SAVED_VIDEO_GUIDE_SEEN_KEY) === "true";
+}
+
+function markSavedVideoGuideSeen() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SAVED_VIDEO_GUIDE_SEEN_KEY, "true");
+}
+
 export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {}) {
   const isDemo = Boolean(demo);
   const camera = useCamera();
@@ -232,6 +243,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   const [resultExitDirection, setResultExitDirection] = useState<"up" | "bottom">("up");
   const [hasNeedsActionVlog, setHasNeedsActionVlog] = useState(false);
   const [showFirstRecordGuide, setShowFirstRecordGuide] = useState(false);
+  const [showSavedVideoGuide, setShowSavedVideoGuide] = useState(false);
   const shouldReduceMotion = useReducedMotion() === true;
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
@@ -288,6 +300,8 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
 
     setSlideDirection("left");
     setHasNeedsActionVlog(false);
+    markSavedVideoGuideSeen();
+    setShowSavedVideoGuide(false);
   }, [canOpenVideos]);
 
   const restoreRequestedView = useCallback(
@@ -411,6 +425,23 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   }, []);
 
   useEffect(() => {
+    if (!showSavedVideoGuide) return;
+
+    const timeout = window.setTimeout(() => {
+      markSavedVideoGuideSeen();
+      setShowSavedVideoGuide(false);
+    }, 9000);
+
+    return () => window.clearTimeout(timeout);
+  }, [showSavedVideoGuide]);
+
+  const showSavedVideoGuideOnce = useCallback(() => {
+    if (hasSeenSavedVideoGuide()) return;
+    setShowFirstRecordGuide(false);
+    setShowSavedVideoGuide(true);
+  }, []);
+
+  useEffect(() => {
     if (isDemo) return;
 
     const onPopState = () => {
@@ -474,6 +505,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     } finally {
       setResultExitDirection("up");
       setVlog(null);
+      showSavedVideoGuideOnce();
       showCapture("push");
     }
   };
@@ -948,10 +980,9 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
             <div className="relative z-10 mt-auto">
               <AnimatePresence>
                 {showFirstRecordGuide ? (
-                  <FirstRecordGuide
-                    reducedMotion={shouldReduceMotion}
-                    onDismiss={dismissFirstRecordGuide}
-                  />
+                  <FirstRecordGuide reducedMotion={shouldReduceMotion} />
+                ) : showSavedVideoGuide ? (
+                  <SavedVideoGuide reducedMotion={shouldReduceMotion} />
                 ) : null}
               </AnimatePresence>
               <div className="mb-5 flex items-center justify-between gap-3">
@@ -1057,10 +1088,8 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
 }
 
 function FirstRecordGuide({
-  onDismiss,
   reducedMotion,
 }: {
-  onDismiss: () => void;
   reducedMotion: boolean;
 }) {
   return (
@@ -1083,14 +1112,32 @@ function FirstRecordGuide({
         <p className="mt-1 text-xs leading-5 text-white/74">
           Tap the stack to review and make a video.
         </p>
-        <Button
-          className="mt-3 h-9 w-full border-white/20 bg-white/92 text-sm text-black hover:bg-white"
-          type="button"
-          variant="outline"
-          onClick={onDismiss}
-        >
-          Got it
-        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
+function SavedVideoGuide({ reducedMotion }: { reducedMotion: boolean }) {
+  return (
+    <motion.div
+      role="status"
+      aria-label="Saved video guide"
+      className="mb-3 ml-0 mr-auto w-[min(17rem,calc(100vw_-_2rem))] rounded-lg border border-white/22 bg-black/72 p-3 text-white shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-md"
+      data-testid="saved-video-guide"
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.98 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 10, scale: 0.98 }}
+      transition={reducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+    >
+      <div className="relative">
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-5 left-6 size-3 rotate-45 border-b border-r border-white/22 bg-black/72"
+        />
+        <p className="text-sm font-semibold leading-5">Your video is saved in Videos.</p>
+        <p className="mt-1 text-xs leading-5 text-white/74">
+          Tap the clapperboard to find it anytime.
+        </p>
       </div>
     </motion.div>
   );
