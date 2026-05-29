@@ -110,9 +110,9 @@ describe("CameraPreview", () => {
       vi.advanceTimersByTime(16);
     });
 
-    expect(clearRect).not.toHaveBeenCalled();
-    expect(fillRect).not.toHaveBeenCalled();
-    expect(drawImage).toHaveBeenCalledWith(video, 437.5, 0, 405, 720, 0, 0, 720, 1280);
+    expect(clearRect).toHaveBeenCalledWith(0, 0, 720, 1280);
+    expect(fillRect).toHaveBeenCalledWith(0, 0, 720, 1280);
+    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720, 0, 437.5, 720, 405);
 
     act(() => {
       vi.advanceTimersByTime(173);
