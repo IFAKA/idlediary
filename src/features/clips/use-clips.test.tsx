@@ -219,21 +219,23 @@ describe("useClips", () => {
     expect(mocks.releaseAllClipObjectUrls).toHaveBeenCalled();
   });
 
-  it("does not save or add a new clip when thumbnail generation fails", async () => {
+  it("saves and adds a new clip when initial thumbnail generation fails", async () => {
     const secondBlob = new Blob(["second"], { type: "video/webm" });
     mocks.generateVideoThumbnail.mockRejectedValueOnce(new Error("thumbnail failed"));
 
     renderUseClips();
     await waitFor(() => expect(latest?.loading).toBe(false));
 
-    await expect(async () => {
-      await act(async () => {
-        await latest!.addClip(secondBlob, 3000);
-      });
-    }).rejects.toThrow("thumbnail failed");
+    await act(async () => {
+      await latest!.addClip(secondBlob, 3000);
+    });
 
-    expect(mocks.saveClip).not.toHaveBeenCalled();
-    expect(latest?.clips).toEqual([]);
+    expect(mocks.saveClip).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        thumbnailBlob: expect.any(Blob),
+      }),
+    );
+    expect(latest?.clips.map((clip) => clip.id)).toEqual(["clip-new"]);
   });
 
   it("backfills thumbnails for loaded clips that do not have one", async () => {

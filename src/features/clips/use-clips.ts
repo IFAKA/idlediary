@@ -202,7 +202,11 @@ export function useClips({ sessionId }: { sessionId?: string } = {}) {
       size: blob.size,
     };
 
-    Object.assign(clip, await generateVideoThumbnail(blob, thumbnailSizes.clip));
+    try {
+      Object.assign(clip, await generateVideoThumbnail(blob, thumbnailSizes.clip));
+    } catch (error) {
+      reportError(error, { clipId: clip.id, phase: "initial-thumbnail" });
+    }
 
     await saveClip(clip);
     ++requestVersionRef.current;
