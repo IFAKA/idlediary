@@ -250,7 +250,17 @@ describe("generation export profile", () => {
       ]),
     );
     expect(progress.some((entry) => entry.technical.includes("generated music mix"))).toBe(true);
-    expect(progress.at(-1)?.logs).toEqual(["concat demuxer stream copy", "audio mix complete"]);
+    expect(progress.at(-1)?.logs).toHaveLength(8);
+    expect(progress.some((entry) => entry.logs.includes("Generating clean lo-fi soundtrack"))).toBe(true);
+    expect(progress.some((entry) => entry.logs.includes("Writing clip-0.mp4 (0.0 KB)"))).toBe(true);
+    expect(progress.at(-1)?.logs).toEqual(
+      expect.arrayContaining([
+        "ffmpeg: concat demuxer stream copy",
+        "ffmpeg: audio mix complete",
+        "FFmpeg mux/audio mix complete",
+        "Generated video ready (3 bytes)",
+      ]),
+    );
     expect(debugMocks.addDebugEvent).toHaveBeenCalledWith(
       "generation-timing",
       "generation",

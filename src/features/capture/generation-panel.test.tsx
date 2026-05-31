@@ -111,7 +111,7 @@ describe("GenerationPanel", () => {
       }),
     );
 
-    expect(view.textContent).toContain("Local FFmpeg output");
+    expect(view.textContent).toContain("Local generation output");
     expect(view.textContent).toContain("frame=42 fps=30");
     expect(view.textContent).toContain("muxing overhead: 0.1%");
   });
@@ -125,8 +125,8 @@ describe("GenerationPanel", () => {
       }),
     );
 
-    expect(view.textContent).toContain("Local FFmpeg output");
-    expect(view.textContent).toContain("Assembling MP4: waiting for FFmpeg output...");
+    expect(view.textContent).toContain("Local generation output");
+    expect(view.textContent).toContain("Assembling MP4: waiting for generation output...");
   });
 
   it("does not show the removed long-wait reassurance", () => {

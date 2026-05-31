@@ -77,7 +77,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
   const localLogLines =
     progress.logs.length > 0
       ? progress.logs
-      : [`${progress.label}: waiting for FFmpeg output...`];
+      : [`${progress.label}: waiting for generation output...`];
 
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden bg-background top-level-screen">
@@ -156,11 +156,11 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
             {showLocalLogs ? (
               <div className="mt-3 rounded-lg border border-border/60 bg-black/28 px-3 py-2.5">
                 <div className="mb-1 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <span>Local FFmpeg output</span>
+                  <span>Local generation output</span>
                   <span>{progress.logs.length > 0 ? `${progress.logs.length} lines` : "waiting"}</span>
                 </div>
                 <pre
-                  aria-label="Local FFmpeg output"
+                  aria-label="Local generation output"
                   className="max-h-28 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-4 text-foreground/82"
                 >
                   {localLogLines.join("\n")}

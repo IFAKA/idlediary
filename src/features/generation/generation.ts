@@ -80,6 +80,7 @@ let ffmpegPromise: Promise<FFmpeg> | null = null;
 let activeProgressSink: ((progress: GenerationProgress) => void) | null = null;
 let recentFfmpegLogs: string[] = [];
 let activeRenderValue = 24;
+let activeFfmpegProgressBucket = -1;
 
 export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleMs) {
   const durationSeconds = Math.max(0.1, durationMs / 1000);
@@ -184,6 +185,7 @@ export function resetGenerationForTests() {
   activeProgressSink = null;
   recentFfmpegLogs = [];
   activeRenderValue = 24;
+  activeFfmpegProgressBucket = -1;
 }
 
 async function createGeneratedMusicWav(clips: ClipRecord[], durationMs: number, seed: string) {
@@ -240,6 +242,14 @@ function emitProgress(progress: GenerationProgress) {
   });
 }
 
+function appendGenerationLog(message: string, progress: GenerationProgress) {
+  recentFfmpegLogs = recentGenerationLogs(recentFfmpegLogs, message);
+  emitProgress({
+    ...progress,
+    logs: recentFfmpegLogs,
+  });
+}
+
 async function loadFfmpeg() {
   if (ffmpegPromise) return ffmpegPromise;
 
@@ -251,7 +261,7 @@ async function loadFfmpeg() {
         : undefined;
     const ffmpeg = MockFFmpeg ? new MockFFmpeg() : new FFmpeg();
     ffmpeg.on("log", ({ message }) => {
-      recentFfmpegLogs = recentGenerationLogs(recentFfmpegLogs, message);
+      recentFfmpegLogs = recentGenerationLogs(recentFfmpegLogs, `ffmpeg: ${message}`);
       addDebugEvent("ffmpeg-log", "generation", { message });
       emitProgress(
         generationProgress("rendering", activeRenderValue, {
@@ -262,16 +272,24 @@ async function loadFfmpeg() {
     });
     ffmpeg.on("progress", ({ progress }) => {
       activeRenderValue = Math.max(24, Math.round(progress * 88));
-      emitProgress(
-        generationProgress("rendering", activeRenderValue, {
-          label: renderingLabelFor(activeRenderValue),
-        }),
-      );
+      const progressPercent = Math.min(100, Math.max(0, Math.round(progress * 100)));
+      const progressBucket = Math.floor(progressPercent / 10) * 10;
+      const renderProgress = generationProgress("rendering", activeRenderValue, {
+        label: renderingLabelFor(activeRenderValue),
+      });
+      if (progressBucket > activeFfmpegProgressBucket || progressPercent === 100) {
+        activeFfmpegProgressBucket = progressBucket;
+        appendGenerationLog(`ffmpeg: mux/audio progress ${progressPercent}%`, renderProgress);
+        return;
+      }
+
+      emitProgress(renderProgress);
     });
 
-    emitProgress(generationProgress("loading", 8));
+    appendGenerationLog("Loading FFmpeg core", generationProgress("loading", 8));
     if (MockFFmpeg) {
       await ffmpeg.load();
+      appendGenerationLog("FFmpeg core ready", generationProgress("loading", 10));
       addDebugEvent("ffmpeg-loaded", "generation", { mocked: true });
       return ffmpeg;
     }
@@ -284,6 +302,7 @@ async function loadFfmpeg() {
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
       wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
     });
+    appendGenerationLog("FFmpeg core ready", generationProgress("loading", 10));
     addDebugEvent("ffmpeg-loaded", "generation");
     return ffmpeg;
   })();
@@ -384,12 +403,17 @@ export async function generateVlog(
     activeProgressSink = onProgress;
     recentFfmpegLogs = [];
     activeRenderValue = 24;
+    activeFfmpegProgressBucket = -1;
     const startedAt = performance.now();
     const timing: Record<string, number> = {};
     const markTiming = (name: string, since: number) => {
       timing[name] = Math.round(performance.now() - since);
     };
     const musicSeed = options.musicSeed ?? crypto.randomUUID();
+    appendGenerationLog(
+      `Starting local generation for ${clips.length} clip${clips.length === 1 ? "" : "s"}`,
+      generationProgress("loading", 8),
+    );
     if (typeof window !== "undefined") {
       (window as typeof window & { __idleDiaryGenerationClipIds?: string[] })
         .__idleDiaryGenerationClipIds = clips.map((clip) => clip.id);
@@ -400,7 +424,7 @@ export async function generateVlog(
     });
     const cachedVlog = await getVlogByGenerationFingerprint(generationFingerprint, sessionId);
     if (cachedVlog?.thumbnailBlob) {
-      emitProgress(generationProgress("done", 100));
+      appendGenerationLog("Reusing cached generated video", generationProgress("done", 100));
       addDebugEvent("vlog-generation-reused", "generation", {
         vlogId: cachedVlog.id,
         size: cachedVlog.size,
@@ -410,9 +434,11 @@ export async function generateVlog(
     }
 
     const ffmpegLoadStartedAt = performance.now();
+    appendGenerationLog("Preparing FFmpeg workspace", generationProgress("loading", 8));
     const ffmpeg = await loadFfmpeg();
     markTiming("ffmpegLoadMs", ffmpegLoadStartedAt);
-    emitProgress(
+    appendGenerationLog(
+      "Checking TinyMusician model files",
       generationProgress("writing", 14, {
         label: "Getting music ready",
         detail: "Checking this browser can make the soundtrack",
@@ -421,8 +447,16 @@ export async function generateVlog(
     const readinessStartedAt = performance.now();
     await verifyTinyMusicianReadiness();
     markTiming("tinyMusicianReadinessMs", readinessStartedAt);
+    appendGenerationLog(
+      "TinyMusician readiness passed",
+      generationProgress("writing", 16, {
+        label: "Getting music ready",
+        detail: "Checking this browser can make the soundtrack",
+      }),
+    );
 
-    emitProgress(
+    appendGenerationLog(
+      "Generating clean lo-fi soundtrack",
       generationProgress("writing", 18, {
         label: "Preparing soundtrack",
         detail: "First time here can take a little longer",
@@ -437,32 +471,60 @@ export async function generateVlog(
       musicSeed,
     );
     markTiming("musicGenerationMs", musicStartedAt);
+    appendGenerationLog(
+      `Soundtrack ready (${musicWav.byteLength.toLocaleString()} bytes)`,
+      generationProgress("writing", 20, {
+        label: "Preparing soundtrack",
+        detail: "First time here can take a little longer",
+      }),
+    );
     const writeStartedAt = performance.now();
+    appendGenerationLog("Writing music.wav into FFmpeg", generationProgress("writing", 20));
     await ffmpeg.writeFile("music.wav", musicWav);
 
     const listLines: string[] = [];
     for (const [index, clip] of clips.entries()) {
       const input = `clip-${index}.mp4`;
+      appendGenerationLog(
+        `Writing ${input} (${(clip.size / 1024).toFixed(1)} KB)`,
+        generationProgress("writing", 20),
+      );
       await ffmpeg.writeFile(input, await fetchFile(clip.blob));
       listLines.push(`file '${input}'`);
     }
     await ffmpeg.writeFile("inputs.txt", listLines.join("\n"));
     markTiming("ffmpegWriteFilesMs", writeStartedAt);
+    appendGenerationLog("Wrote concat manifest inputs.txt", generationProgress("writing", 22));
     addDebugEvent("ffmpeg-inputs-written", "generation", {
       clipCount: clips.length,
       bytes: clips.reduce((total, clip) => total + clip.size, 0),
       ...musicDebug,
     });
 
-    emitProgress(generationProgress("rendering", 24));
+    appendGenerationLog(
+      "Running FFmpeg stream-copy mux with AAC audio mix",
+      generationProgress("rendering", 24),
+    );
     const muxStartedAt = performance.now();
     await ffmpeg.exec(buildFfmpegArgs(totalDurationMs));
     markTiming("ffmpegMuxMixExecMs", muxStartedAt);
+    appendGenerationLog(
+      "FFmpeg mux/audio mix complete",
+      generationProgress("rendering", Math.max(activeRenderValue, 88), {
+        label: "Finishing audio mix",
+      }),
+    );
     const thumbnailStartedAt = performance.now();
+    appendGenerationLog(
+      "Selecting saved-video thumbnail",
+      generationProgress("rendering", Math.max(activeRenderValue, 88), {
+        label: "Finishing audio mix",
+      }),
+    );
     const thumbnailFields = await selectVlogThumbnail(clips, thumbnailSizes.vlog);
     markTiming("thumbnailSelectionMs", thumbnailStartedAt);
 
-    emitProgress(generationProgress("saving", 92));
+    appendGenerationLog("Reading vlog.mp4 output", generationProgress("saving", 92));
     const readStartedAt = performance.now();
     const bytes = ffmpegFileToUint8Array(await ffmpeg.readFile(exportProfile.output));
     markTiming("ffmpegOutputReadMs", readStartedAt);
@@ -486,7 +548,10 @@ export async function generateVlog(
       generationFingerprint,
     };
     markTiming("saveHandoffMs", startedAt);
-    emitProgress(generationProgress("done", 100));
+    appendGenerationLog(
+      `Generated video ready (${blob.size.toLocaleString()} bytes)`,
+      generationProgress("done", 100),
+    );
     addDebugEvent("generation-timing", "generation", {
       ...timing,
       totalMs: Math.round(performance.now() - startedAt),
