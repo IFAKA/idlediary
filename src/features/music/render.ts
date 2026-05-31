@@ -4,7 +4,7 @@ export function renderCompositionToWav(composition: MusicComposition) {
   return encodeMonoWav(composition.samples, composition.sampleRate);
 }
 
-function encodeMonoWav(samples: Float32Array, sampleRate: number) {
+export function encodeMonoWav(samples: Float32Array, sampleRate: number) {
   const channelCount = 1;
   const bytesPerSample = 2;
   const dataSize = samples.length * bytesPerSample;

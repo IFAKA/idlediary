@@ -4,14 +4,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const modelId = "Xenova/vit-base-patch16-224";
+const visionModelId = "Xenova/vit-base-patch16-224";
+const tinyMusicianModelId = "itsmax/TinyMusician";
 const legacyModelIds = ["Xenova/vit-gpt2-image-captioning"];
 const revision = "main";
-const modelBaseUrl = `https://huggingface.co/${modelId}/resolve/${revision}`;
-const modelOutputDir = join(root, "public", "models", ...modelId.split("/"));
 const wasmOutputDir = join(root, "public", "transformers");
+const installTinyMusician = process.argv.includes("--include-tinymusician");
 
-const modelFiles = [
+const visionModelFiles = [
   "config.json",
   "preprocessor_config.json",
   "onnx/model_quantized.onnx",
@@ -26,21 +26,22 @@ const wasmFiles = [
   "ort-wasm-simd-threaded.jsep.wasm",
 ];
 
-async function downloadFile(relativePath) {
+async function downloadModelFile(modelId, relativePath) {
+  const modelOutputDir = join(root, "public", "models", ...modelId.split("/"));
   const outputPath = join(modelOutputDir, relativePath);
   if (existsSync(outputPath)) {
-    console.log(`exists ${relativePath}`);
+    console.log(`exists ${modelId}/${relativePath}`);
     return;
   }
 
-  const response = await fetch(`${modelBaseUrl}/${relativePath}`);
+  const response = await fetch(`https://huggingface.co/${modelId}/resolve/${revision}/${relativePath}`);
   if (!response.ok) {
-    throw new Error(`Failed to download ${relativePath}: ${response.status} ${response.statusText}`);
+    throw new Error(`Failed to download ${modelId}/${relativePath}: ${response.status} ${response.statusText}`);
   }
 
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, new Uint8Array(await response.arrayBuffer()));
-  console.log(`downloaded ${relativePath}`);
+  console.log(`downloaded ${modelId}/${relativePath}`);
 }
 
 async function copyWasmFile(fileName) {
@@ -56,11 +57,10 @@ async function copyWasmFile(fileName) {
   console.log(`copied ${fileName}`);
 }
 
-await mkdir(modelOutputDir, { recursive: true });
 await mkdir(wasmOutputDir, { recursive: true });
 
 for (const legacyModelId of legacyModelIds) {
-  if (legacyModelId === modelId) continue;
+  if (legacyModelId === visionModelId) continue;
   const legacyPath = join(root, "public", "models", ...legacyModelId.split("/"));
   if (existsSync(legacyPath)) {
     await rm(legacyPath, { recursive: true, force: true });
@@ -68,12 +68,70 @@ for (const legacyModelId of legacyModelIds) {
   }
 }
 
-for (const file of modelFiles) {
-  await downloadFile(file);
+for (const file of visionModelFiles) {
+  await downloadModelFile(visionModelId, file);
 }
 
 for (const file of wasmFiles) {
   await copyWasmFile(file);
 }
 
-console.log("Music model assets installed for local generation.");
+if (installTinyMusician) {
+  const files = await listModelTreeFiles(tinyMusicianModelId);
+  if (files.length === 0) {
+    throw new Error(`No files found in Hugging Face model tree for ${tinyMusicianModelId}`);
+  }
+
+  for (const file of files) {
+    await downloadModelFile(tinyMusicianModelId, file);
+  }
+}
+
+console.log(
+  installTinyMusician
+    ? "Vision, WASM, and TinyMusician assets installed for local generation."
+    : "Vision and WASM assets installed for local analysis. Run npm run music:model:install for TinyMusician.",
+);
+
+async function listModelTreeFiles(modelId) {
+  const files = [];
+  let cursor = null;
+
+  do {
+    const url = new URL(`https://huggingface.co/api/models/${modelId}/tree/${revision}`);
+    url.searchParams.set("recursive", "1");
+    if (cursor) url.searchParams.set("cursor", cursor);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to list ${modelId}: ${response.status} ${response.statusText}`);
+    }
+
+    const entries = await response.json();
+    if (!Array.isArray(entries)) {
+      throw new Error(`Unexpected Hugging Face tree response for ${modelId}`);
+    }
+
+    files.push(
+      ...entries
+        .filter((entry) => entry.type === "file" && typeof entry.path === "string")
+        .map((entry) => entry.path)
+        .filter((path) => !path.endsWith(".md") && path !== ".gitattributes"),
+    );
+    cursor = parseNextCursor(response.headers.get("link"));
+  } while (cursor);
+
+  return files;
+}
+
+function parseNextCursor(linkHeader) {
+  if (!linkHeader) return null;
+  const nextLink = linkHeader
+    .split(",")
+    .map((part) => part.trim())
+    .find((part) => part.includes('rel="next"'));
+  if (!nextLink) return null;
+  const match = nextLink.match(/<([^>]+)>/);
+  if (!match) return null;
+  return new URL(match[1]).searchParams.get("cursor");
+}

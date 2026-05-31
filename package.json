@@ -17,7 +17,7 @@
     "demo:doctor": "demo-director doctor demo/main.demo.ts",
     "launch-video": "node scripts/launch-video/render.mjs",
     "launch-video:clean": "node scripts/launch-video/clean.mjs",
-    "music:model:install": "node scripts/install-music-model.mjs"
+    "music:model:install": "node scripts/install-music-model.mjs --include-tinymusician"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -9,10 +9,9 @@ import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
 import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
 import { analyzeClipMoodDescriptions } from "@/features/music/analyze";
-import { composeGeneratedMusic } from "@/features/music/compose";
 import { extractClipKeyframes } from "@/features/music/keyframes";
 import { buildMusicPlan, musicProfileVersion } from "@/features/music/plan";
-import { renderCompositionToWav } from "@/features/music/render";
+import { generateTinyMusicianWav, musicDurationSecondsForVideo } from "@/features/music/tinymusician";
 export { exportProfile } from "@/features/video/export-profile";
 
 export type GenerationProgress = {
@@ -93,6 +92,8 @@ export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleM
     "0",
     "-i",
     "inputs.txt",
+    "-stream_loop",
+    "-1",
     "-i",
     "music.wav",
     "-filter_complex",
@@ -225,14 +226,22 @@ async function createGeneratedMusicWav(clips: ClipRecord[], durationMs: number, 
 
   const keyframes = await extractClipKeyframes(clips);
   const descriptions = await analyzeClipMoodDescriptions(keyframes);
-  const musicPlan = buildMusicPlan(descriptions, durationMs, seed);
-  const composition = await composeGeneratedMusic(musicPlan);
+  const musicDurationSeconds = musicDurationSecondsForVideo(durationMs);
+  const musicPlan = buildMusicPlan(descriptions, musicDurationSeconds * 1000, seed);
+  const generatedMusic = await generateTinyMusicianWav({
+    plan: musicPlan,
+    descriptions,
+    durationSeconds: musicDurationSeconds,
+  });
   return {
-    musicWav: renderCompositionToWav(composition),
+    musicWav: generatedMusic.musicWav,
     debug: {
       mocked: false,
+      musicEngine: "tinymusician",
       musicSeed: seed,
+      musicPrompt: generatedMusic.musicPrompt,
       musicProfileVersion,
+      musicDurationSeconds: generatedMusic.musicDurationSeconds,
       musicMood: musicPlan.mood,
     },
   };

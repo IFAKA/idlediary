@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppError } from "@/features/errors/app-error";
 import type { ClipRecord } from "@/features/clips/types";
 import {
   buildFfmpegArgs,
@@ -23,8 +24,7 @@ const musicMocks = vi.hoisted(() => ({
   extractClipKeyframes: vi.fn(),
   analyzeClipMoodDescriptions: vi.fn(),
   buildMusicPlan: vi.fn(),
-  composeGeneratedMusic: vi.fn(),
-  renderCompositionToWav: vi.fn(),
+  generateTinyMusicianWav: vi.fn(),
 }));
 
 vi.mock("@/features/clips/storage", () => ({
@@ -46,11 +46,9 @@ vi.mock("@/features/music/plan", async (importOriginal) => ({
   ...((await importOriginal()) as object),
   buildMusicPlan: musicMocks.buildMusicPlan,
 }));
-vi.mock("@/features/music/compose", () => ({
-  composeGeneratedMusic: musicMocks.composeGeneratedMusic,
-}));
-vi.mock("@/features/music/render", () => ({
-  renderCompositionToWav: musicMocks.renderCompositionToWav,
+vi.mock("@/features/music/tinymusician", async (importOriginal) => ({
+  ...((await importOriginal()) as object),
+  generateTinyMusicianWav: musicMocks.generateTinyMusicianWav,
 }));
 
 function clip(id: string): ClipRecord {
@@ -73,8 +71,7 @@ describe("generation export profile", () => {
     musicMocks.extractClipKeyframes.mockReset();
     musicMocks.analyzeClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
-    musicMocks.composeGeneratedMusic.mockReset();
-    musicMocks.renderCompositionToWav.mockReset();
+    musicMocks.generateTinyMusicianWav.mockReset();
     musicMocks.extractClipKeyframes.mockResolvedValue([
       {
         clipId: "clip-1",
@@ -103,11 +100,11 @@ describe("generation export profile", () => {
       instruments: ["felt-piano"],
       texture: "room",
     });
-    musicMocks.composeGeneratedMusic.mockResolvedValue({
-      sampleRate: 48_000,
-      samples: new Float32Array(48_000),
+    musicMocks.generateTinyMusicianWav.mockResolvedValue({
+      musicWav: new Uint8Array([82, 73, 70, 70]),
+      musicPrompt: "Instrumental classic lo-fi hip-hop loop, 74 BPM, no vocals.",
+      musicDurationSeconds: 8,
     });
-    musicMocks.renderCompositionToWav.mockReturnValue(new Uint8Array([82, 73, 70, 70]));
   });
 
   afterEach(() => {
@@ -117,8 +114,7 @@ describe("generation export profile", () => {
     musicMocks.extractClipKeyframes.mockReset();
     musicMocks.analyzeClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
-    musicMocks.composeGeneratedMusic.mockReset();
-    musicMocks.renderCompositionToWav.mockReset();
+    musicMocks.generateTinyMusicianWav.mockReset();
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
   });
 
@@ -136,7 +132,7 @@ describe("generation export profile", () => {
   it("uses concat plus generated music mixing args", () => {
     const args = buildFfmpegArgs(3_000);
 
-    expect(args).toEqual(expect.arrayContaining(["-i", "inputs.txt", "-i", "music.wav"]));
+    expect(args).toEqual(expect.arrayContaining(["-i", "inputs.txt", "-stream_loop", "-1", "-i", "music.wav"]));
     expect(args).toEqual(expect.arrayContaining(["-c:v", "copy"]));
     expect(args).toEqual(expect.arrayContaining(["-c:a", "aac"]));
     expect(args).toEqual(expect.arrayContaining(["-ar", "48000", "-ac", "2"]));
@@ -232,7 +228,12 @@ describe("generation export profile", () => {
     ]);
     expect(writtenFiles).toEqual(["music.wav", "clip-0.mp4", "inputs.txt"]);
     expect(musicMocks.extractClipKeyframes).toHaveBeenCalledWith([expect.objectContaining({ id: "clip-1" })]);
-    expect(musicMocks.buildMusicPlan).toHaveBeenCalledWith(expect.any(Array), 3_000, "seed-1");
+    expect(musicMocks.buildMusicPlan).toHaveBeenCalledWith(expect.any(Array), 8_000, "seed-1");
+    expect(musicMocks.generateTinyMusicianWav).toHaveBeenCalledWith({
+      plan: expect.objectContaining({ seed: "seed-1", bpm: 74 }),
+      descriptions: expect.any(Array),
+      durationSeconds: 8,
+    });
     expect(thumbnailMocks.generateVideoThumbnail).not.toHaveBeenCalled();
     expect(vlog.thumbnailBlob).toBeDefined();
     expect(vlog.thumbnailMimeType).toBe("image/jpeg");
@@ -340,6 +341,43 @@ describe("generation export profile", () => {
     expect(buildGenerationFingerprint([first, second], exportProfile, { seed: "a", profileVersion: 2 })).not.toBe(
       buildGenerationFingerprint([first, second], exportProfile, { seed: "b", profileVersion: 2 }),
     );
+  });
+
+  it("does not call the procedural fallback when TinyMusician fails", async () => {
+    class MockFFmpeg {
+      on() {}
+      async load() {}
+      async writeFile() {
+        throw new Error("ffmpeg should not receive music");
+      }
+      async exec() {
+        throw new Error("ffmpeg should not run");
+      }
+      async readFile() {
+        return new Uint8Array([1, 2, 3]);
+      }
+    }
+    (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
+      MockFFmpeg;
+    storageMocks.getVlogByGenerationFingerprint.mockResolvedValue(null);
+    musicMocks.generateTinyMusicianWav.mockRejectedValue(
+      new AppError({
+        code: "generation-unavailable",
+        area: "generation",
+        message: "TinyMusician missing",
+        userMessage: "Generated music needs TinyMusician installed locally with WebGPU support.",
+      }),
+    );
+
+    await expect(
+      generateVlog([clip("clip-1")], "session-1", () => undefined, {
+        generatedMusic: true,
+        musicSeed: "seed-1",
+      }),
+    ).rejects.toMatchObject({
+      code: "generation-unavailable",
+      message: "TinyMusician missing",
+    });
   });
 
   it("reuses a matching generated vlog without running FFmpeg", async () => {
