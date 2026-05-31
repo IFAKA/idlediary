@@ -82,6 +82,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (url.pathname.startsWith("/models/") || url.pathname.startsWith("/transformers/")) {
+    event.respondWith(
+      fetch(event.request, { cache: "reload" })
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request)),
+    );
+    return;
+  }
+
   const isStaticAsset =
     REQUIRED_ASSETS.includes(url.pathname) ||
     url.pathname.startsWith("/ffmpeg/") ||
