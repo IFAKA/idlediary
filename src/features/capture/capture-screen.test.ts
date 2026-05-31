@@ -41,7 +41,7 @@ describe("shouldPublishGenerationProgress", () => {
     expect(
       generationProgressWithLiveLogs(
         generationProgress("writing", 14, { logs: ["Preparing FFmpeg workspace"] }),
-        generationProgress("rendering", 24, { label: "Assembling MP4" }),
+        generationProgress("rendering", 24, { label: "Polishing the video" }),
         generationProgress("writing", 20, {
           logs: ["Writing clip-0.mp4"],
           rawLogs: ["frame=1 fps=0"],
@@ -50,7 +50,7 @@ describe("shouldPublishGenerationProgress", () => {
     ).toEqual(
       expect.objectContaining({
         step: "rendering",
-        label: "Assembling MP4",
+        label: "Polishing the video",
         logs: ["Writing clip-0.mp4"],
         rawLogs: ["frame=1 fps=0"],
       }),
@@ -61,7 +61,7 @@ describe("shouldPublishGenerationProgress", () => {
     expect(
       generationProgressWithLiveLogs(
         generationProgress("rendering", 24, {
-          logs: ["Running FFmpeg stream-copy mux"],
+          logs: ["Balancing sound and color"],
           rawLogs: ["$ ffmpeg -i inputs.txt"],
         }),
         generationProgress("saving", 92),
@@ -70,7 +70,7 @@ describe("shouldPublishGenerationProgress", () => {
     ).toEqual(
       expect.objectContaining({
         step: "saving",
-        logs: ["Running FFmpeg stream-copy mux"],
+        logs: ["Balancing sound and color"],
         rawLogs: ["$ ffmpeg -i inputs.txt"],
       }),
     );

@@ -8,6 +8,7 @@ const eslintConfig = [
       "node_modules/**",
       "public/ffmpeg/**",
       "public/models/**",
+      "public/spessasynth/**",
       "public/transformers/**",
       "test-results/**",
       "playwright-report/**",

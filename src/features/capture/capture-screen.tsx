@@ -795,7 +795,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
           makeGenerationProgress("loading", 8),
           makeGenerationProgress("writing", 18),
           makeGenerationProgress("rendering", 42),
-          makeGenerationProgress("rendering", 78, { label: "Finishing audio mix" }),
+          makeGenerationProgress("rendering", 78, { label: "Polishing the video" }),
           makeGenerationProgress("saving", 92),
         ];
         for (const nextProgress of demoProgress) {

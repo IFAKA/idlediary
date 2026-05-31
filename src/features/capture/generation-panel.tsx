@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  BookOpen,
-  Check,
-  Circle,
-  Film,
-  LockKeyhole,
-  WandSparkles,
-} from "lucide-react";
+import { BookOpen, Check, Circle, Film, LockKeyhole, Music2, WandSparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { GenerationProgress } from "@/features/generation/generation";
 
@@ -15,7 +8,7 @@ type GenerationPanelProps = {
   progress: GenerationProgress;
 };
 
-type GenerationStageId = "loading" | "writing" | "normalizing" | "encoding" | "saving";
+type GenerationStageId = "loading" | "mood" | "soundtrack" | "polishing" | "saving";
 
 type GenerationStage = {
   id: GenerationStageId;
@@ -24,10 +17,10 @@ type GenerationStage = {
 
 const stages: GenerationStage[] = [
   { id: "loading", label: "Opening your diary" },
-  { id: "writing", label: "Gathering moments" },
-  { id: "normalizing", label: "Assembling MP4" },
-  { id: "encoding", label: "Finishing audio mix" },
-  { id: "saving", label: "Saving privately" },
+  { id: "mood", label: "Finding the mood" },
+  { id: "soundtrack", label: "Making the soundtrack" },
+  { id: "polishing", label: "Polishing the video" },
+  { id: "saving", label: "Saving your vlog" },
 ];
 
 export function shouldShowLocalGenerationLogs(
@@ -47,10 +40,8 @@ export function shouldShowLocalGenerationLogs(
 export function activeGenerationStage(progress: Pick<GenerationProgress, "step" | "label" | "value">) {
   if (progress.step === "done") return "saving";
   if (progress.step === "saving") return "saving";
-  if (progress.step === "rendering") {
-    return progress.value >= 78 ? "encoding" : "normalizing";
-  }
-  if (progress.step === "writing") return "writing";
+  if (progress.step === "rendering") return "polishing";
+  if (progress.step === "writing") return progress.value >= 18 ? "soundtrack" : "mood";
   return "loading";
 }
 
@@ -198,7 +189,7 @@ function StageVisual({
     );
   }
 
-  if (id === "writing") {
+  if (id === "mood") {
     return (
       <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
         <Film className="size-5 text-memory" />
@@ -206,7 +197,15 @@ function StageVisual({
     );
   }
 
-  if (id === "normalizing" || id === "encoding") {
+  if (id === "soundtrack") {
+    return (
+      <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
+        <Music2 className="size-5 text-memory" />
+      </span>
+    );
+  }
+
+  if (id === "polishing") {
     return (
       <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
         <WandSparkles className="size-5 text-memory" />

@@ -23,7 +23,7 @@ describe("GenerationPanel", () => {
     vi.useRealTimers();
   });
 
-  function renderPanel(progress = generationProgress("rendering", 52, { label: "Assembling MP4" })) {
+  function renderPanel(progress = generationProgress("rendering", 52, { label: "Polishing the video" })) {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -38,38 +38,23 @@ describe("GenerationPanel", () => {
   it("maps progress phases to visible stepper stages", () => {
     expect(activeGenerationStage(generationProgress("idle", 0))).toBe("loading");
     expect(activeGenerationStage(generationProgress("loading", 8))).toBe("loading");
-    expect(activeGenerationStage(generationProgress("writing", 18))).toBe("writing");
-    expect(
-      activeGenerationStage(generationProgress("rendering", 24, { label: "Assembling MP4" })),
-    ).toBe("normalizing");
+    expect(activeGenerationStage(generationProgress("writing", 14))).toBe("mood");
+    expect(activeGenerationStage(generationProgress("writing", 18))).toBe("soundtrack");
+    expect(activeGenerationStage(generationProgress("rendering", 24))).toBe("polishing");
     expect(activeGenerationStage(generationProgress("saving", 94))).toBe("saving");
     expect(activeGenerationStage(generationProgress("done", 100))).toBe("saving");
   });
 
-  it("distinguishes rendering labels before the encoding stage", () => {
-    expect(
-      activeGenerationStage(generationProgress("rendering", 24, { label: "Assembling MP4" })),
-    ).toBe("normalizing");
-    expect(
-      activeGenerationStage(generationProgress("rendering", 56, { label: "Assembling MP4" })),
-    ).toBe("normalizing");
-    expect(
-      activeGenerationStage(generationProgress("rendering", 78, { label: "Finishing audio mix" })),
-    ).toBe("encoding");
-  });
-
   it("marks earlier stages complete and all stages complete when done", () => {
     expect([
-      ...completedGenerationStages(
-        generationProgress("rendering", 78, { label: "Finishing audio mix" }),
-      ),
-    ]).toEqual(["loading", "writing", "normalizing"]);
+      ...completedGenerationStages(generationProgress("rendering", 78)),
+    ]).toEqual(["loading", "mood", "soundtrack"]);
 
     expect([...completedGenerationStages(generationProgress("done", 100))]).toEqual([
       "loading",
-      "writing",
-      "normalizing",
-      "encoding",
+      "mood",
+      "soundtrack",
+      "polishing",
       "saving",
     ]);
   });
@@ -77,19 +62,21 @@ describe("GenerationPanel", () => {
   it("keeps the friendly stages, privacy note, progress bar, and lightweight export visuals visible", () => {
     const view = renderPanel(
       generationProgress("rendering", 56, {
-        label: "Assembling MP4",
-        detail: "Putting your clips and music together",
+        label: "Polishing the video",
+        detail: "Balancing sound and color",
         logs: ["concat demuxer stream copy"],
         rawLogs: ["concat demuxer stream copy"],
       }),
     );
 
     expect(view.textContent).toContain("Opening your diary");
-    expect(view.textContent).toContain("Gathering moments");
-    expect(view.textContent).toContain("Assembling MP4");
-    expect(view.textContent).toContain("Finishing audio mix");
-    expect(view.textContent).toContain("Saving privately");
-    expect(view.textContent).toContain("Putting your clips and music together");
+    expect(view.textContent).toContain("Finding the mood");
+    expect(view.textContent).toContain("Making the soundtrack");
+    expect(view.textContent).toContain("Polishing the video");
+    expect(view.textContent).toContain("Saving your vlog");
+    expect(view.textContent).toContain("Balancing sound and color");
+    expect(view.textContent).not.toContain("Assembling MP4");
+    expect(view.textContent).not.toContain("Finishing audio mix");
     expect(view.textContent).not.toContain("Rendering video");
     expect(view.textContent).toContain("Your clips and video stay private on this device.");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();
@@ -107,7 +94,7 @@ describe("GenerationPanel", () => {
     vi.stubEnv("NEXT_PUBLIC_IDLEDIARY_GENERATION_LOGS", "true");
     const view = renderPanel(
       generationProgress("rendering", 56, {
-        label: "Assembling MP4",
+        label: "Polishing the video",
         logs: ["friendly summary"],
         rawLogs: ["frame=42 fps=30", "muxing overhead: 0.1%"],
       }),
@@ -123,14 +110,14 @@ describe("GenerationPanel", () => {
     vi.stubEnv("NEXT_PUBLIC_IDLEDIARY_GENERATION_LOGS", "true");
     const view = renderPanel(
       generationProgress("rendering", 24, {
-        label: "Assembling MP4",
+        label: "Polishing the video",
         logs: [],
         rawLogs: [],
       }),
     );
 
     expect(view.textContent).toContain("Raw local output");
-    expect(view.textContent).toContain("Assembling MP4: waiting for raw generation output...");
+    expect(view.textContent).toContain("Polishing the video: waiting for raw generation output...");
   });
 
   it("does not show the removed long-wait reassurance", () => {

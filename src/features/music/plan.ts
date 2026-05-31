@@ -1,7 +1,7 @@
 import type { ClipMoodDescription, MusicPlan } from "./types";
 import { musicSafeMood, musicSafeTags } from "./music-vocab";
 
-export const musicProfileVersion = 8;
+export const musicProfileVersion = 9;
 
 const keys = ["C", "D", "E", "F", "G", "A", "Bb"] as const;
 const scales = ["minor pentatonic", "major pentatonic", "dorian"] as const;

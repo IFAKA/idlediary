@@ -15,11 +15,10 @@ import { exportProfile } from "@/features/video/export-profile";
 import { getQueuedClipMoodDescriptions } from "@/features/music/clip-analysis-queue";
 import { buildMusicPlan, musicProfileVersion } from "@/features/music/plan";
 import {
-  generateTinyMusicianWav,
+  localMusicEngine,
+  renderLocalMusicWav,
   musicDurationSecondsForVideo,
-  warmTinyMusician,
-  verifyTinyMusicianReadiness,
-} from "@/features/music/tinymusician";
+} from "@/features/music/local-music";
 export { exportProfile } from "@/features/video/export-profile";
 
 export type GenerationProgress = {
@@ -35,7 +34,7 @@ export type GenerationProgress = {
 const maxLogLines = 8;
 const maxRawLogLines = 120;
 const musicVolume = 0.45;
-const technicalSummary = `MP4 concat demuxer | generated music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC`;
+const technicalSummary = `local concat | original music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC`;
 
 const progressCopy: Record<
   GenerationProgress["step"],
@@ -52,18 +51,18 @@ const progressCopy: Record<
     technical: `${technicalSummary} | @ffmpeg/ffmpeg wasm core`,
   },
   writing: {
-    label: "Gathering moments",
-    detail: "Reading your clips and composing a quiet soundtrack",
+    label: "Finding the mood",
+    detail: "Reading your clips",
     technical: `${technicalSummary} | local keyframes, local music synthesis`,
   },
   rendering: {
-    label: "Assembling MP4",
-    detail: "Joining compatible clips privately",
+    label: "Polishing the video",
+    detail: "Balancing sound and color",
     technical: technicalSummary,
   },
   saving: {
-    label: "Saving privately",
-    detail: "Keeping the finished diary on your device",
+    label: "Saving your vlog",
+    detail: "Getting it ready to share",
     technical: exportProfile.output,
   },
   done: {
@@ -88,7 +87,16 @@ let activeFfmpegProgressBucket = -1;
 export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleMs) {
   const durationSeconds = Math.max(0.1, durationMs / 1000);
   const fadeOutStart = Math.max(0, durationSeconds - 2.4).toFixed(3);
+  const videoFilter = [
+    `scale=${exportProfile.width}:${exportProfile.height}:force_original_aspect_ratio=increase`,
+    `crop=${exportProfile.width}:${exportProfile.height}`,
+    `fps=${exportProfile.fps}`,
+    "eq=contrast=1.045:saturation=1.08:brightness=0.012:gamma=1.015",
+    "unsharp=5:5:0.35:3:3:0.12",
+    "format=yuv420p",
+  ].join(",");
   const filterComplex = [
+    `[0:v:0]${videoFilter}[vout]`,
     "[0:a:0]aformat=sample_rates=48000:channel_layouts=stereo,dynaudnorm=f=150:g=9,volume=1.0[clipaudio]",
     `[1:a:0]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${durationSeconds.toFixed(3)},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=2.4,volume=${musicVolume}[music]`,
     "[clipaudio][music]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[aout]",
@@ -110,11 +118,17 @@ export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleM
     "-filter_complex",
     filterComplex,
     "-map",
-    "0:v:0",
+    "[vout]",
     "-map",
     "[aout]",
     "-c:v",
-    "copy",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "23",
+    "-pix_fmt",
+    "yuv420p",
     "-c:a",
     "aac",
     "-b:a",
@@ -227,7 +241,7 @@ async function createGeneratedMusicWav(
   const descriptions = await getQueuedClipMoodDescriptions(clips);
   const musicDurationSeconds = musicDurationSecondsForVideo(durationMs);
   const musicPlan = buildMusicPlan(descriptions, musicDurationSeconds * 1000, seed);
-  const generatedMusic = await generateTinyMusicianWav({
+  const generatedMusic = await renderLocalMusicWav({
     plan: musicPlan,
     descriptions,
     durationSeconds: musicDurationSeconds,
@@ -236,20 +250,19 @@ async function createGeneratedMusicWav(
   return {
     musicWav: generatedMusic.musicWav,
     debug: {
+      ...generatedMusic.debug,
       mocked: false,
-      musicEngine: "tinymusician",
+      musicEngine: localMusicEngine,
       musicSeed: seed,
-      musicPrompt: generatedMusic.musicPrompt,
       musicProfileVersion,
-      musicDurationSeconds: generatedMusic.musicDurationSeconds,
       musicMood: musicPlan.mood,
     },
   };
 }
 
 function renderingLabelFor(value: number) {
-  if (value >= 78) return "Finishing audio mix";
-  return "Assembling MP4";
+  if (value >= 78) return "Saving your vlog";
+  return "Polishing the video";
 }
 
 function emitProgress(progress: GenerationProgress) {
@@ -352,11 +365,11 @@ async function loadFfmpeg() {
 }
 
 export async function warmGenerationPipeline(): Promise<void> {
-  const results = await Promise.allSettled([loadFfmpeg(), warmTinyMusician()]);
+  const results = await Promise.allSettled([loadFfmpeg()]);
   const rejected = results.filter((result) => result.status === "rejected");
   addDebugEvent("generation-warmup", "generation", {
     ffmpeg: results[0]?.status ?? "unknown",
-    tinyMusician: results[1]?.status ?? "unknown",
+    musicEngine: localMusicEngine,
     errors: rejected.map((result) =>
       result.status === "rejected" && result.reason instanceof Error
         ? result.reason.message
@@ -410,7 +423,7 @@ function validateFastConcatCompatibleClips(clips: ClipRecord[], sessionId: strin
     new AppError({
       code: "generation-unavailable",
       area: "generation",
-      message: "Generation requires MP4/H.264/AAC clips for stream-copy concat",
+      message: "Generation requires MP4/H.264/AAC clips for local concat",
       userMessage: "This draft was recorded in an unsupported video format. Record new clips on a compatible device.",
       context: {
         sessionId,
@@ -479,30 +492,10 @@ export async function generateVlog(
     const ffmpeg = await loadFfmpeg();
     markTiming("ffmpegLoadMs", ffmpegLoadStartedAt);
     appendGenerationLog(
-      "Checking TinyMusician model files",
-      generationProgress("writing", 14, {
-        label: "Getting music ready",
-        detail: "Checking this browser can make the soundtrack",
-      }),
-    );
-    const readinessStartedAt = performance.now();
-    await verifyTinyMusicianReadiness(fetch, (message) =>
-      appendRawGenerationLog(message, generationProgress("writing", 14)),
-    );
-    markTiming("tinyMusicianReadinessMs", readinessStartedAt);
-    appendGenerationLog(
-      "TinyMusician readiness passed",
-      generationProgress("writing", 16, {
-        label: "Getting music ready",
-        detail: "Checking this browser can make the soundtrack",
-      }),
-    );
-
-    appendGenerationLog(
-      "Generating clean lo-fi soundtrack",
+      "Creating original lo-fi music",
       generationProgress("writing", 18, {
-        label: "Preparing soundtrack",
-        detail: "First time here can take a little longer",
+        label: "Making the soundtrack",
+        detail: "Creating original lo-fi music",
       }),
     );
 
@@ -518,8 +511,8 @@ export async function generateVlog(
     appendGenerationLog(
       `Soundtrack ready (${musicWav.byteLength.toLocaleString()} bytes)`,
       generationProgress("writing", 20, {
-        label: "Preparing soundtrack",
-        detail: "First time here can take a little longer",
+        label: "Making the soundtrack",
+        detail: "Creating original lo-fi music",
       }),
     );
     const writeStartedAt = performance.now();
@@ -546,7 +539,7 @@ export async function generateVlog(
     });
 
     appendGenerationLog(
-      "Running FFmpeg stream-copy mux with AAC audio mix",
+      "Balancing sound and color",
       generationProgress("rendering", 24),
     );
     appendRawGenerationLog(
@@ -557,16 +550,16 @@ export async function generateVlog(
     await ffmpeg.exec(buildFfmpegArgs(totalDurationMs));
     markTiming("ffmpegMuxMixExecMs", muxStartedAt);
     appendGenerationLog(
-      "FFmpeg mux/audio mix complete",
+      "Video polish complete",
       generationProgress("rendering", Math.max(activeRenderValue, 88), {
-        label: "Finishing audio mix",
+        label: "Saving your vlog",
       }),
     );
     const thumbnailStartedAt = performance.now();
     appendGenerationLog(
       "Selecting saved-video thumbnail",
       generationProgress("rendering", Math.max(activeRenderValue, 88), {
-        label: "Finishing audio mix",
+        label: "Saving your vlog",
       }),
     );
     const thumbnailFields = await selectVlogThumbnail(clips, thumbnailSizes.vlog);
@@ -605,7 +598,8 @@ export async function generateVlog(
       totalMs: Math.round(performance.now() - startedAt),
       clipCount: clips.length,
       outputBytes: blob.size,
-      audioFilters: ["dynaudnorm", "alimiter"],
+      audioFilters: ["dynaudnorm", "afade", "amix", "alimiter"],
+      videoFilters: ["scale", "crop", "fps", "eq", "unsharp", "format"],
     });
     addDebugEvent("vlog-generated", "generation", {
       vlogId: vlog.id,
