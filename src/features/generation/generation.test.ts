@@ -143,6 +143,7 @@ describe("generation export profile", () => {
     expect(args).toContain("+faststart");
     expect(args).toContain("-filter_complex");
     expect(args.join(" ")).toContain("dynaudnorm");
+    expect(args.join(" ")).toContain("volume=0.32[music]");
     expect(args.join(" ")).toContain("amix=inputs=2");
     expect(args.join(" ")).toContain("alimiter=limit=0.95");
   });

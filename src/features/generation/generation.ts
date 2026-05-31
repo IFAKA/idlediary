@@ -25,7 +25,7 @@ export type GenerationProgress = {
 };
 
 const maxLogLines = 8;
-const musicVolume = 0.18;
+const musicVolume = 0.32;
 const technicalSummary = `MP4 concat demuxer | generated music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC, faststart`;
 
 const progressCopy: Record<
