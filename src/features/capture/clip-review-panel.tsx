@@ -592,39 +592,56 @@ function ClipPreview({
 function ClipAnalysisGuide({ clip, index }: { clip: ClipRecord; index: number }) {
   const analysis = clip.analysis;
   const hasAnalysis = Boolean(analysis);
+  const labels = analysis ? analysis.description.split(/\s*\/\s*/).filter(Boolean).slice(0, 6) : [];
+  const alignClass =
+    index % 3 === 0
+      ? "left-0"
+      : index % 3 === 2
+        ? "right-0"
+        : "left-1/2 -translate-x-1/2";
+  const arrowClass =
+    index % 3 === 0
+      ? "left-8"
+      : index % 3 === 2
+        ? "right-8"
+        : "left-1/2 -translate-x-1/2";
 
   return (
     <div
       aria-label={`Clip ${index + 1} model output`}
-      className="pointer-events-none absolute left-1/2 top-[calc(100%+0.5rem)] z-40 w-[min(16rem,calc(100vw_-_2rem))] -translate-x-1/2 rounded-lg border border-white/22 bg-black/82 p-3 text-left text-white opacity-0 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-md transition duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+      className={`pointer-events-none absolute top-[calc(100%+0.5rem)] z-40 w-[min(16rem,calc(100vw_-_2rem))] rounded-lg border border-white/22 bg-black/82 p-3 text-left text-white opacity-0 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-md transition duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${alignClass}`}
       data-testid="clip-analysis-guide"
       role="status"
     >
       <span
         aria-hidden="true"
-        className="absolute -top-1.5 left-1/2 size-3 -translate-x-1/2 rotate-45 border-l border-t border-white/22 bg-black/82"
+        className={`absolute -top-1.5 size-3 rotate-45 border-l border-t border-white/22 bg-black/82 ${arrowClass}`}
       />
       <div className="relative">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-memory">
-          Local model output
+          Raw vision labels
         </p>
         {hasAnalysis && analysis ? (
           <>
-            <p className="mt-1 text-sm font-semibold leading-5">{analysis.description}</p>
-            <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/70">
-              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">
-                {analysis.mood}
-              </span>
-              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">
-                {analysis.energy}
-              </span>
-              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">
-                {analysis.brightness}
-              </span>
+            <div className="mt-2 grid gap-1.5">
+              {labels.map((label) => (
+                <p
+                  key={label}
+                  className="truncate rounded-md border border-white/12 bg-white/7 px-2 py-1 font-mono text-[11px] leading-4 text-white/82"
+                  title={label}
+                >
+                  {label}
+                </p>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
+              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">mood {analysis.mood}</span>
+              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">{analysis.energy}</span>
+              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">{analysis.brightness}</span>
             </div>
             {analysis.tags.length > 0 ? (
-              <p className="mt-2 text-xs leading-5 text-white/68">
-                {analysis.tags.map((tag) => `#${tag}`).join(" ")}
+              <p className="mt-2 max-h-10 overflow-hidden text-xs leading-5 text-white/60">
+                Music tags: {analysis.tags.slice(0, 6).map((tag) => `#${tag}`).join(" ")}
               </p>
             ) : null}
           </>

@@ -309,12 +309,13 @@ describe("thumbnail rendering", () => {
     });
 
     expect(container.querySelectorAll('[data-testid="clip-analysis-guide"]')).toHaveLength(2);
-    expect(container).toHaveTextContent("Local model output");
-    expect(container).toHaveTextContent("coffee cup / table");
+    expect(container).toHaveTextContent("Raw vision labels");
+    expect(container).toHaveTextContent("coffee cup");
+    expect(container).toHaveTextContent("table");
     expect(container).toHaveTextContent("coffee");
     expect(container).toHaveTextContent("low");
     expect(container).toHaveTextContent("normal");
-    expect(container).toHaveTextContent("#coffee #table");
+    expect(container).toHaveTextContent("Music tags: #coffee #table");
     expect(container).toHaveTextContent(
       "Analyzing local frames. The generated description will appear here.",
     );
