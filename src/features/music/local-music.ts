@@ -201,10 +201,10 @@ export function buildMidiTrackPlan(plan: MusicPlan): MidiTrackPlan[] {
 
   return [
     { name: "warm chords", channel: 0, program: 4, notes: bounded(chords, totalTicks) },
-    { name: "round bass", channel: 1, program: 33, notes: bounded(bass, totalTicks) },
-    { name: "soft drums", channel: 9, program: 0, notes: bounded(drums, totalTicks) },
-    { name: "sparse motif", channel: 2, program: 5, notes: bounded(motif, totalTicks) },
-    { name: "room texture", channel: 3, program: 89, notes: bounded(texture, totalTicks) },
+    { name: "upright bass", channel: 1, program: 32, notes: bounded(bass, totalTicks) },
+    { name: "brush drums", channel: 9, program: 40, notes: bounded(drums, totalTicks) },
+    { name: "vibes motif", channel: 2, program: 11, notes: bounded(motif, totalTicks) },
+    { name: "room texture", channel: 3, program: 48, notes: bounded(texture, totalTicks) },
   ];
 }
 
@@ -240,6 +240,7 @@ async function renderTracksWithSpessaSynth(
       const left = new Float32Array(sampleCount);
       const right = new Float32Array(sampleCount);
       renderScheduledTrackEvents(processor, tracks, bpm, left, right);
+      applyLofiMaster(left, right);
       return new Uint8Array(audioToWav([left, right], targetSampleRate));
     } finally {
       processor.destroySynthProcessor();
@@ -296,11 +297,40 @@ function ticksToSamples(ticks: number, beatSeconds: number) {
   return Math.max(0, Math.round((ticks / midiTicksPerQuarter) * beatSeconds * targetSampleRate));
 }
 
+function applyLofiMaster(left: Float32Array, right: Float32Array) {
+  const lowPassCutoff = 4_800;
+  const rc = 1 / (Math.PI * 2 * lowPassCutoff);
+  const alpha = (1 / targetSampleRate) / (rc + 1 / targetSampleRate);
+  let filteredLeft = left[0] ?? 0;
+  let filteredRight = right[0] ?? 0;
+  let previousLeft = filteredLeft;
+  let previousRight = filteredRight;
+
+  for (let index = 0; index < left.length; index += 1) {
+    filteredLeft += alpha * (left[index] - filteredLeft);
+    filteredRight += alpha * (right[index] - filteredRight);
+    const wobble = 0.982 + Math.sin((Math.PI * 2 * index * 0.23) / targetSampleRate) * 0.018;
+    const mono = (filteredLeft + filteredRight) * 0.5;
+    const widthLeft = filteredLeft * 0.82 + mono * 0.18;
+    const widthRight = filteredRight * 0.82 + mono * 0.18;
+    const softenedLeft = widthLeft * 0.86 + previousLeft * 0.14;
+    const softenedRight = widthRight * 0.86 + previousRight * 0.14;
+    left[index] = Math.tanh(softenedLeft * 1.45) * 0.82 * wobble;
+    right[index] = Math.tanh(softenedRight * 1.45) * 0.82 * wobble;
+    previousLeft = softenedLeft;
+    previousRight = softenedRight;
+  }
+}
+
 async function fetchSoundFont() {
   soundFontPromise ??= (async () => {
     const response = await fetch(soundFontPath, { cache: "force-cache" });
     if (!response.ok) throw new Error(`SoundFont missing: ${response.status}`);
-    return response.arrayBuffer();
+    const soundFont = await response.arrayBuffer();
+    const { SoundBankLoader } = await loadSpessaSynthModules();
+    const presetCount = SoundBankLoader.fromArrayBuffer(soundFont.slice(0)).presets.length;
+    if (presetCount < 120) throw new Error(`SoundFont has only ${presetCount} presets`);
+    return soundFont;
   })();
   return (await soundFontPromise).slice(0);
 }

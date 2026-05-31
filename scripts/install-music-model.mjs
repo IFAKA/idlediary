@@ -2,7 +2,7 @@ import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BasicSoundBank } from "spessasynth_core";
+import { SoundBankLoader } from "spessasynth_core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const visionModelId = "Xenova/mobilevit-small";
@@ -11,6 +11,8 @@ const revision = "main";
 const wasmOutputDir = join(root, "public", "transformers");
 const spessaOutputDir = join(root, "public", "spessasynth");
 const soundFontOutputPath = join(root, "public", "soundfonts", "lofi-diary.sf2");
+const soundFontUrl = "https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/main/GeneralUser-GS.sf2";
+const minimumSoundFontPresetCount = 120;
 
 const visionModelFiles = [
   "config.json",
@@ -67,14 +69,34 @@ async function copySpessaWorklet() {
 }
 
 async function writeLocalSoundFont() {
-  if (existsSync(soundFontOutputPath)) {
+  if (await hasUsableSoundFont(soundFontOutputPath)) {
     console.log("exists lofi-diary.sf2");
     return;
   }
 
+  const response = await fetch(soundFontUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download GeneralUser GS SoundFont: ${response.status} ${response.statusText}`);
+  }
+
   await mkdir(dirname(soundFontOutputPath), { recursive: true });
-  await writeFile(soundFontOutputPath, Buffer.from(BasicSoundBank.getSampleSoundBankFile()));
-  console.log("wrote lofi-diary.sf2");
+  await writeFile(soundFontOutputPath, new Uint8Array(await response.arrayBuffer()));
+  if (!(await hasUsableSoundFont(soundFontOutputPath))) {
+    throw new Error("Downloaded SoundFont does not include enough GM presets for local music rendering.");
+  }
+  console.log("downloaded lofi-diary.sf2");
+}
+
+async function hasUsableSoundFont(path) {
+  if (!existsSync(path)) return false;
+  const file = await import("node:fs/promises").then((fs) => fs.readFile(path));
+  try {
+    const buffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+    const soundBank = SoundBankLoader.fromArrayBuffer(buffer);
+    return soundBank.presets.length >= minimumSoundFontPresetCount;
+  } catch {
+    return false;
+  }
 }
 
 await mkdir(wasmOutputDir, { recursive: true });

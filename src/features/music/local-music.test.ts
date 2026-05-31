@@ -53,9 +53,9 @@ describe("local generative music", () => {
 
     expect(tracks.map((track) => track.name)).toEqual([
       "warm chords",
-      "round bass",
-      "soft drums",
-      "sparse motif",
+      "upright bass",
+      "brush drums",
+      "vibes motif",
       "room texture",
     ]);
     expect(tracks.every((track) => track.notes.length > 0)).toBe(true);
