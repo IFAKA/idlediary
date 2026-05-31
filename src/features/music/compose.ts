@@ -10,7 +10,7 @@ export type MusicComposition = {
 const sampleRate = 48_000;
 const twoPi = Math.PI * 2;
 const targetPeak = 0.82;
-const humanizeSeconds = 0.026;
+const humanizeSeconds = 0.032;
 
 type ToneWave = "sine" | "triangle" | "warm";
 
@@ -37,38 +37,32 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
   for (let barStart = 0; barStart < durationSeconds; barStart += barSeconds) {
     const barIndex = Math.floor(barStart / barSeconds);
     const root = scaleNotes[chordDegrees[barIndex % chordDegrees.length] % scaleNotes.length];
-    renderChord(samples, root, barStart, barSeconds * 1.18, plan.energy === "medium" ? 0.078 : 0.066, random);
-    renderBass(samples, root - 24, barStart, beatSeconds, plan.energy === "medium" ? 0.095 : 0.078, random);
+    if (barIndex % 2 === 0) {
+      renderChord(samples, root, barStart, barSeconds * 2.12, plan.energy === "medium" ? 0.062 : 0.052, random);
+    }
+    renderBass(samples, root - 24, barStart, beatSeconds, plan.energy === "medium" ? 0.074 : 0.062, random);
 
     for (let beat = 0; beat < 4; beat += 1) {
       const beatStart = barStart + beat * beatSeconds;
-      renderKick(samples, beatStart + humanize(random, 0.006), plan.energy === "medium" ? 0.085 : 0.058);
-      if (beat === 1 || beat === 3) {
-        renderBrush(samples, beatStart + humanize(random, 0.018), 0.026 + random() * 0.008, random);
+      if (beat === 0 || (plan.energy === "medium" && beat === 2 && random() > 0.34)) {
+        renderKick(samples, beatStart + humanize(random, 0.01), plan.energy === "medium" ? 0.068 : 0.046);
       }
-      renderHat(
-        samples,
-        barStart + (beat + 0.5) * beatSeconds + humanize(random, 0.016),
-        0.012 + random() * 0.007,
-        random,
-      );
+      if (beat === 2) {
+        renderBrush(samples, beatStart + humanize(random, 0.024), 0.018 + random() * 0.006, random);
+      }
+      if (random() > 0.3) {
+        renderHat(
+          samples,
+          barStart + (beat + 0.5) * beatSeconds + humanize(random, 0.024),
+          0.006 + random() * 0.004,
+          random,
+        );
+      }
     }
 
-    const melodyDegree = Math.floor(random() * scaleNotes.length);
-    renderTone(
-      samples,
-      scaleNotes[melodyDegree] + 12,
-      barStart + beatSeconds * (1 + random()) + humanize(random, humanizeSeconds),
-      beatSeconds * (0.75 + random() * 0.55),
-      0.028 + random() * 0.012,
-      {
-        wave: "warm",
-        attackSeconds: 0.08,
-        releaseSeconds: 0.28,
-        detuneCents: (random() - 0.5) * 5,
-        phaseOffset: random() * twoPi,
-      },
-    );
+    if (barIndex % 2 === 1 && random() > 0.28) {
+      renderMotif(samples, scaleNotes, barStart, beatSeconds, random);
+    }
   }
 
   renderTexture(samples, plan.texture, random);
@@ -97,14 +91,14 @@ function renderChord(
   gain: number,
   random: () => number,
 ) {
-  for (const interval of [0, 7, 12, 16]) {
-    const noteStart = start + humanize(random, 0.022);
-    const noteGain = (gain / 4) * (0.86 + random() * 0.24);
+  for (const interval of [0, 7, 14]) {
+    const noteStart = start + humanize(random, 0.04);
+    const noteGain = (gain / 3) * (0.82 + random() * 0.18);
     renderTone(samples, rootMidi + interval, noteStart, duration + humanize(random, 0.08), noteGain, {
       wave: "warm",
-      attackSeconds: 0.18 + random() * 0.08,
-      releaseSeconds: 0.62 + random() * 0.24,
-      detuneCents: (random() - 0.5) * 8,
+      attackSeconds: 0.32 + random() * 0.18,
+      releaseSeconds: 0.92 + random() * 0.42,
+      detuneCents: (random() - 0.5) * 5,
       phaseOffset: random() * twoPi,
     });
   }
@@ -120,24 +114,54 @@ function renderBass(
 ) {
   renderTone(samples, midi, barStart + humanize(random, 0.012), beatSeconds * 1.8, gain, {
     wave: "warm",
-    attackSeconds: 0.07,
-    releaseSeconds: 0.36,
+    attackSeconds: 0.1,
+    releaseSeconds: 0.42,
     detuneCents: -3,
   });
-  renderTone(
-    samples,
-    midi + 7,
-    barStart + beatSeconds * 2 + humanize(random, 0.014),
-    beatSeconds * 1.48,
-    gain * 0.62,
-    {
-      wave: "warm",
-      attackSeconds: 0.08,
-      releaseSeconds: 0.34,
-      detuneCents: 3,
-      phaseOffset: 0.4,
-    },
-  );
+  if (random() > 0.52) {
+    renderTone(
+      samples,
+      midi + 7,
+      barStart + beatSeconds * 2 + humanize(random, 0.018),
+      beatSeconds * 1.34,
+      gain * 0.42,
+      {
+        wave: "warm",
+        attackSeconds: 0.12,
+        releaseSeconds: 0.38,
+        detuneCents: 2,
+        phaseOffset: 0.4,
+      },
+    );
+  }
+}
+
+function renderMotif(
+  samples: Float32Array,
+  scaleNotes: number[],
+  barStart: number,
+  beatSeconds: number,
+  random: () => number,
+) {
+  const noteCount = random() > 0.56 ? 2 : 1;
+  const motifStart = barStart + beatSeconds * (1.2 + random() * 1.6);
+  for (let note = 0; note < noteCount; note += 1) {
+    const melodyDegree = Math.floor(random() * scaleNotes.length);
+    renderTone(
+      samples,
+      scaleNotes[melodyDegree] + 12,
+      motifStart + note * beatSeconds * 0.72 + humanize(random, humanizeSeconds),
+      beatSeconds * (0.46 + random() * 0.28),
+      0.014 + random() * 0.008,
+      {
+        wave: "warm",
+        attackSeconds: 0.11,
+        releaseSeconds: 0.36,
+        detuneCents: (random() - 0.5) * 4,
+        phaseOffset: random() * twoPi,
+      },
+    );
+  }
 }
 
 function renderTone(
@@ -191,7 +215,7 @@ function renderKick(samples: Float32Array, startSeconds: number, gain: number) {
   if (length <= 0) return;
   for (let index = 0; index < length; index += 1) {
     const t = index / sampleRate;
-    samples[start + index] += Math.sin(twoPi * (72 - t * 170) * t) * gain * Math.exp(-t * 18);
+    samples[start + index] += Math.sin(twoPi * (58 - t * 112) * t) * gain * Math.exp(-t * 16);
   }
 }
 
@@ -254,10 +278,10 @@ function applyFade(samples: Float32Array, fadeInSeconds: number, fadeOutSeconds:
 
 function applyLofiMaster(samples: Float32Array, random: () => number) {
   applyTapeDrift(samples, random);
-  lowPass(samples, 4_600);
+  lowPass(samples, 3_400);
   addRoomTail(samples);
   saturate(samples);
-  lowPass(samples, 7_200);
+  lowPass(samples, 5_600);
 }
 
 function applyTapeDrift(samples: Float32Array, random: () => number) {
@@ -319,7 +343,7 @@ function addRoomTail(samples: Float32Array) {
 
 function saturate(samples: Float32Array) {
   for (let index = 0; index < samples.length; index += 1) {
-    samples[index] = Math.tanh(samples[index] * 1.55) * 0.74;
+    samples[index] = Math.tanh(samples[index] * 1.38) * 0.78;
   }
 }
 

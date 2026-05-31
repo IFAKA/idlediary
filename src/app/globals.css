@@ -301,19 +301,6 @@ button {
   contain: layout paint;
 }
 
-.generation-spinner {
-  animation: generation-spinner 0.9s linear infinite;
-  transform-origin: center;
-  will-change: transform;
-  contain: layout paint;
-}
-
-@keyframes generation-spinner {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes clip-stack {
   0%,
   100% {

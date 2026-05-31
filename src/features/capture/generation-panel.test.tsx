@@ -73,7 +73,7 @@ describe("GenerationPanel", () => {
     ]);
   });
 
-  it("keeps the friendly stages, privacy note, progress bar, and reduced-motion classes visible", () => {
+  it("keeps the friendly stages, privacy note, progress bar, and lightweight export visuals visible", () => {
     const view = renderPanel(
       generationProgress("rendering", 56, {
         label: "Assembling MP4",
@@ -90,7 +90,9 @@ describe("GenerationPanel", () => {
     expect(view.textContent).toContain("Your clips and video stay private on this device.");
     expect(view.textContent).not.toContain("concat demuxer stream copy");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();
-    expect(view.querySelector('[class*="motion-reduce:animate-none"]')).not.toBeNull();
+    expect(view.querySelector(".generation-spinner")).toBeNull();
+    expect(view.querySelector(".generation-step-shimmer")).not.toBeNull();
+    expect(view.querySelector(".generation-step-shimmer")?.className).toContain("motion-reduce:hidden");
   });
 
   it("does not show the removed long-wait reassurance", () => {

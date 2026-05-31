@@ -5,7 +5,6 @@ import {
   Check,
   Circle,
   Film,
-  LoaderCircle,
   LockKeyhole,
   WandSparkles,
 } from "lucide-react";
@@ -62,18 +61,10 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
   const completedStages = completedGenerationStages(progress);
 
   return (
-    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden top-level-screen">
+    <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden bg-background top-level-screen">
       <div
         aria-hidden="true"
-        className="absolute inset-x-[-22%] bottom-[-7rem] h-[34rem] bg-[radial-gradient(circle_at_50%_55%,hsl(var(--memory)/0.26),transparent_58%)]"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 bottom-24 top-[var(--app-header-background-start)] overflow-hidden bg-[linear-gradient(180deg,transparent,hsl(var(--surface-soft)/0.56)_44%,transparent)] [mask-image:linear-gradient(to_bottom,transparent,black_16%,black_76%,transparent)]"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute bottom-40 left-5 size-2 rounded-full bg-primary/60 shadow-[64px_-42px_0_hsl(var(--memory)/0.42),154px_18px_0_hsl(var(--primary)/0.36),246px_-28px_0_hsl(var(--accent)/0.38)]"
+        className="absolute inset-x-0 bottom-24 top-[var(--app-header-background-start)] bg-surface-soft/36"
       />
       <div
         aria-hidden="true"
@@ -82,7 +73,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
 
       <div className="relative flex min-h-0 flex-1 flex-col justify-center pb-6">
         <div className="relative w-full max-w-sm contain-layout contain-paint">
-          <ol className="relative mb-5 grid gap-2">
+          <ol className="relative mb-5 grid gap-2 contain-layout contain-paint">
             {stages.map((stage) => {
               const isActive = stage.id === activeStage;
               const isComplete = completedStages.has(stage.id);
@@ -90,13 +81,13 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
               return (
                 <li
                   key={stage.id}
-                  className={`relative grid min-h-14 grid-cols-[36px_minmax(0,1fr)_36px] items-center gap-3 overflow-hidden rounded-lg border px-3 py-2.5 transition ${
+                  className={`relative grid min-h-14 grid-cols-[36px_minmax(0,1fr)_36px] items-center gap-3 overflow-hidden rounded-lg border px-3 py-2.5 ${
                     isActive
                       ? "border-memory/55 bg-memory/16 text-foreground"
                       : isComplete
                         ? "border-memory/24 bg-surface-soft/54 text-foreground"
                         : "border-border/62 bg-black/14 text-muted-foreground"
-                  } motion-reduce:transition-none`}
+                  }`}
                 >
                   {isActive ? (
                     <span
@@ -116,10 +107,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
                     {isComplete ? (
                       <Check className="size-4" aria-hidden="true" />
                     ) : isActive ? (
-                      <LoaderCircle
-                        className="size-4 generation-spinner motion-reduce:animate-none"
-                        aria-hidden="true"
-                      />
+                      <span className="size-2.5 rounded-full bg-memory" aria-hidden="true" />
                     ) : (
                       <Circle className="size-3" aria-hidden="true" />
                     )}
@@ -143,7 +131,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
       </div>
       <Progress
         className="bg-memory/22"
-        indicatorClassName="bg-gradient-to-r from-primary via-memory to-accent"
+        indicatorClassName="bg-memory transition-none"
         value={progress.value}
       />
     </div>
@@ -164,11 +152,7 @@ function StageVisual({
   if (id === "loading") {
     return (
       <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
-        <BookOpen
-          className={`size-5 text-memory ${
-            active ? "animate-[sparkle-breathe_1.7s_ease-in-out_infinite] motion-reduce:animate-none" : ""
-          }`}
-        />
+        <BookOpen className="size-5 text-memory" />
       </span>
     );
   }
@@ -176,11 +160,7 @@ function StageVisual({
   if (id === "writing") {
     return (
       <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
-        <Film
-          className={`size-5 text-memory ${
-            active ? "animate-[card-land_1.8s_ease-in-out_infinite] motion-reduce:animate-none" : ""
-          }`}
-        />
+        <Film className="size-5 text-memory" />
       </span>
     );
   }
@@ -188,22 +168,14 @@ function StageVisual({
   if (id === "normalizing" || id === "encoding") {
     return (
       <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
-        <WandSparkles
-          className={`size-5 text-memory ${
-            active ? "animate-[sparkle-breathe_1.45s_ease-in-out_infinite] motion-reduce:animate-none" : ""
-          }`}
-        />
+        <WandSparkles className="size-5 text-memory" />
       </span>
     );
   }
 
   return (
     <span aria-hidden="true" className={`flex justify-end ${activeClass}`}>
-      <LockKeyhole
-        className={`size-6 text-memory ${
-          active ? "animate-[sparkle-breathe_1.7s_ease-in-out_infinite] motion-reduce:animate-none" : ""
-        }`}
-      />
+      <LockKeyhole className="size-6 text-memory" />
     </span>
   );
 }

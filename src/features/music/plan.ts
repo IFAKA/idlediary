@@ -1,17 +1,17 @@
 import type { ClipMoodDescription, MusicPlan } from "./types";
 
-export const musicProfileVersion = 2;
+export const musicProfileVersion = 3;
 
 const keys = ["C", "D", "E", "F", "G", "A", "Bb"] as const;
-const scales = ["major pentatonic", "minor pentatonic", "major", "minor", "dorian"] as const;
+const scales = ["minor pentatonic", "major pentatonic", "dorian"] as const;
 const instrumentPalettes = [
   ["felt-piano", "soft-bass", "brush-kit"],
   ["electric-piano", "sub-bass", "brush-kit"],
   ["electric-piano", "warm-pad", "soft-kick"],
-  ["mallet", "felt-piano", "soft-kit"],
-  ["pluck", "soft-bass", "soft-kit"],
+  ["felt-piano", "warm-pad", "brush-kit"],
+  ["electric-piano", "soft-bass", "room-kit"],
 ] as const;
-const textures = ["vinyl", "rain", "room", "none"] as const;
+const textures = ["vinyl", "rain", "room"] as const;
 
 export function buildMusicPlan(
   descriptions: ClipMoodDescription[],
@@ -23,14 +23,14 @@ export function buildMusicPlan(
   const energy = mediumEnergyCount > descriptions.length / 2 ? "medium" : "low";
   const profileSeed = [seed, mood, ...descriptions.flatMap((description) => description.tags)].join("|");
   const pick = picker(profileSeed);
-  const baseBpm = 66 + pick(23);
+  const baseBpm = 62 + pick(16);
 
   return {
     seed,
     durationMs,
     mood,
     energy,
-    bpm: baseBpm + (energy === "medium" ? 8 : 0),
+    bpm: baseBpm + (energy === "medium" ? 6 : 0),
     key: keys[pick(keys.length)],
     scale: scales[pick(scales.length)],
     instruments: [...instrumentPalettes[pick(instrumentPalettes.length)]],

@@ -28,6 +28,12 @@ describe("buildMusicPlan", () => {
     expect(first.key).toEqual(expect.any(String));
     expect(first.scale).toEqual(expect.any(String));
     expect(first.instruments.length).toBeGreaterThan(0);
+    expect(first.bpm).toBeGreaterThanOrEqual(62);
+    expect(first.bpm).toBeLessThanOrEqual(83);
+    expect(["minor pentatonic", "major pentatonic", "dorian"]).toContain(first.scale);
+    expect(first.texture).not.toBe("none");
+    expect(first.instruments).not.toContain("pluck");
+    expect(first.instruments).not.toContain("mallet");
   });
 
   it("lets seed and AI caption words change the generated profile", () => {
