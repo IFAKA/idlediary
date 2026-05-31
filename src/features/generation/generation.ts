@@ -33,8 +33,9 @@ export type GenerationProgress = {
 
 const maxLogLines = 8;
 const maxRawLogLines = 120;
-const musicVolume = 0.24;
-export const renderPipelineVersion = 2;
+const musicVolume = 0.42;
+const clipAudioVolume = 0.82;
+export const renderPipelineVersion = 3;
 const silentVlogColorGradeFilters = [
   "eq=contrast=0.985:saturation=1.14:brightness=0.018:gamma=1.025",
   "colorbalance=rs=0.035:gs=0.012:bs=-0.024:rm=0.026:gm=0.012:bm=-0.018:rh=0.014:gh=0.006:bh=-0.01",
@@ -103,9 +104,9 @@ export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleM
   ].join(",");
   const filterComplex = [
     `[0:v:0]${videoFilter}[vout]`,
-    "[0:a:0]aformat=sample_rates=48000:channel_layouts=stereo,loudnorm=I=-16:TP=-1.5:LRA=11,dynaudnorm=f=150:g=9,volume=1.0,asplit=2[clipmix][clipduck]",
+    `[0:a:0]aformat=sample_rates=48000:channel_layouts=stereo,loudnorm=I=-16:TP=-1.5:LRA=11,dynaudnorm=f=150:g=9,volume=${clipAudioVolume},asplit=2[clipmix][clipduck]`,
     `[1:a:0]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${durationSeconds.toFixed(3)},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=2.4,volume=${musicVolume}[musicbase]`,
-    "[musicbase][clipduck]sidechaincompress=threshold=0.055:ratio=8:attack=18:release=260:makeup=1[duckedmusic]",
+    "[musicbase][clipduck]sidechaincompress=threshold=0.09:ratio=3.5:attack=24:release=320:makeup=1.15[duckedmusic]",
     "[clipmix][duckedmusic]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11,alimiter=limit=0.84[aout]",
   ].join(";");
 

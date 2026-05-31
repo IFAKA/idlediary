@@ -152,12 +152,13 @@ describe("generation export profile", () => {
     expect(args).toContain("-filter_complex");
     expect(args.join(" ")).toContain("loudnorm=I=-16:TP=-1.5:LRA=11");
     expect(args.join(" ")).toContain("dynaudnorm");
+    expect(args.join(" ")).toContain("volume=0.82,asplit=2[clipmix][clipduck]");
     expect(args.join(" ")).toContain("eq=contrast=0.985:saturation=1.14");
     expect(args.join(" ")).toContain("colorbalance=rs=0.035");
     expect(args.join(" ")).toContain("curves=r='0/0.035 0.22/0.25 0.78/0.82 1/0.965'");
     expect(args.join(" ")).toContain("format=yuv420p[vout]");
-    expect(args.join(" ")).toContain("volume=0.24[musicbase]");
-    expect(args.join(" ")).toContain("sidechaincompress=threshold=0.055:ratio=8");
+    expect(args.join(" ")).toContain("volume=0.42[musicbase]");
+    expect(args.join(" ")).toContain("sidechaincompress=threshold=0.09:ratio=3.5");
     expect(args.join(" ")).toContain("amix=inputs=2");
     expect(args.join(" ")).toContain("normalize=0");
     expect(args.join(" ")).toContain("loudnorm=I=-14:TP=-1.5:LRA=11");
