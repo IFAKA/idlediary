@@ -8,7 +8,7 @@ const outputPath = join(publicDir, "offline-assets.json");
 const buildIdPath = join(root, ".next", "BUILD_ID");
 
 const excludedPublicPaths = new Set(["/sw.js", "/offline-assets.json"]);
-const lazyPublicPathPrefixes = ["/ffmpeg/", "/models/", "/transformers/"];
+const lazyPublicPathPrefixes = ["/ffmpeg/", "/models/", "/soundfonts/", "/transformers/"];
 const appRoutes = ["/", "/videos", "/draft", "/result", "/demo/launch"];
 
 async function fileExists(path) {

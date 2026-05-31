@@ -77,7 +77,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/models/") || url.pathname.startsWith("/transformers/")) {
+  if (
+    url.pathname.startsWith("/models/") ||
+    url.pathname.startsWith("/transformers/") ||
+    url.pathname.startsWith("/soundfonts/")
+  ) {
     event.respondWith(
       fetch(event.request, { cache: "reload" })
         .then((response) => {
