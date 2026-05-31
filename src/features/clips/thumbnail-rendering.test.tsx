@@ -242,6 +242,9 @@ describe("thumbnail rendering", () => {
       );
 
     expect(container).toHaveTextContent("Analyzing clip");
+    expect(container).toHaveTextContent(
+      "Getting this clip ready. Make video will unlock automatically.",
+    );
     expect(makeVideoButton()).toBeDisabled();
 
     act(() => {
@@ -273,6 +276,7 @@ describe("thumbnail rendering", () => {
     });
 
     expect(container).not.toHaveTextContent("Analyzing clip");
+    expect(container).not.toHaveTextContent("Make video will unlock automatically.");
     expect(makeVideoButton()).toBeEnabled();
   });
 

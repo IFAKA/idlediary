@@ -410,16 +410,16 @@ export async function generateVlog(
     const ffmpeg = await loadFfmpeg();
     emitProgress(
       generationProgress("writing", 14, {
-        label: "Checking AI music model",
-        detail: "Verifying TinyMusician files and WebGPU",
+        label: "Getting music ready",
+        detail: "Checking this browser can make the soundtrack",
       }),
     );
     await verifyTinyMusicianReadiness();
 
     emitProgress(
       generationProgress("writing", 18, {
-        label: "Loading AI music model",
-        detail: "Downloading or reading cached TinyMusician files",
+        label: "Preparing soundtrack",
+        detail: "First time here can take a little longer",
       }),
     );
 

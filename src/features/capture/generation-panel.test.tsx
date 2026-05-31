@@ -77,6 +77,7 @@ describe("GenerationPanel", () => {
     const view = renderPanel(
       generationProgress("rendering", 56, {
         label: "Assembling MP4",
+        detail: "Putting your clips and music together",
         logs: ["concat demuxer stream copy"],
       }),
     );
@@ -86,6 +87,7 @@ describe("GenerationPanel", () => {
     expect(view.textContent).toContain("Assembling MP4");
     expect(view.textContent).toContain("Making playback ready");
     expect(view.textContent).toContain("Saving privately");
+    expect(view.textContent).toContain("Putting your clips and music together");
     expect(view.textContent).not.toContain("Rendering video");
     expect(view.textContent).toContain("Your clips and video stay private on this device.");
     expect(view.textContent).not.toContain("concat demuxer stream copy");

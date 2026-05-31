@@ -235,8 +235,8 @@ describe("generation export profile", () => {
     expect(progress.map((entry) => entry.label)).toEqual(
       expect.arrayContaining([
         "Opening your diary",
-        "Checking AI music model",
-        "Loading AI music model",
+        "Getting music ready",
+        "Preparing soundtrack",
         "Assembling MP4",
         "Making playback ready",
         "Saving privately",

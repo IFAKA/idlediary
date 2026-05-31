@@ -645,35 +645,43 @@ function ReviewActionBar({
         ) : (
           <motion.div
             key="actions"
-            className="grid grid-cols-2 gap-2"
+            className="grid gap-2"
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             initial={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.16, ease: "easeOut" }}
           >
-            <Button
-              aria-label="Clear draft"
-              disabled={isFinishing || clipCount === 0}
-              type="button"
-              variant="outline"
-              onClick={onClearDraft}
-            >
-              <RotateCcw className="size-4" />
-              Clear draft
-            </Button>
-            <Button
-              aria-busy={processingClipCount > 0}
-              disabled={isFinishing || clipCount === 0 || processingClipCount > 0}
-              type="button"
-              onClick={onMakeVideo}
-            >
-              {processingClipCount > 0 ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <Sparkles className="size-4" />
-              )}
-              Make video
-            </Button>
+            {processingClipCount > 0 ? (
+              <p className="rounded-lg border border-memory/24 bg-memory/12 px-3 py-2 text-center text-xs font-semibold leading-5 text-memory">
+                Getting {processingClipCount === 1 ? "this clip" : "these clips"} ready.
+                Make video will unlock automatically.
+              </p>
+            ) : null}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                aria-label="Clear draft"
+                disabled={isFinishing || clipCount === 0}
+                type="button"
+                variant="outline"
+                onClick={onClearDraft}
+              >
+                <RotateCcw className="size-4" />
+                Clear draft
+              </Button>
+              <Button
+                aria-busy={processingClipCount > 0}
+                disabled={isFinishing || clipCount === 0 || processingClipCount > 0}
+                type="button"
+                onClick={onMakeVideo}
+              >
+                {processingClipCount > 0 ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                Make video
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
