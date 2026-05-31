@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeGeneratedMusic, jazzChordIntervals } from "./compose";
+import { composeGeneratedMusic, jazzChordIntervals, lofiLoopTemplateForSeed } from "./compose";
 import { renderCompositionToWav } from "./render";
 import type { MusicPlan } from "./types";
 
@@ -51,6 +51,18 @@ describe("generated music rendering", () => {
 
     expect(onsetCount(composition.samples, composition.sampleRate)).toBeGreaterThan(24);
     expect(quarterSecondWindowsWithTransients(composition.samples, composition.sampleRate)).toBeGreaterThanOrEqual(14);
+  });
+
+  it("selects a complete reusable loop template instead of random per-bar fragments", () => {
+    const first = lofiLoopTemplateForSeed("seed-1");
+    const second = lofiLoopTemplateForSeed("seed-1");
+
+    expect(first).toBe(second);
+    expect(first.chordDegrees).toHaveLength(4);
+    expect(first.kickSteps.map((event) => event.step)).toContain(0);
+    expect(first.bassNotes.map((note) => note.step)).toEqual(first.kickSteps.map((event) => event.step));
+    expect(first.melodyNotes.length).toBeGreaterThanOrEqual(1);
+    expect(first.melodyNotes.length).toBeLessThanOrEqual(2);
   });
 
   it("uses jazz seventh and ninth chord colors instead of open fifth stacks", () => {

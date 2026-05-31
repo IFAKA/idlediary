@@ -16,6 +16,92 @@ const swingRatio = 0.59;
 
 type ToneWave = "sine" | "triangle" | "warm";
 
+type TimedNote = {
+  step: number;
+  degree: number;
+  lengthSteps: number;
+  gain: number;
+};
+
+type DrumEvent = {
+  step: number;
+  gain: number;
+};
+
+type LofiLoopTemplate = {
+  chordDegrees: number[];
+  kickSteps: DrumEvent[];
+  ghostBrushSteps: DrumEvent[];
+  bassNotes: TimedNote[];
+  melodyNotes: TimedNote[];
+};
+
+const lofiLoopTemplates: LofiLoopTemplate[] = [
+  {
+    chordDegrees: [0, 5, 3, 4],
+    kickSteps: [
+      { step: 0, gain: 1 },
+      { step: 6, gain: 0.7 },
+      { step: 10, gain: 0.56 },
+    ],
+    ghostBrushSteps: [
+      { step: 7, gain: 0.28 },
+      { step: 14, gain: 0.22 },
+    ],
+    bassNotes: [
+      { step: 0, degree: 0, lengthSteps: 3, gain: 1 },
+      { step: 6, degree: 0, lengthSteps: 2, gain: 0.66 },
+      { step: 10, degree: 4, lengthSteps: 2, gain: 0.56 },
+    ],
+    melodyNotes: [
+      { step: 6, degree: 4, lengthSteps: 1, gain: 1 },
+      { step: 9, degree: 2, lengthSteps: 1, gain: 0.72 },
+    ],
+  },
+  {
+    chordDegrees: [0, 3, 4, 2],
+    kickSteps: [
+      { step: 0, gain: 1 },
+      { step: 5, gain: 0.62 },
+      { step: 11, gain: 0.58 },
+    ],
+    ghostBrushSteps: [
+      { step: 4, gain: 0.24 },
+      { step: 13, gain: 0.26 },
+    ],
+    bassNotes: [
+      { step: 0, degree: 0, lengthSteps: 4, gain: 1 },
+      { step: 5, degree: 4, lengthSteps: 2, gain: 0.58 },
+      { step: 11, degree: 0, lengthSteps: 2, gain: 0.62 },
+    ],
+    melodyNotes: [
+      { step: 3, degree: 5, lengthSteps: 1, gain: 0.76 },
+      { step: 11, degree: 4, lengthSteps: 2, gain: 1 },
+    ],
+  },
+  {
+    chordDegrees: [0, 4, 1, 5],
+    kickSteps: [
+      { step: 0, gain: 1 },
+      { step: 7, gain: 0.68 },
+      { step: 12, gain: 0.5 },
+    ],
+    ghostBrushSteps: [
+      { step: 6, gain: 0.26 },
+      { step: 15, gain: 0.22 },
+    ],
+    bassNotes: [
+      { step: 0, degree: 0, lengthSteps: 3, gain: 1 },
+      { step: 7, degree: 0, lengthSteps: 2, gain: 0.66 },
+      { step: 12, degree: 3, lengthSteps: 2, gain: 0.5 },
+    ],
+    melodyNotes: [
+      { step: 8, degree: 2, lengthSteps: 1, gain: 0.68 },
+      { step: 10, degree: 4, lengthSteps: 1, gain: 1 },
+    ],
+  },
+];
+
 type ToneOptions = {
   wave: ToneWave;
   attackSeconds?: number;
@@ -34,11 +120,11 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
   const scaleNotes = scaleMidiNotes(plan.key, plan.scale);
   const beatSeconds = 60 / plan.bpm;
   const barSeconds = beatSeconds * 4;
-  const chordDegrees = plan.scale.includes("minor") ? [0, 3, 4, 2] : [0, 4, 3, 5];
+  const loop = lofiLoopTemplateForSeed(plan.seed);
 
   for (let barStart = 0; barStart < durationSeconds; barStart += barSeconds) {
     const barIndex = Math.floor(barStart / barSeconds);
-    const root = scaleNotes[chordDegrees[barIndex % chordDegrees.length] % scaleNotes.length];
+    const root = scaleNotes[loop.chordDegrees[barIndex % loop.chordDegrees.length] % scaleNotes.length];
     if (barIndex % 2 === 0) {
       renderChord(
         samples,
@@ -50,11 +136,11 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
         random,
       );
     }
-    renderBass(samples, root - 24, barStart, beatSeconds, plan.energy === "medium" ? 0.078 : 0.066, random);
-    renderDrumBar(samples, barStart, beatSeconds, plan.energy, random);
+    renderBassPattern(samples, scaleNotes, root, loop, barStart, beatSeconds, plan.energy, random);
+    renderDrumBar(samples, loop, barStart, beatSeconds, plan.energy, random);
 
-    if (barIndex % 4 === 1 && random() > 0.18) {
-      renderMotif(samples, scaleNotes, barStart, beatSeconds, random);
+    if (barIndex % 4 === 1) {
+      renderMotif(samples, scaleNotes, loop, barStart, beatSeconds, random);
     }
   }
 
@@ -64,6 +150,15 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
   normalizePeak(samples, targetPeak);
 
   return { plan, sampleRate, samples };
+}
+
+export function lofiLoopTemplateForSeed(seed: string) {
+  let value = 2166136261;
+  for (const char of seed) {
+    value ^= char.charCodeAt(0);
+    value = Math.imul(value, 16777619);
+  }
+  return lofiLoopTemplates[Math.abs(value >>> 0) % lofiLoopTemplates.length];
 }
 
 function scaleMidiNotes(key: string, scale: string) {
@@ -105,66 +200,67 @@ function renderChord(
   }
 }
 
-function renderBass(
+function renderBassPattern(
   samples: Float32Array,
-  midi: number,
-  barStart: number,
-  beatSeconds: number,
-  gain: number,
-  random: () => number,
-) {
-  renderTone(samples, midi, barStart + humanize(random, 0.01), beatSeconds * 0.78, gain, {
-    wave: "warm",
-    attackSeconds: 0.045,
-    releaseSeconds: 0.18,
-    detuneCents: -3,
-  });
-  renderTone(samples, midi + (random() > 0.72 ? 7 : 0), swungStepTime(barStart, beatSeconds, 5) + humanize(random, 0.008), beatSeconds * 0.42, gain * 0.62, {
-    wave: "warm",
-    attackSeconds: 0.035,
-    releaseSeconds: 0.15,
-    detuneCents: -2,
-    phaseOffset: 0.22,
-  });
-  if (random() > 0.38) {
-    renderTone(
-      samples,
-      midi + (random() > 0.58 ? 10 : 7),
-      swungStepTime(barStart, beatSeconds, 10) + humanize(random, 0.01),
-      beatSeconds * 0.52,
-      gain * 0.5,
-      {
-        wave: "warm",
-        attackSeconds: 0.04,
-        releaseSeconds: 0.16,
-        detuneCents: 2,
-        phaseOffset: 0.4,
-      },
-    );
-  }
-}
-
-function renderDrumBar(
-  samples: Float32Array,
+  scaleNotes: number[],
+  rootMidi: number,
+  loop: LofiLoopTemplate,
   barStart: number,
   beatSeconds: number,
   energy: MusicPlan["energy"],
   random: () => number,
 ) {
-  const kickGain = energy === "medium" ? 0.092 : 0.074;
-  const brushGain = energy === "medium" ? 0.032 : 0.027;
-  const hatGain = energy === "medium" ? 0.014 : 0.011;
+  const gain = energy === "medium" ? 0.084 : 0.072;
+  for (const note of loop.bassNotes) {
+    const scaleNote = scaleNotes[note.degree % scaleNotes.length];
+    const midi = bassMidiNearRoot(rootMidi, scaleNote);
+    renderTone(
+      samples,
+      midi,
+      swungStepTime(barStart, beatSeconds, note.step) + humanize(random, 0.006),
+      Math.max(beatSeconds * 0.22, stepDuration(beatSeconds, note.lengthSteps) * 0.88),
+      gain * note.gain,
+      {
+        wave: "warm",
+        attackSeconds: 0.035,
+        releaseSeconds: 0.14,
+        detuneCents: -3 + random() * 4,
+        phaseOffset: random() * 0.5,
+      },
+    );
+  }
+}
 
-  renderKick(samples, barStart + humanize(random, 0.006), kickGain);
-  renderKick(samples, swungStepTime(barStart, beatSeconds, random() > 0.48 ? 5 : 7) + humanize(random, 0.006), kickGain * 0.72);
-  if (energy === "medium" || random() > 0.45) {
-    renderKick(samples, swungStepTime(barStart, beatSeconds, 10) + humanize(random, 0.008), kickGain * 0.52);
+function bassMidiNearRoot(rootMidi: number, scaleNote: number) {
+  let midi = scaleNote - 24;
+  const target = rootMidi - 24;
+  while (midi < target - 5) midi += 12;
+  while (midi > target + 7) midi -= 12;
+  return midi;
+}
+
+function renderDrumBar(
+  samples: Float32Array,
+  loop: LofiLoopTemplate,
+  barStart: number,
+  beatSeconds: number,
+  energy: MusicPlan["energy"],
+  random: () => number,
+) {
+  const kickGain = energy === "medium" ? 0.108 : 0.088;
+  const brushGain = energy === "medium" ? 0.038 : 0.032;
+  const hatGain = energy === "medium" ? 0.016 : 0.013;
+
+  for (const event of loop.kickSteps) {
+    renderKick(samples, swungStepTime(barStart, beatSeconds, event.step) + humanize(random, 0.004), kickGain * event.gain);
   }
 
   renderBrush(samples, barStart + beatSeconds + snareLagSeconds + humanize(random, 0.004), brushGain, random);
   renderBrush(samples, barStart + beatSeconds * 3 + snareLagSeconds + humanize(random, 0.004), brushGain * 0.95, random);
-  if (energy === "medium" && random() > 0.38) {
-    renderBrush(samples, swungStepTime(barStart, beatSeconds, random() > 0.5 ? 6 : 12), brushGain * 0.34, random);
+  if (energy === "medium") {
+    for (const event of loop.ghostBrushSteps) {
+      renderBrush(samples, swungStepTime(barStart, beatSeconds, event.step), brushGain * event.gain, random);
+    }
   }
 
   for (let step = 0; step < 8; step += 1) {
@@ -195,20 +291,18 @@ function swungStepTime(barStart: number, beatSeconds: number, sixteenthStep: num
 function renderMotif(
   samples: Float32Array,
   scaleNotes: number[],
+  loop: LofiLoopTemplate,
   barStart: number,
   beatSeconds: number,
   random: () => number,
 ) {
-  const noteCount = random() > 0.5 ? 2 : 1;
-  const motifStart = barStart + beatSeconds * (1.55 + random() * 1.25);
-  for (let note = 0; note < noteCount; note += 1) {
-    const melodyDegree = Math.floor(random() * scaleNotes.length);
+  for (const note of loop.melodyNotes) {
     renderTone(
       samples,
-      scaleNotes[melodyDegree] + 12,
-      motifStart + note * beatSeconds * 0.72 + humanize(random, humanizeSeconds),
-      beatSeconds * (0.28 + random() * 0.18),
-      0.011 + random() * 0.006,
+      scaleNotes[note.degree % scaleNotes.length] + 12,
+      swungStepTime(barStart, beatSeconds, note.step) + humanize(random, humanizeSeconds * 0.45),
+      stepDuration(beatSeconds, note.lengthSteps) * 0.82,
+      (0.012 + random() * 0.004) * note.gain,
       {
         wave: "warm",
         attackSeconds: 0.11,
@@ -218,6 +312,10 @@ function renderMotif(
       },
     );
   }
+}
+
+function stepDuration(beatSeconds: number, stepCount: number) {
+  return (beatSeconds / 4) * stepCount;
 }
 
 function renderTone(
