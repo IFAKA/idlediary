@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppHeaderProvider } from "@/components/app-header-shell";
 import { ClipReviewPanel } from "@/features/capture/clip-review-panel";
 import { HomeScreen } from "@/features/home/home-screen";
+import { clipAnalysisVersion } from "@/features/music/clip-analysis";
 import type { ClipRecord, VlogRecord } from "./types";
 
 const mocks = vi.hoisted(() => ({
@@ -205,6 +206,74 @@ describe("thumbnail rendering", () => {
 
     expect(container).not.toHaveTextContent("Can't load");
     expect(container.querySelector('[data-testid="clip-video-placeholder"]')).toBeInTheDocument();
+  });
+
+  it("keeps Make video disabled while draft clips are still analyzing", () => {
+    const readyClip = clip({
+      analysis: {
+        version: clipAnalysisVersion,
+        description: "coffee cup / table",
+        tags: ["coffee", "table"],
+        mood: "coffee",
+        energy: "low",
+        brightness: "normal",
+        analyzedAt: "2026-05-27T10:01:00.000Z",
+      },
+    });
+    const processingClip = clip({ id: "clip-2", order: 1 });
+
+    act(() => {
+      root.render(
+        <ClipReviewPanel
+          clips={[readyClip, processingClip]}
+          isFinishing={false}
+          onBack={() => undefined}
+          onClearDraft={async () => true}
+          onDeleteClip={async () => true}
+          onMakeVideo={() => undefined}
+          onReorderClips={async () => true}
+        />,
+      );
+    });
+
+    const makeVideoButton = () =>
+      [...container.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("Make video"),
+      );
+
+    expect(container).toHaveTextContent("Analyzing clip");
+    expect(makeVideoButton()).toBeDisabled();
+
+    act(() => {
+      root.render(
+        <ClipReviewPanel
+          clips={[
+            readyClip,
+            {
+              ...processingClip,
+              analysis: {
+                version: clipAnalysisVersion,
+                description: "desk lamp / paper",
+                tags: ["desk", "lamp"],
+                mood: "desk",
+                energy: "low",
+                brightness: "normal",
+                analyzedAt: "2026-05-27T10:02:00.000Z",
+              },
+            },
+          ]}
+          isFinishing={false}
+          onBack={() => undefined}
+          onClearDraft={async () => true}
+          onDeleteClip={async () => true}
+          onMakeVideo={() => undefined}
+          onReorderClips={async () => true}
+        />,
+      );
+    });
+
+    expect(container).not.toHaveTextContent("Analyzing clip");
+    expect(makeVideoButton()).toBeEnabled();
   });
 
   it("saved video cards prefer image thumbnails and fall back to video", async () => {

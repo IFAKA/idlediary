@@ -25,6 +25,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowLeft,
   Clapperboard,
+  LoaderCircle,
   Play,
   RotateCcw,
   Sparkles,
@@ -48,6 +49,7 @@ import {
   getThumbnailObjectUrlForClip,
 } from "@/features/clips/media-cache";
 import type { ClipRecord } from "@/features/clips/types";
+import { clipMoodDescriptionFromAnalysis } from "@/features/music/clip-analysis";
 import { useHistoryOverlay } from "@/hooks/use-history-overlay";
 import { spring } from "@/lib/motion";
 
@@ -81,6 +83,9 @@ export function ClipReviewPanel({
   const hasVibratedForDeleteZone = useRef(false);
   const orderedClipsRef = useRef(orderedClips);
   const visibleClips = orderedClips.slice(0, 20);
+  const processingClipCount = visibleClips.filter(
+    (clip) => !clipMoodDescriptionFromAnalysis(clip),
+  ).length;
   const activeClip =
     visibleClips.find((clip) => clip.id === activeClipId) ?? null;
   const sensors = useSensors(
@@ -308,6 +313,7 @@ export function ClipReviewPanel({
                   isDraggingToDelete={
                     activeClipId === clip.id && isOverDeleteZone
                   }
+                  isProcessing={!clipMoodDescriptionFromAnalysis(clip)}
                   onPreview={() => setPreviewClip(clip)}
                 />
               ))}
@@ -320,6 +326,7 @@ export function ClipReviewPanel({
           isDeleting={isOverDeleteZone}
           isDragging={Boolean(activeClipId)}
           isFinishing={isFinishing}
+          processingClipCount={processingClipCount}
           onClearDraft={() => setConfirmClearDraft(true)}
           onMakeVideo={makeVideo}
         />
@@ -423,6 +430,7 @@ type SortableClipGalleryItemProps = {
   index: number;
   isDisabled: boolean;
   isDraggingToDelete: boolean;
+  isProcessing: boolean;
   onPreview: () => void;
 };
 
@@ -431,6 +439,7 @@ function SortableClipGalleryItem({
   index,
   isDisabled,
   isDraggingToDelete,
+  isProcessing,
   onPreview,
 }: SortableClipGalleryItemProps) {
   const {
@@ -464,6 +473,7 @@ function SortableClipGalleryItem({
         clip={clip}
         index={index}
         isPulledToDelete={isDraggingToDelete}
+        isProcessing={isProcessing}
         listeners={listeners}
         onOpen={onPreview}
       />
@@ -477,6 +487,7 @@ function ClipPreview({
   index,
   isOverlay = false,
   isPulledToDelete = false,
+  isProcessing = false,
   listeners,
   onOpen = () => undefined,
 }: {
@@ -485,6 +496,7 @@ function ClipPreview({
   index: number;
   isOverlay?: boolean;
   isPulledToDelete?: boolean;
+  isProcessing?: boolean;
   listeners?: ReturnType<typeof useSortable>["listeners"];
   onOpen?: () => void;
 }) {
@@ -564,6 +576,14 @@ function ClipPreview({
           canPlay || thumbnailSrc ? "opacity-100" : "opacity-60"
         }`}
       />
+      {isProcessing ? (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/38 text-white backdrop-blur-[1px]">
+          <span className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/58 shadow-[0_8px_24px_rgba(0,0,0,0.24)]">
+            <LoaderCircle className="size-5 animate-spin" />
+            <span className="sr-only">Analyzing clip</span>
+          </span>
+        </span>
+      ) : null}
     </motion.div>
   );
 }
@@ -573,6 +593,7 @@ function ReviewActionBar({
   isDeleting,
   isDragging,
   isFinishing,
+  processingClipCount,
   onClearDraft,
   onMakeVideo,
 }: {
@@ -580,6 +601,7 @@ function ReviewActionBar({
   isDeleting: boolean;
   isDragging: boolean;
   isFinishing: boolean;
+  processingClipCount: number;
   onClearDraft: () => void;
   onMakeVideo: () => void;
 }) {
@@ -640,11 +662,16 @@ function ReviewActionBar({
               Clear draft
             </Button>
             <Button
-              disabled={isFinishing || clipCount === 0}
+              aria-busy={processingClipCount > 0}
+              disabled={isFinishing || clipCount === 0 || processingClipCount > 0}
               type="button"
               onClick={onMakeVideo}
             >
-              <Sparkles className="size-4" />
+              {processingClipCount > 0 ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
               Make video
             </Button>
           </motion.div>

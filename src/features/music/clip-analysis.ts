@@ -32,7 +32,7 @@ export function getCompletedClipMoodDescription(clipId: string) {
   return completedDescriptions.get(clipId) ?? null;
 }
 
-function analysisFromDescription(description: ClipMoodDescription): ClipAnalysisRecord {
+export function analysisFromDescription(description: ClipMoodDescription): ClipAnalysisRecord {
   return {
     version: clipAnalysisVersion,
     description: description.description,

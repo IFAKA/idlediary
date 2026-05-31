@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { reportError } from "@/features/errors/report-error";
+import { analysisFromDescription } from "@/features/music/clip-analysis";
 import { enqueueClipMoodAnalysis } from "@/features/music/clip-analysis-queue";
 import {
   clearClipsForSession,
@@ -206,7 +207,17 @@ export function useClips({ sessionId }: { sessionId?: string } = {}) {
     await saveClip(clip);
     ++requestVersionRef.current;
     dispatch({ type: "add", clip });
-    void enqueueClipMoodAnalysis(clip);
+    void enqueueClipMoodAnalysis(clip)
+      .then((description) => {
+        dispatch({
+          type: "update",
+          clip: {
+            ...clip,
+            analysis: analysisFromDescription(description),
+          },
+        });
+      })
+      .catch((error) => reportError(error));
     return clip;
   }, [sessionId]);
 

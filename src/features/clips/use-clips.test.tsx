@@ -203,6 +203,7 @@ describe("useClips", () => {
     expect(mocks.enqueueClipMoodAnalysis).toHaveBeenCalledWith(
       expect.objectContaining({ id: "clip-new" }),
     );
+    await waitFor(() => expect(latest?.clips[1]?.analysis?.mood).toBe("daily"));
 
     await act(async () => {
       await latest!.reorderClips(["clip-new", "clip-1"]);
