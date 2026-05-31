@@ -3,7 +3,6 @@ import { AppError } from "@/features/errors/app-error";
 import type { ClipRecord } from "@/features/clips/types";
 import {
   buildFfmpegArgs,
-  buildFfmpegThumbnailArgs,
   buildGenerationFingerprint,
   exportProfile,
   generateVlog,
@@ -11,6 +10,7 @@ import {
   isFastConcatCompatibleClip,
   recentGenerationLogs,
   resetGenerationForTests,
+  warmGenerationPipeline,
   type GenerationProgress,
 } from "./generation";
 
@@ -20,15 +20,24 @@ const storageMocks = vi.hoisted(() => ({
 const thumbnailMocks = vi.hoisted(() => ({
   generateVideoThumbnail: vi.fn(),
 }));
+const debugMocks = vi.hoisted(() => ({
+  addDebugEvent: vi.fn(),
+  addDebugError: vi.fn(),
+}));
 const musicMocks = vi.hoisted(() => ({
   getQueuedClipMoodDescriptions: vi.fn(),
   buildMusicPlan: vi.fn(),
   generateTinyMusicianWav: vi.fn(),
+  warmTinyMusician: vi.fn(),
   verifyTinyMusicianReadiness: vi.fn(),
 }));
 
 vi.mock("@/features/clips/storage", () => ({
   getVlogByGenerationFingerprint: storageMocks.getVlogByGenerationFingerprint,
+}));
+vi.mock("@/features/errors/debug-store", () => ({
+  addDebugEvent: debugMocks.addDebugEvent,
+  addDebugError: debugMocks.addDebugError,
 }));
 vi.mock("@/features/clips/thumbnail", () => ({
   generateVideoThumbnail: thumbnailMocks.generateVideoThumbnail,
@@ -46,6 +55,7 @@ vi.mock("@/features/music/plan", async (importOriginal) => ({
 vi.mock("@/features/music/tinymusician", async (importOriginal) => ({
   ...((await importOriginal()) as object),
   generateTinyMusicianWav: musicMocks.generateTinyMusicianWav,
+  warmTinyMusician: musicMocks.warmTinyMusician,
   verifyTinyMusicianReadiness: musicMocks.verifyTinyMusicianReadiness,
 }));
 
@@ -66,9 +76,12 @@ describe("generation export profile", () => {
     resetGenerationForTests();
     storageMocks.getVlogByGenerationFingerprint.mockReset();
     thumbnailMocks.generateVideoThumbnail.mockReset();
+    debugMocks.addDebugEvent.mockReset();
+    debugMocks.addDebugError.mockReset();
     musicMocks.getQueuedClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
     musicMocks.generateTinyMusicianWav.mockReset();
+    musicMocks.warmTinyMusician.mockReset();
     musicMocks.verifyTinyMusicianReadiness.mockReset();
     musicMocks.getQueuedClipMoodDescriptions.mockResolvedValue([
       {
@@ -96,6 +109,7 @@ describe("generation export profile", () => {
       musicPrompt: "Instrumental classic lo-fi hip-hop loop, 74 BPM, no vocals.",
       musicDurationSeconds: 8,
     });
+    musicMocks.warmTinyMusician.mockResolvedValue(undefined);
     musicMocks.verifyTinyMusicianReadiness.mockResolvedValue(undefined);
   });
 
@@ -103,9 +117,12 @@ describe("generation export profile", () => {
     resetGenerationForTests();
     storageMocks.getVlogByGenerationFingerprint.mockReset();
     thumbnailMocks.generateVideoThumbnail.mockReset();
+    debugMocks.addDebugEvent.mockReset();
+    debugMocks.addDebugError.mockReset();
     musicMocks.getQueuedClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
     musicMocks.generateTinyMusicianWav.mockReset();
+    musicMocks.warmTinyMusician.mockReset();
     musicMocks.verifyTinyMusicianReadiness.mockReset();
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
   });
@@ -128,8 +145,8 @@ describe("generation export profile", () => {
     expect(args).toEqual(expect.arrayContaining(["-c:v", "copy"]));
     expect(args).toEqual(expect.arrayContaining(["-c:a", "aac"]));
     expect(args).toEqual(expect.arrayContaining(["-ar", "48000", "-ac", "2"]));
-    expect(args).toContain("-movflags");
-    expect(args).toContain("+faststart");
+    expect(args).not.toContain("-movflags");
+    expect(args).not.toContain("+faststart");
     expect(args).toContain("-filter_complex");
     expect(args.join(" ")).toContain("dynaudnorm");
     expect(args.join(" ")).toContain("volume=0.45[music]");
@@ -147,26 +164,16 @@ describe("generation export profile", () => {
     expect(args.at(-1)).toBe("vlog.mp4");
   });
 
-  it("extracts generated thumbnails from the FFmpeg output", () => {
-    expect(buildFfmpegThumbnailArgs({ width: 360, height: 640 })).toEqual([
-      "-y",
-      "-ss",
-      "0.1",
-      "-i",
-      "vlog.mp4",
-      "-frames:v",
-      "1",
-      "-vf",
-      "scale=360:640:force_original_aspect_ratio=increase,crop=360:640,setsar=1",
-      "-q:v",
-      "3",
-      "vlog-thumbnail.jpg",
-    ]);
-  });
-
   it("captures progress phases, technical detail, and bounded FFmpeg logs", async () => {
     const execArgs: string[][] = [];
     const writtenFiles: string[] = [];
+    const sourceClip = {
+      ...clip("clip-1"),
+      thumbnailBlob: new Blob(["clip-thumb"], { type: "image/jpeg" }),
+      thumbnailMimeType: "image/jpeg",
+      thumbnailWidth: 256,
+      thumbnailHeight: 256,
+    };
 
     class MockFFmpeg {
       private readonly handlers = new Map<string, Array<(event: never) => void>>();
@@ -185,7 +192,7 @@ describe("generation export profile", () => {
         execArgs.push(args);
         this.emit("log", { message: "concat demuxer stream copy" });
         this.emit("progress", { progress: 0.62 });
-        this.emit("log", { message: "faststart remux" });
+        this.emit("log", { message: "audio mix complete" });
         this.emit("progress", { progress: 0.96 });
       }
 
@@ -206,7 +213,7 @@ describe("generation export profile", () => {
 
     const progress: GenerationProgress[] = [];
     const vlog = await generateVlog(
-      [clip("clip-1")],
+      [sourceClip],
       "session-1",
       (nextProgress) => {
         progress.push(nextProgress);
@@ -214,10 +221,7 @@ describe("generation export profile", () => {
       { generatedMusic: true, musicSeed: "seed-1" },
     );
 
-    expect(execArgs).toEqual([
-      buildFfmpegArgs(3_000),
-      buildFfmpegThumbnailArgs({ width: 360, height: 640 }),
-    ]);
+    expect(execArgs).toEqual([buildFfmpegArgs(3_000)]);
     expect(writtenFiles).toEqual(["music.wav", "clip-0.mp4", "inputs.txt"]);
     expect(musicMocks.getQueuedClipMoodDescriptions).toHaveBeenCalledWith([
       expect.objectContaining({ id: "clip-1" }),
@@ -230,21 +234,153 @@ describe("generation export profile", () => {
       durationSeconds: 8,
     });
     expect(thumbnailMocks.generateVideoThumbnail).not.toHaveBeenCalled();
-    expect(vlog.thumbnailBlob).toBeDefined();
+    expect(vlog.thumbnailBlob).toBe(sourceClip.thumbnailBlob);
     expect(vlog.thumbnailMimeType).toBe("image/jpeg");
+    expect(vlog.thumbnailWidth).toBe(256);
+    expect(vlog.thumbnailHeight).toBe(256);
     expect(progress.map((entry) => entry.label)).toEqual(
       expect.arrayContaining([
         "Opening your diary",
         "Getting music ready",
         "Preparing soundtrack",
         "Assembling MP4",
-        "Making playback ready",
+        "Finishing audio mix",
         "Saving privately",
         "Ready",
       ]),
     );
     expect(progress.some((entry) => entry.technical.includes("generated music mix"))).toBe(true);
-    expect(progress.at(-1)?.logs).toHaveLength(4);
+    expect(progress.at(-1)?.logs).toEqual(["concat demuxer stream copy", "audio mix complete"]);
+    expect(debugMocks.addDebugEvent).toHaveBeenCalledWith(
+      "generation-timing",
+      "generation",
+      expect.objectContaining({
+        ffmpegLoadMs: expect.any(Number),
+        tinyMusicianReadinessMs: expect.any(Number),
+        musicGenerationMs: expect.any(Number),
+        ffmpegWriteFilesMs: expect.any(Number),
+        ffmpegMuxMixExecMs: expect.any(Number),
+        ffmpegOutputReadMs: expect.any(Number),
+        thumbnailSelectionMs: expect.any(Number),
+        saveHandoffMs: expect.any(Number),
+        totalMs: expect.any(Number),
+        clipCount: 1,
+        outputBytes: vlog.size,
+        audioFilters: ["dynaudnorm", "alimiter"],
+      }),
+    );
+  });
+
+  it("warms FFmpeg and TinyMusician without generating output", async () => {
+    const calls: string[] = [];
+
+    class MockFFmpeg {
+      on() {}
+      async load() {
+        calls.push("load");
+      }
+      async writeFile() {
+        calls.push("writeFile");
+      }
+      async exec() {
+        calls.push("exec");
+      }
+      async readFile() {
+        calls.push("readFile");
+        return new Uint8Array([1, 2, 3]);
+      }
+    }
+    (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
+      MockFFmpeg;
+
+    await warmGenerationPipeline();
+
+    expect(calls).toEqual(["load"]);
+    expect(musicMocks.warmTinyMusician).toHaveBeenCalledOnce();
+    expect(musicMocks.generateTinyMusicianWav).not.toHaveBeenCalled();
+    expect(debugMocks.addDebugEvent).toHaveBeenCalledWith(
+      "generation-warmup",
+      "generation",
+      expect.objectContaining({
+        ffmpeg: "fulfilled",
+        tinyMusician: "fulfilled",
+      }),
+    );
+  });
+
+  it("uses the first complete selected clip thumbnail for the generated vlog", async () => {
+    class MockFFmpeg {
+      on() {}
+      async load() {}
+      async writeFile() {}
+      async exec() {}
+      async readFile() {
+        return new Uint8Array([1, 2, 3]);
+      }
+    }
+    (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
+      MockFFmpeg;
+    storageMocks.getVlogByGenerationFingerprint.mockResolvedValue(null);
+    const incomplete = {
+      ...clip("clip-1"),
+      thumbnailBlob: new Blob(["incomplete"], { type: "image/jpeg" }),
+      thumbnailMimeType: "image/jpeg",
+    };
+    const complete = {
+      ...clip("clip-2"),
+      thumbnailBlob: new Blob(["complete"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 111,
+      thumbnailHeight: 222,
+    };
+
+    const vlog = await generateVlog([incomplete, complete], "session-1", () => undefined, {
+      generatedMusic: true,
+      musicSeed: "seed-1",
+    });
+
+    expect(vlog.thumbnailBlob).toBe(complete.thumbnailBlob);
+    expect(vlog.thumbnailMimeType).toBe("image/webp");
+    expect(vlog.thumbnailWidth).toBe(111);
+    expect(vlog.thumbnailHeight).toBe(222);
+    expect(thumbnailMocks.generateVideoThumbnail).not.toHaveBeenCalled();
+  });
+
+  it("generates a browser thumbnail only when selected clips lack complete thumbnails", async () => {
+    class MockFFmpeg {
+      on() {}
+      async load() {}
+      async writeFile() {}
+      async exec() {}
+      async readFile() {
+        return new Uint8Array([1, 2, 3]);
+      }
+    }
+    (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
+      MockFFmpeg;
+    storageMocks.getVlogByGenerationFingerprint.mockResolvedValue(null);
+    const sourceClip = clip("clip-1");
+    const generatedThumbnail = {
+      thumbnailBlob: new Blob(["generated"], { type: "image/jpeg" }),
+      thumbnailMimeType: "image/jpeg",
+      thumbnailWidth: 360,
+      thumbnailHeight: 640,
+    };
+    thumbnailMocks.generateVideoThumbnail.mockResolvedValue(generatedThumbnail);
+
+    const vlog = await generateVlog([sourceClip], "session-1", () => undefined, {
+      generatedMusic: true,
+      musicSeed: "seed-1",
+    });
+
+    expect(thumbnailMocks.generateVideoThumbnail).toHaveBeenCalledOnce();
+    expect(thumbnailMocks.generateVideoThumbnail).toHaveBeenCalledWith(sourceClip.blob, {
+      width: 360,
+      height: 640,
+    });
+    expect(vlog.thumbnailBlob).toBe(generatedThumbnail.thumbnailBlob);
+    expect(vlog.thumbnailWidth).toBe(360);
+    expect(vlog.thumbnailHeight).toBe(640);
   });
 
   it("identifies MP4 clips as compatible for fast concat", () => {

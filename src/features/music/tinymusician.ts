@@ -131,6 +131,12 @@ export async function verifyTinyMusicianReadiness(
   }
 }
 
+export async function warmTinyMusician(): Promise<void> {
+  await verifyTinyMusicianReadiness();
+  if (tinyMusicianMock()) return;
+  await loadTinyMusicianGenerator();
+}
+
 async function generateWithLocalTinyMusician(prompt: string, durationSeconds: number) {
   try {
     const generate = await loadTinyMusicianGenerator();

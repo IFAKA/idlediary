@@ -26,7 +26,7 @@ const stages: GenerationStage[] = [
   { id: "loading", label: "Opening your diary" },
   { id: "writing", label: "Gathering moments" },
   { id: "normalizing", label: "Assembling MP4" },
-  { id: "encoding", label: "Making playback ready" },
+  { id: "encoding", label: "Finishing audio mix" },
   { id: "saving", label: "Saving privately" },
 ];
 

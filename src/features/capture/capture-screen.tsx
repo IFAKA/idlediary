@@ -28,6 +28,7 @@ import { reportError } from "@/features/errors/report-error";
 import {
   generateVlog,
   generationProgress as makeGenerationProgress,
+  warmGenerationPipeline,
   type GenerationProgress,
 } from "@/features/generation/generation";
 import {
@@ -469,6 +470,12 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     return () => window.removeEventListener("popstate", onPopState);
   }, [isDemo, mode, restoreRequestedView, vlog]);
 
+  useEffect(() => {
+    if (isDemo || mode !== "review" || clips.loading || clips.clips.length === 0) return;
+
+    void warmGenerationPipeline();
+  }, [clips.clips.length, clips.loading, isDemo, mode]);
+
   const showCapture = useCallback((action: "push" | "replace" = "push") => {
     setSlideDirection("right");
     setVlog(null);
@@ -751,7 +758,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
           makeGenerationProgress("loading", 8),
           makeGenerationProgress("writing", 18),
           makeGenerationProgress("rendering", 42),
-          makeGenerationProgress("rendering", 78, { label: "Making playback ready" }),
+          makeGenerationProgress("rendering", 78, { label: "Finishing audio mix" }),
           makeGenerationProgress("saving", 92),
         ];
         for (const nextProgress of demoProgress) {

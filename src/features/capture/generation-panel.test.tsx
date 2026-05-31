@@ -53,14 +53,14 @@ describe("GenerationPanel", () => {
       activeGenerationStage(generationProgress("rendering", 56, { label: "Assembling MP4" })),
     ).toBe("normalizing");
     expect(
-      activeGenerationStage(generationProgress("rendering", 78, { label: "Making playback ready" })),
+      activeGenerationStage(generationProgress("rendering", 78, { label: "Finishing audio mix" })),
     ).toBe("encoding");
   });
 
   it("marks earlier stages complete and all stages complete when done", () => {
     expect([
       ...completedGenerationStages(
-        generationProgress("rendering", 78, { label: "Making playback ready" }),
+        generationProgress("rendering", 78, { label: "Finishing audio mix" }),
       ),
     ]).toEqual(["loading", "writing", "normalizing"]);
 
@@ -85,7 +85,7 @@ describe("GenerationPanel", () => {
     expect(view.textContent).toContain("Opening your diary");
     expect(view.textContent).toContain("Gathering moments");
     expect(view.textContent).toContain("Assembling MP4");
-    expect(view.textContent).toContain("Making playback ready");
+    expect(view.textContent).toContain("Finishing audio mix");
     expect(view.textContent).toContain("Saving privately");
     expect(view.textContent).toContain("Putting your clips and music together");
     expect(view.textContent).not.toContain("Rendering video");

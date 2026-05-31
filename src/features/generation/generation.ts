@@ -4,7 +4,11 @@ import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
-import { thumbnailSizes, type ThumbnailResult } from "@/features/clips/thumbnail";
+import {
+  generateVideoThumbnail,
+  thumbnailSizes,
+  type ThumbnailResult,
+} from "@/features/clips/thumbnail";
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
 import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
@@ -13,6 +17,7 @@ import { buildMusicPlan, musicProfileVersion } from "@/features/music/plan";
 import {
   generateTinyMusicianWav,
   musicDurationSecondsForVideo,
+  warmTinyMusician,
   verifyTinyMusicianReadiness,
 } from "@/features/music/tinymusician";
 export { exportProfile } from "@/features/video/export-profile";
@@ -28,8 +33,7 @@ export type GenerationProgress = {
 
 const maxLogLines = 8;
 const musicVolume = 0.45;
-const thumbnailOutput = "vlog-thumbnail.jpg";
-const technicalSummary = `MP4 concat demuxer | generated music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC, faststart`;
+const technicalSummary = `MP4 concat demuxer | generated music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC`;
 
 const progressCopy: Record<
   GenerationProgress["step"],
@@ -115,35 +119,10 @@ export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleM
     "48000",
     "-ac",
     "2",
-    "-movflags",
-    "+faststart",
     "-avoid_negative_ts",
     "make_zero",
     "-shortest",
     exportProfile.output,
-  ];
-}
-
-export function buildFfmpegThumbnailArgs({
-  width,
-  height,
-}: {
-  width: number;
-  height: number;
-}) {
-  return [
-    "-y",
-    "-ss",
-    "0.1",
-    "-i",
-    exportProfile.output,
-    "-frames:v",
-    "1",
-    "-vf",
-    `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1`,
-    "-q:v",
-    "3",
-    thumbnailOutput,
   ];
 }
 
@@ -250,7 +229,7 @@ async function createGeneratedMusicWav(clips: ClipRecord[], durationMs: number, 
 }
 
 function renderingLabelFor(value: number) {
-  if (value >= 78) return "Making playback ready";
+  if (value >= 78) return "Finishing audio mix";
   return "Assembling MP4";
 }
 
@@ -312,32 +291,50 @@ async function loadFfmpeg() {
   return ffmpegPromise;
 }
 
+export async function warmGenerationPipeline(): Promise<void> {
+  const results = await Promise.allSettled([loadFfmpeg(), warmTinyMusician()]);
+  const rejected = results.filter((result) => result.status === "rejected");
+  addDebugEvent("generation-warmup", "generation", {
+    ffmpeg: results[0]?.status ?? "unknown",
+    tinyMusician: results[1]?.status ?? "unknown",
+    errors: rejected.map((result) =>
+      result.status === "rejected" && result.reason instanceof Error
+        ? result.reason.message
+        : "warmup failed",
+    ),
+  });
+}
+
 function ffmpegFileToUint8Array(data: Awaited<ReturnType<FFmpeg["readFile"]>>) {
   return typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
 }
 
-async function extractGeneratedVlogThumbnail(
-  ffmpeg: FFmpeg,
-  size: (typeof thumbnailSizes)["vlog"],
-): Promise<ThumbnailResult> {
-  await ffmpeg.exec(buildFfmpegThumbnailArgs(size));
-  const bytes = ffmpegFileToUint8Array(await ffmpeg.readFile(thumbnailOutput));
-  if (bytes.byteLength === 0) {
-    throw new AppError({
-      code: "generation-failed",
-      area: "generation",
-      message: "FFmpeg generated an empty saved-video thumbnail",
-      userMessage: "Generation failed before the video thumbnail could be saved.",
-      context: { width: size.width, height: size.height },
-    });
+function clipThumbnailFields(clip: ClipRecord): ThumbnailResult | null {
+  if (
+    !clip.thumbnailBlob ||
+    !clip.thumbnailMimeType ||
+    typeof clip.thumbnailWidth !== "number" ||
+    typeof clip.thumbnailHeight !== "number"
+  ) {
+    return null;
   }
 
   return {
-    thumbnailBlob: new Blob([bytes], { type: "image/jpeg" }),
-    thumbnailMimeType: "image/jpeg",
-    thumbnailWidth: size.width,
-    thumbnailHeight: size.height,
+    thumbnailBlob: clip.thumbnailBlob,
+    thumbnailMimeType: clip.thumbnailMimeType,
+    thumbnailWidth: clip.thumbnailWidth,
+    thumbnailHeight: clip.thumbnailHeight,
   };
+}
+
+async function selectVlogThumbnail(
+  clips: ClipRecord[],
+  size: (typeof thumbnailSizes)["vlog"],
+): Promise<ThumbnailResult> {
+  const existingThumbnail = clips.map(clipThumbnailFields).find((thumbnail) => thumbnail !== null);
+  if (existingThumbnail) return existingThumbnail;
+
+  return generateVideoThumbnail(clips[0].blob, size);
 }
 
 export function isFastConcatCompatibleClip(clip: Pick<ClipRecord, "mimeType" | "blob">) {
@@ -387,6 +384,11 @@ export async function generateVlog(
     activeProgressSink = onProgress;
     recentFfmpegLogs = [];
     activeRenderValue = 24;
+    const startedAt = performance.now();
+    const timing: Record<string, number> = {};
+    const markTiming = (name: string, since: number) => {
+      timing[name] = Math.round(performance.now() - since);
+    };
     const musicSeed = options.musicSeed ?? crypto.randomUUID();
     if (typeof window !== "undefined") {
       (window as typeof window & { __idleDiaryGenerationClipIds?: string[] })
@@ -407,14 +409,18 @@ export async function generateVlog(
       return cachedVlog;
     }
 
+    const ffmpegLoadStartedAt = performance.now();
     const ffmpeg = await loadFfmpeg();
+    markTiming("ffmpegLoadMs", ffmpegLoadStartedAt);
     emitProgress(
       generationProgress("writing", 14, {
         label: "Getting music ready",
         detail: "Checking this browser can make the soundtrack",
       }),
     );
+    const readinessStartedAt = performance.now();
     await verifyTinyMusicianReadiness();
+    markTiming("tinyMusicianReadinessMs", readinessStartedAt);
 
     emitProgress(
       generationProgress("writing", 18, {
@@ -424,11 +430,14 @@ export async function generateVlog(
     );
 
     const totalDurationMs = clips.reduce((total, clip) => total + clip.durationMs, 0);
+    const musicStartedAt = performance.now();
     const { musicWav, debug: musicDebug } = await createGeneratedMusicWav(
       clips,
       totalDurationMs,
       musicSeed,
     );
+    markTiming("musicGenerationMs", musicStartedAt);
+    const writeStartedAt = performance.now();
     await ffmpeg.writeFile("music.wav", musicWav);
 
     const listLines: string[] = [];
@@ -438,6 +447,7 @@ export async function generateVlog(
       listLines.push(`file '${input}'`);
     }
     await ffmpeg.writeFile("inputs.txt", listLines.join("\n"));
+    markTiming("ffmpegWriteFilesMs", writeStartedAt);
     addDebugEvent("ffmpeg-inputs-written", "generation", {
       clipCount: clips.length,
       bytes: clips.reduce((total, clip) => total + clip.size, 0),
@@ -445,11 +455,17 @@ export async function generateVlog(
     });
 
     emitProgress(generationProgress("rendering", 24));
+    const muxStartedAt = performance.now();
     await ffmpeg.exec(buildFfmpegArgs(totalDurationMs));
-    const thumbnailFields = await extractGeneratedVlogThumbnail(ffmpeg, thumbnailSizes.vlog);
+    markTiming("ffmpegMuxMixExecMs", muxStartedAt);
+    const thumbnailStartedAt = performance.now();
+    const thumbnailFields = await selectVlogThumbnail(clips, thumbnailSizes.vlog);
+    markTiming("thumbnailSelectionMs", thumbnailStartedAt);
 
     emitProgress(generationProgress("saving", 92));
+    const readStartedAt = performance.now();
     const bytes = ffmpegFileToUint8Array(await ffmpeg.readFile(exportProfile.output));
+    markTiming("ffmpegOutputReadMs", readStartedAt);
     const output = bytes.buffer.slice(
       bytes.byteOffset,
       bytes.byteOffset + bytes.byteLength,
@@ -469,7 +485,15 @@ export async function generateVlog(
       size: blob.size,
       generationFingerprint,
     };
+    markTiming("saveHandoffMs", startedAt);
     emitProgress(generationProgress("done", 100));
+    addDebugEvent("generation-timing", "generation", {
+      ...timing,
+      totalMs: Math.round(performance.now() - startedAt),
+      clipCount: clips.length,
+      outputBytes: blob.size,
+      audioFilters: ["dynaudnorm", "alimiter"],
+    });
     addDebugEvent("vlog-generated", "generation", {
       vlogId: vlog.id,
       size: blob.size,
