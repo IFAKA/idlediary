@@ -1,8 +1,6 @@
 import { arp as scribbleArp, clip as scribbleClip, type NoteObject } from "scribbletune";
 import { Midi, Scale } from "tonal";
 import { AppError } from "@/features/errors/app-error";
-import { composeGeneratedMusic } from "./compose";
-import { renderCompositionToWav } from "./render";
 import type { ClipMoodDescription, MusicPlan } from "./types";
 
 export const localMusicEngine = "scribbletune-spessasynth";
@@ -13,8 +11,8 @@ const midiTicksPerQuarter = 480;
 const scribbleTicksPerQuarter = 128;
 const scribbleToMidiTicks = midiTicksPerQuarter / scribbleTicksPerQuarter;
 const soundFontPath = "/soundfonts/lofi-diary.sf2";
-const spessaWorkletPath = "/spessasynth/spessasynth_processor.min.js";
-let spessaSynthModulesPromise: Promise<typeof import("spessasynth_lib") & typeof import("spessasynth_core")> | null = null;
+const spessaRenderBlockSize = 128;
+let spessaSynthModulesPromise: Promise<typeof import("spessasynth_core")> | null = null;
 let soundFontPromise: Promise<ArrayBuffer> | null = null;
 
 type MidiEvent = {
@@ -54,7 +52,7 @@ export type LocalMusicRenderResult = {
     musicDurationSeconds: number;
     musicMood: string;
     midiBytes: number;
-    renderer: "spessasynth" | "procedural";
+    renderer: "spessasynth";
   };
 };
 
@@ -68,9 +66,15 @@ export async function renderLocalMusicWav({
   onRawLog,
 }: LocalMusicRenderInput): Promise<LocalMusicRenderResult> {
   const renderPlan = { ...plan, durationMs: Math.round(durationSeconds * 1000) };
-  const musicMidi = buildPlanMidi(renderPlan);
-  const spessaWav = await renderMidiWithSpessaSynth(musicMidi, durationSeconds, onRawLog);
-  const musicWav = spessaWav ?? renderCompositionToWav(await composeGeneratedMusic(renderPlan));
+  const tracks = buildMidiTrackPlan(renderPlan);
+  const musicMidi = encodeMidi({
+    bpm: renderPlan.bpm,
+    ticksPerQuarter: midiTicksPerQuarter,
+    tracks,
+  });
+  const musicWav = await renderTracksWithSpessaSynth(tracks, renderPlan.bpm, durationSeconds, onRawLog).catch((cause) => {
+    throw localMusicUnavailable(cause);
+  });
 
   return {
     musicWav,
@@ -82,7 +86,7 @@ export async function renderLocalMusicWav({
       musicDurationSeconds: durationSeconds,
       musicMood: plan.mood,
       midiBytes: musicMidi.byteLength,
-      renderer: spessaWav ? "spessasynth" : "procedural",
+      renderer: "spessasynth",
     },
   };
 }
@@ -204,42 +208,92 @@ export function buildMidiTrackPlan(plan: MusicPlan): MidiTrackPlan[] {
   ];
 }
 
-async function renderMidiWithSpessaSynth(
-  musicMidi: Uint8Array,
+async function renderTracksWithSpessaSynth(
+  tracks: MidiTrackPlan[],
+  bpm: number,
   durationSeconds: number,
   onRawLog?: (message: string) => void,
 ) {
   try {
-    if (typeof window === "undefined" || typeof OfflineAudioContext === "undefined") {
-      onRawLog?.("SpessaSynth offline render skipped outside browser audio context");
-      return null;
-    }
-
-    const { WorkletSynthesizer, audioBufferToWav, BasicMIDI, SoundBankLoader } =
-      await loadSpessaSynthModules();
-    const context = new OfflineAudioContext(2, Math.ceil(durationSeconds * targetSampleRate), targetSampleRate);
-    await context.audioWorklet.addModule(spessaWorkletPath);
-    const synth = new WorkletSynthesizer(context);
+    const { SoundBankLoader, SpessaLog, SpessaSynthProcessor, audioToWav } = await loadSpessaSynthModules();
+    const processor = new SpessaSynthProcessor(targetSampleRate, {
+      effectsEnabled: true,
+      eventsEnabled: false,
+      maxBufferSize: spessaRenderBlockSize,
+    });
     try {
       const soundFont = await fetchSoundFont();
-      const soundBank = SoundBankLoader.fromArrayBuffer(soundFont);
-      await synth.soundBankManager.addSoundBank(soundFont, "lofi-diary");
-      await synth.isReady;
-      await synth.startOfflineRender({
-        midiSequence: BasicMIDI.fromArrayBuffer(copyArrayBuffer(musicMidi), "idlediary.mid"),
-        soundBankList: [{ soundBank, id: "lofi-diary", bankOffset: 0 }],
-        snapshot: await synth.getSnapshot(),
-      } as never);
-      const buffer = await context.startRendering();
-      const wavBlob = audioBufferToWav(buffer);
-      return new Uint8Array(await wavBlob.arrayBuffer());
+      SpessaLog.setLogLevel(false, true, false);
+      processor.soundBankManager.addSoundBank(SoundBankLoader.fromArrayBuffer(soundFont), "lofi-diary", 0);
+      processor.reset();
+      processor.setSystemParameter("gain", 1.25);
+      for (const track of tracks) {
+        if (track.channel === 9) processor.midiChannels[track.channel]?.setDrums(true);
+        processor.programChange(track.channel, track.program);
+        processor.controllerChange(track.channel, 7, track.channel === 9 ? 106 : 94);
+        processor.controllerChange(track.channel, 10, 64);
+        processor.controllerChange(track.channel, 91, track.channel === 1 ? 18 : 34);
+        processor.controllerChange(track.channel, 93, track.channel === 9 ? 8 : 18);
+      }
+
+      const sampleCount = Math.ceil(durationSeconds * targetSampleRate);
+      const left = new Float32Array(sampleCount);
+      const right = new Float32Array(sampleCount);
+      renderScheduledTrackEvents(processor, tracks, bpm, left, right);
+      return new Uint8Array(audioToWav([left, right], targetSampleRate));
     } finally {
-      synth.destroy();
+      processor.destroySynthProcessor();
     }
   } catch (cause) {
-    onRawLog?.(`SpessaSynth offline render unavailable: ${cause instanceof Error ? cause.message : "unknown error"}`);
-    return null;
+    onRawLog?.(`SpessaSynth render unavailable: ${cause instanceof Error ? cause.message : "unknown error"}`);
+    throw cause;
   }
+}
+
+function renderScheduledTrackEvents(
+  processor: import("spessasynth_core").SpessaSynthProcessor,
+  tracks: MidiTrackPlan[],
+  bpm: number,
+  left: Float32Array,
+  right: Float32Array,
+) {
+  const events = scheduledTrackEvents(tracks, bpm);
+  let eventIndex = 0;
+  let cursor = 0;
+  while (cursor < left.length) {
+    while (events[eventIndex] && events[eventIndex].sample <= cursor) {
+      const event = events[eventIndex];
+      if (event.type === "on") processor.noteOn(event.channel, event.midi, event.velocity);
+      else processor.noteOff(event.channel, event.midi);
+      eventIndex += 1;
+    }
+
+    const nextEventSample = events[eventIndex]?.sample ?? left.length;
+    const nextCursor = Math.min(left.length, cursor + spessaRenderBlockSize, Math.max(cursor + 1, nextEventSample));
+    processor.process(left, right, cursor, nextCursor - cursor);
+    cursor = nextCursor;
+  }
+  processor.stopAllChannels(true);
+}
+
+function scheduledTrackEvents(tracks: MidiTrackPlan[], bpm: number) {
+  const beatSeconds = 60 / bpm;
+  return tracks
+    .flatMap((track) =>
+      track.notes.flatMap((note) => {
+        const start = ticksToSamples(note.startTicks, beatSeconds);
+        const end = ticksToSamples(note.startTicks + note.durationTicks, beatSeconds);
+        return [
+          { sample: start, order: 1, type: "on" as const, channel: track.channel, midi: note.midi, velocity: note.velocity },
+          { sample: end, order: 0, type: "off" as const, channel: track.channel, midi: note.midi, velocity: 0 },
+        ];
+      }),
+    )
+    .sort((left, right) => left.sample - right.sample || left.order - right.order);
+}
+
+function ticksToSamples(ticks: number, beatSeconds: number) {
+  return Math.max(0, Math.round((ticks / midiTicksPerQuarter) * beatSeconds * targetSampleRate));
 }
 
 async function fetchSoundFont() {
@@ -252,17 +306,8 @@ async function fetchSoundFont() {
 }
 
 async function loadSpessaSynthModules() {
-  spessaSynthModulesPromise ??= Promise.all([
-    import("spessasynth_lib"),
-    import("spessasynth_core"),
-  ]).then(([lib, core]) => ({ ...lib, ...core }));
+  spessaSynthModulesPromise ??= import("spessasynth_core");
   return spessaSynthModulesPromise;
-}
-
-function copyArrayBuffer(bytes: Uint8Array) {
-  const copy = new Uint8Array(bytes.byteLength);
-  copy.set(bytes);
-  return copy.buffer;
 }
 
 function encodeMidi({

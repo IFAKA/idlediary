@@ -1,9 +1,3 @@
-import type { MusicComposition } from "./compose";
-
-export function renderCompositionToWav(composition: MusicComposition) {
-  return encodeMonoWav(composition.samples, composition.sampleRate);
-}
-
 export function encodeMonoWav(samples: Float32Array, sampleRate: number) {
   const channelCount = 1;
   const bytesPerSample = 2;

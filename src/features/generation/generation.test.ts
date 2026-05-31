@@ -111,7 +111,7 @@ describe("generation export profile", () => {
         musicDurationSeconds: 8,
         musicMood: "cozy",
         midiBytes: 4,
-        renderer: "procedural",
+        renderer: "spessasynth",
       },
     });
   });

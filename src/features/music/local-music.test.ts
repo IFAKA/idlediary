@@ -32,27 +32,20 @@ const descriptions: ClipMoodDescription[] = [
 ];
 
 describe("local generative music", () => {
-  it("creates deterministic MIDI and WAV bytes for the same seed", async () => {
-    const first = await renderLocalMusicWav({ plan, descriptions, durationSeconds: 1 });
-    const second = await renderLocalMusicWav({ plan, descriptions, durationSeconds: 1 });
+  it("creates deterministic Scribbletune MIDI bytes for the same seed", () => {
+    const first = buildPlanMidi({ ...plan, durationMs: 1_000 });
+    const second = buildPlanMidi({ ...plan, durationMs: 1_000 });
 
-    expect(first.musicWav).toEqual(second.musicWav);
-    expect(first.musicMidi).toEqual(second.musicMidi);
-    expect(first.musicWav.slice(0, 4)).toEqual(new Uint8Array([82, 73, 70, 70]));
-    expect(first.musicMidi.slice(0, 4)).toEqual(new Uint8Array([77, 84, 104, 100]));
-    expect(first.debug).toEqual(expect.objectContaining({ musicEngine: localMusicEngine }));
+    expect(first).toEqual(second);
+    expect(first.slice(0, 4)).toEqual(new Uint8Array([77, 84, 104, 100]));
+    expect(localMusicEngine).toBe("scribbletune-spessasynth");
   });
 
-  it("changes MIDI and music output for different seeds", async () => {
-    const first = await renderLocalMusicWav({ plan, descriptions, durationSeconds: 1 });
-    const second = await renderLocalMusicWav({
-      plan: { ...plan, seed: "seed-2" },
-      descriptions,
-      durationSeconds: 1,
-    });
+  it("changes MIDI output for different seeds", () => {
+    const first = buildPlanMidi({ ...plan, durationMs: 1_000 });
+    const second = buildPlanMidi({ ...plan, seed: "seed-2", durationMs: 1_000 });
 
-    expect(first.musicMidi).not.toEqual(second.musicMidi);
-    expect(first.musicWav).not.toEqual(second.musicWav);
+    expect(first).not.toEqual(second);
   });
 
   it("maps the plan into separate chords, bass, drums, motif, and texture tracks", () => {
@@ -67,6 +60,12 @@ describe("local generative music", () => {
     ]);
     expect(tracks.every((track) => track.notes.length > 0)).toBe(true);
     expect(buildPlanMidi(plan).byteLength).toBeGreaterThan(120);
+  });
+
+  it("does not fall back when SpessaSynth browser rendering is unavailable", async () => {
+    await expect(renderLocalMusicWav({ plan, descriptions, durationSeconds: 1 })).rejects.toThrow(
+      "Local generative music could not render",
+    );
   });
 
   it("extends short videos enough for fades without making long tracks", () => {
