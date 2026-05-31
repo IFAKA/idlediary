@@ -16,6 +16,14 @@ const visionModelFiles = [
   "preprocessor_config.json",
   "onnx/model_quantized.onnx",
 ];
+const tinyMusicianRootMetadataFiles = [
+  "config.json",
+  "generation_config.json",
+  "preprocessor_config.json",
+  "special_tokens_map.json",
+  "tokenizer.json",
+  "tokenizer_config.json",
+];
 
 const wasmFiles = [
   "ort-wasm-simd-threaded.mjs",
@@ -85,6 +93,8 @@ if (installTinyMusician) {
   for (const file of files) {
     await downloadModelFile(tinyMusicianModelId, file);
   }
+
+  await mirrorTinyMusicianRootMetadata();
 }
 
 console.log(
@@ -116,7 +126,7 @@ async function listModelTreeFiles(modelId) {
       ...entries
         .filter((entry) => entry.type === "file" && typeof entry.path === "string")
         .map((entry) => entry.path)
-        .filter((path) => !path.endsWith(".md") && path !== ".gitattributes"),
+        .filter((path) => !path.endsWith(".md") && path !== ".gitattributes" && !path.endsWith(".DS_Store")),
     );
     cursor = parseNextCursor(response.headers.get("link"));
   } while (cursor);
@@ -134,4 +144,17 @@ function parseNextCursor(linkHeader) {
   const match = nextLink.match(/<([^>]+)>/);
   if (!match) return null;
   return new URL(match[1]).searchParams.get("cursor");
+}
+
+async function mirrorTinyMusicianRootMetadata() {
+  const modelOutputDir = join(root, "public", "models", ...tinyMusicianModelId.split("/"));
+  for (const file of tinyMusicianRootMetadataFiles) {
+    const sourcePath = join(modelOutputDir, "onnx", file);
+    const outputPath = join(modelOutputDir, file);
+    if (!existsSync(sourcePath)) {
+      throw new Error(`TinyMusician metadata missing after download: onnx/${file}`);
+    }
+    await copyFile(sourcePath, outputPath);
+    console.log(`mirrored ${tinyMusicianModelId}/${file}`);
+  }
 }

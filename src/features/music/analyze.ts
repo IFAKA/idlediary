@@ -1,11 +1,12 @@
 import { AppError } from "@/features/errors/app-error";
 import type { ClipKeyframe, ClipMoodDescription } from "./types";
 
-type ClassificationResult = { label?: string; score?: number };
-type ImageClassificationPipeline = (
-  image: string,
-  options?: { topk?: number },
-) => Promise<ClassificationResult[] | ClassificationResult>;
+type LocalVisionClassifier = {
+  model: (inputs: { pixel_values: unknown }) => Promise<{ logits: { data: Iterable<number> } }>;
+  processor: (images: unknown[]) => Promise<{ pixel_values: unknown }>;
+  readImage: (image: string) => Promise<unknown>;
+  idToLabel?: Record<string, string>;
+};
 
 const visionModel = "Xenova/vit-base-patch16-224";
 const modelPath = "/models/";
@@ -48,10 +49,22 @@ async function loadLocalVisionClassifier() {
     onnxBackend.wasm ??= {};
     onnxBackend.wasm.wasmPaths = wasmPath;
 
-    return (await transformers.pipeline("image-classification", visionModel, {
-      dtype: "q8",
-      local_files_only: true,
-    })) as ImageClassificationPipeline;
+    const [processor, model] = await Promise.all([
+      transformers.AutoProcessor.from_pretrained(visionModel, {
+        local_files_only: true,
+      }),
+      transformers.AutoModelForImageClassification.from_pretrained(visionModel, {
+        dtype: "q8",
+        local_files_only: true,
+      }),
+    ]);
+
+    return {
+      model,
+      processor,
+      readImage: transformers.RawImage.read,
+      idToLabel: (model as { config?: { id2label?: Record<string, string> } }).config?.id2label,
+    } satisfies LocalVisionClassifier;
   } catch (cause) {
     throw new AppError({
       code: "generation-unavailable",
@@ -71,13 +84,12 @@ async function loadLocalVisionClassifier() {
   }
 }
 
-async function classifyFrame(classifier: ImageClassificationPipeline, dataUrl: string) {
+async function classifyFrame(classifier: LocalVisionClassifier, dataUrl: string) {
   try {
-    const result = await classifier(dataUrl, { topk: classificationsPerFrame });
-    const classifications = Array.isArray(result) ? result : [result];
-    const labels = classifications
-      .map((classification) => classification.label)
-      .filter((label): label is string => Boolean(label));
+    const image = await classifier.readImage(dataUrl);
+    const { pixel_values } = await classifier.processor([image]);
+    const { logits } = await classifier.model({ pixel_values });
+    const labels = topClassifications([...logits.data], classifier.idToLabel, classificationsPerFrame);
     if (labels.length === 0) throw new Error("Image model returned no labels");
     return labels;
   } catch (cause) {
@@ -150,4 +162,20 @@ function extractCaptionTags(text: string) {
     .filter((word) => word.length > 3 && !stopWords.has(word));
 
   return [...new Set(words)].slice(0, 8);
+}
+
+function topClassifications(
+  logits: number[],
+  idToLabel: Record<string, string> | undefined,
+  limit: number,
+) {
+  return logits
+    .map((score, index) => ({
+      index,
+      score,
+      label: idToLabel?.[index] ?? `LABEL_${index}`,
+    }))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit)
+    .map((classification) => classification.label);
 }
