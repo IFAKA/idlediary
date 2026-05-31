@@ -10,6 +10,17 @@ export type MusicComposition = {
 const sampleRate = 48_000;
 const twoPi = Math.PI * 2;
 const targetPeak = 0.82;
+const humanizeSeconds = 0.026;
+
+type ToneWave = "sine" | "triangle" | "warm";
+
+type ToneOptions = {
+  wave: ToneWave;
+  attackSeconds?: number;
+  releaseSeconds?: number;
+  detuneCents?: number;
+  phaseOffset?: number;
+};
 
 export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicComposition> {
   await import("tone");
@@ -26,29 +37,43 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
   for (let barStart = 0; barStart < durationSeconds; barStart += barSeconds) {
     const barIndex = Math.floor(barStart / barSeconds);
     const root = scaleNotes[chordDegrees[barIndex % chordDegrees.length] % scaleNotes.length];
-    renderChord(samples, root, barStart, barSeconds * 0.92, plan.energy === "medium" ? 0.08 : 0.07);
-    renderBass(samples, root - 24, barStart, beatSeconds, plan.energy === "medium" ? 0.11 : 0.09);
+    renderChord(samples, root, barStart, barSeconds * 1.18, plan.energy === "medium" ? 0.078 : 0.066, random);
+    renderBass(samples, root - 24, barStart, beatSeconds, plan.energy === "medium" ? 0.095 : 0.078, random);
 
     for (let beat = 0; beat < 4; beat += 1) {
-      renderKick(samples, barStart + beat * beatSeconds, plan.energy === "medium" ? 0.12 : 0.08);
-      if (beat === 1 || beat === 3) renderBrush(samples, barStart + beat * beatSeconds, 0.04, random);
-      renderHat(samples, barStart + (beat + 0.5) * beatSeconds, 0.025, random);
+      const beatStart = barStart + beat * beatSeconds;
+      renderKick(samples, beatStart + humanize(random, 0.006), plan.energy === "medium" ? 0.085 : 0.058);
+      if (beat === 1 || beat === 3) {
+        renderBrush(samples, beatStart + humanize(random, 0.018), 0.026 + random() * 0.008, random);
+      }
+      renderHat(
+        samples,
+        barStart + (beat + 0.5) * beatSeconds + humanize(random, 0.016),
+        0.012 + random() * 0.007,
+        random,
+      );
     }
 
     const melodyDegree = Math.floor(random() * scaleNotes.length);
     renderTone(
       samples,
       scaleNotes[melodyDegree] + 12,
-      barStart + beatSeconds * (1 + random()),
+      barStart + beatSeconds * (1 + random()) + humanize(random, humanizeSeconds),
       beatSeconds * (0.75 + random() * 0.55),
-      0.045,
-      "sine",
+      0.028 + random() * 0.012,
+      {
+        wave: "warm",
+        attackSeconds: 0.08,
+        releaseSeconds: 0.28,
+        detuneCents: (random() - 0.5) * 5,
+        phaseOffset: random() * twoPi,
+      },
     );
   }
 
   renderTexture(samples, plan.texture, random);
   applyFade(samples, 1.2, Math.min(2.4, durationSeconds / 4));
-  softLimit(samples);
+  applyLofiMaster(samples, random);
   normalizePeak(samples, targetPeak);
 
   return { plan, sampleRate, samples };
@@ -60,15 +85,59 @@ function scaleMidiNotes(key: string, scale: string) {
   return names.map((name) => Midi.toMidi(Note.simplify(`${name}4`))).filter((midi): midi is number => midi !== null);
 }
 
-function renderChord(samples: Float32Array, rootMidi: number, start: number, duration: number, gain: number) {
-  for (const interval of [0, 4, 7, 12]) {
-    renderTone(samples, rootMidi + interval, start, duration, gain / 4, "triangle");
+function humanize(random: () => number, amountSeconds: number) {
+  return (random() * 2 - 1) * amountSeconds;
+}
+
+function renderChord(
+  samples: Float32Array,
+  rootMidi: number,
+  start: number,
+  duration: number,
+  gain: number,
+  random: () => number,
+) {
+  for (const interval of [0, 7, 12, 16]) {
+    const noteStart = start + humanize(random, 0.022);
+    const noteGain = (gain / 4) * (0.86 + random() * 0.24);
+    renderTone(samples, rootMidi + interval, noteStart, duration + humanize(random, 0.08), noteGain, {
+      wave: "warm",
+      attackSeconds: 0.18 + random() * 0.08,
+      releaseSeconds: 0.62 + random() * 0.24,
+      detuneCents: (random() - 0.5) * 8,
+      phaseOffset: random() * twoPi,
+    });
   }
 }
 
-function renderBass(samples: Float32Array, midi: number, barStart: number, beatSeconds: number, gain: number) {
-  renderTone(samples, midi, barStart, beatSeconds * 1.65, gain, "sine");
-  renderTone(samples, midi + 7, barStart + beatSeconds * 2, beatSeconds * 1.3, gain * 0.72, "sine");
+function renderBass(
+  samples: Float32Array,
+  midi: number,
+  barStart: number,
+  beatSeconds: number,
+  gain: number,
+  random: () => number,
+) {
+  renderTone(samples, midi, barStart + humanize(random, 0.012), beatSeconds * 1.8, gain, {
+    wave: "warm",
+    attackSeconds: 0.07,
+    releaseSeconds: 0.36,
+    detuneCents: -3,
+  });
+  renderTone(
+    samples,
+    midi + 7,
+    barStart + beatSeconds * 2 + humanize(random, 0.014),
+    beatSeconds * 1.48,
+    gain * 0.62,
+    {
+      wave: "warm",
+      attackSeconds: 0.08,
+      releaseSeconds: 0.34,
+      detuneCents: 3,
+      phaseOffset: 0.4,
+    },
+  );
 }
 
 function renderTone(
@@ -77,28 +146,52 @@ function renderTone(
   startSeconds: number,
   durationSeconds: number,
   gain: number,
-  wave: "sine" | "triangle",
+  options: ToneOptions,
 ) {
   const start = Math.max(0, Math.floor(startSeconds * sampleRate));
   const length = Math.min(samples.length - start, Math.floor(durationSeconds * sampleRate));
   if (length <= 0) return;
 
-  const frequency = Midi.midiToFreq(midi);
+  const frequency = Midi.midiToFreq(midi) * 2 ** ((options.detuneCents ?? 0) / 1200);
+  const attackSamples = Math.max(1, Math.floor((options.attackSeconds ?? 0.06) * sampleRate));
+  const releaseSamples = Math.max(1, Math.floor((options.releaseSeconds ?? 0.22) * sampleRate));
+  const phaseOffset = options.phaseOffset ?? 0;
   for (let index = 0; index < length; index += 1) {
     const time = index / sampleRate;
-    const phase = frequency * time;
-    const raw = wave === "triangle" ? 2 * Math.abs(2 * (phase - Math.floor(phase + 0.5))) - 1 : Math.sin(twoPi * phase);
-    const envelope = Math.min(1, index / (sampleRate * 0.04)) * Math.max(0, 1 - index / length);
+    const phase = frequency * time + phaseOffset / twoPi;
+    const raw = renderWave(phase, options.wave);
+    const attack = Math.min(1, index / attackSamples);
+    const release = Math.min(1, (length - index) / releaseSamples);
+    const sustainDrift = 0.94 + 0.06 * Math.sin(twoPi * 0.19 * time + phaseOffset);
+    const envelope = easeInOut(attack) * easeInOut(release) * sustainDrift;
     samples[start + index] += raw * gain * envelope;
   }
 }
 
+function renderWave(phase: number, wave: ToneWave) {
+  const sine = Math.sin(twoPi * phase);
+  if (wave === "sine") return sine;
+
+  const triangle = 2 * Math.abs(2 * (phase - Math.floor(phase + 0.5))) - 1;
+  if (wave === "triangle") return triangle;
+
+  const second = Math.sin(twoPi * phase * 2 + 0.35);
+  const sub = Math.sin(twoPi * phase * 0.5 - 0.2);
+  return Math.tanh(sine * 0.62 + triangle * 0.26 + second * 0.09 + sub * 0.12);
+}
+
+function easeInOut(value: number) {
+  const clamped = Math.max(0, Math.min(1, value));
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
 function renderKick(samples: Float32Array, startSeconds: number, gain: number) {
-  const start = Math.floor(startSeconds * sampleRate);
+  const start = Math.max(0, Math.floor(startSeconds * sampleRate));
   const length = Math.min(samples.length - start, Math.floor(sampleRate * 0.16));
+  if (length <= 0) return;
   for (let index = 0; index < length; index += 1) {
     const t = index / sampleRate;
-    samples[start + index] += Math.sin(twoPi * (90 - t * 260) * t) * gain * Math.exp(-t * 22);
+    samples[start + index] += Math.sin(twoPi * (72 - t * 170) * t) * gain * Math.exp(-t * 18);
   }
 }
 
@@ -128,8 +221,9 @@ function renderNoiseBurst(
   decay: number,
   random: () => number,
 ) {
-  const start = Math.floor(startSeconds * sampleRate);
+  const start = Math.max(0, Math.floor(startSeconds * sampleRate));
   const length = Math.min(samples.length - start, Math.floor(durationSeconds * sampleRate));
+  if (length <= 0) return;
   let noise = 0;
   for (let index = 0; index < length; index += 1) {
     noise = noise * 0.72 + (random() * 2 - 1) * 0.28;
@@ -158,9 +252,74 @@ function applyFade(samples: Float32Array, fadeInSeconds: number, fadeOutSeconds:
   }
 }
 
-function softLimit(samples: Float32Array) {
+function applyLofiMaster(samples: Float32Array, random: () => number) {
+  applyTapeDrift(samples, random);
+  lowPass(samples, 4_600);
+  addRoomTail(samples);
+  saturate(samples);
+  lowPass(samples, 7_200);
+}
+
+function applyTapeDrift(samples: Float32Array, random: () => number) {
+  const source = new Float32Array(samples);
+  const wowRate = 0.18 + random() * 0.07;
+  const flutterRate = 4.8 + random() * 1.4;
+  const wowDepthSamples = sampleRate * (0.0018 + random() * 0.0007);
+  const flutterDepthSamples = sampleRate * (0.00022 + random() * 0.00014);
+  const baseDelaySamples = sampleRate * 0.003;
+
   for (let index = 0; index < samples.length; index += 1) {
-    samples[index] = Math.tanh(samples[index] * 1.25) * 0.75;
+    const time = index / sampleRate;
+    const delay =
+      baseDelaySamples +
+      Math.sin(twoPi * wowRate * time) * wowDepthSamples +
+      Math.sin(twoPi * flutterRate * time + 0.7) * flutterDepthSamples;
+    const drifted = interpolate(source, index - delay);
+    const amplitude = 0.988 + Math.sin(twoPi * 0.31 * time + 1.1) * 0.012;
+    samples[index] = (source[index] * 0.86 + drifted * 0.14) * amplitude;
+  }
+}
+
+function interpolate(samples: Float32Array, position: number) {
+  if (position <= 0) return samples[0] ?? 0;
+  const left = Math.floor(position);
+  const right = Math.min(samples.length - 1, left + 1);
+  const blend = position - left;
+  return samples[left] * (1 - blend) + samples[right] * blend;
+}
+
+function lowPass(samples: Float32Array, cutoffHz: number) {
+  const rc = 1 / (twoPi * cutoffHz);
+  const dt = 1 / sampleRate;
+  const alpha = dt / (rc + dt);
+  let filtered = samples[0] ?? 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    filtered += alpha * (samples[index] - filtered);
+    samples[index] = filtered;
+  }
+}
+
+function addRoomTail(samples: Float32Array) {
+  const delays = [0.043, 0.071, 0.113].map((seconds) => Math.floor(seconds * sampleRate));
+  const feedback = [0.28, 0.2, 0.14];
+  const wet = [0.13, 0.09, 0.06];
+
+  for (let index = 0; index < samples.length; index += 1) {
+    let tail = 0;
+    for (let delayIndex = 0; delayIndex < delays.length; delayIndex += 1) {
+      const delayedIndex = index - delays[delayIndex];
+      if (delayedIndex < 0) continue;
+      const delayed = samples[delayedIndex];
+      tail += delayed * wet[delayIndex];
+      samples[index] += delayed * feedback[delayIndex] * 0.08;
+    }
+    samples[index] += tail;
+  }
+}
+
+function saturate(samples: Float32Array) {
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] = Math.tanh(samples[index] * 1.55) * 0.74;
   }
 }
 

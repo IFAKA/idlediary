@@ -274,18 +274,19 @@ button {
 
 @keyframes generation-shine {
   0% {
-    transform: translateX(-100%);
+    transform: translate3d(-120%, 0, 0);
   }
 
   100% {
-    transform: translateX(100%);
+    transform: translate3d(220%, 0, 0);
   }
 }
 
 .generation-step-shimmer {
   pointer-events: none;
   position: absolute;
-  inset: 0;
+  inset: 0 auto 0 0;
+  width: 48%;
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -294,10 +295,23 @@ button {
     hsl(var(--memory) / 0.06) 66%,
     transparent 100%
   );
-  filter: blur(10px);
-  transform: translateX(-100%);
+  transform: translate3d(-120%, 0, 0);
   animation: generation-shine 2.25s ease-in-out infinite;
   will-change: transform;
+  contain: layout paint;
+}
+
+.generation-spinner {
+  animation: generation-spinner 0.9s linear infinite;
+  transform-origin: center;
+  will-change: transform;
+  contain: layout paint;
+}
+
+@keyframes generation-spinner {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes clip-stack {

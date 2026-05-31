@@ -9,10 +9,8 @@ import {
   LockKeyhole,
   WandSparkles,
 } from "lucide-react";
-import { motion } from "motion/react";
 import { Progress } from "@/components/ui/progress";
 import type { GenerationProgress } from "@/features/generation/generation";
-import { spring } from "@/lib/motion";
 
 type GenerationPanelProps = {
   progress: GenerationProgress;
@@ -83,7 +81,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
       />
 
       <div className="relative flex min-h-0 flex-1 flex-col justify-center pb-6">
-        <motion.div className="relative w-full max-w-sm" layout transition={spring}>
+        <div className="relative w-full max-w-sm contain-layout contain-paint">
           <ol className="relative mb-5 grid gap-2">
             {stages.map((stage) => {
               const isActive = stage.id === activeStage;
@@ -94,7 +92,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
                   key={stage.id}
                   className={`relative grid min-h-14 grid-cols-[36px_minmax(0,1fr)_36px] items-center gap-3 overflow-hidden rounded-lg border px-3 py-2.5 transition ${
                     isActive
-                      ? "border-memory/55 bg-memory/16 text-foreground shadow-[0_0_28px_hsl(var(--memory)/0.18)]"
+                      ? "border-memory/55 bg-memory/16 text-foreground"
                       : isComplete
                         ? "border-memory/24 bg-surface-soft/54 text-foreground"
                         : "border-border/62 bg-black/14 text-muted-foreground"
@@ -119,7 +117,7 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
                       <Check className="size-4" aria-hidden="true" />
                     ) : isActive ? (
                       <LoaderCircle
-                        className="size-4 animate-spin motion-reduce:animate-none"
+                        className="size-4 generation-spinner motion-reduce:animate-none"
                         aria-hidden="true"
                       />
                     ) : (
@@ -135,13 +133,13 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
             })}
           </ol>
 
-          <motion.div aria-live="polite" layout transition={spring}>
+          <div aria-live="polite" className="min-h-5">
             <p className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-memory/85">
               <LockKeyhole className="size-3.5" aria-hidden="true" />
               Your clips and video stay private on this device.
             </p>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
       <Progress
         className="bg-memory/22"
