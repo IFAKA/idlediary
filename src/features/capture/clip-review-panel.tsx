@@ -457,7 +457,7 @@ function SortableClipGalleryItem({
   return (
     <motion.li
       ref={setNodeRef}
-      className="relative"
+      className="group relative hover:z-30 focus-within:z-30"
       data-clip-id={clip.id}
       layout
       style={{
@@ -514,7 +514,7 @@ function ClipPreview({
         scale: isPulledToDelete ? 0.9 : isOverlay ? 1.05 : 1,
         y: isPulledToDelete ? 8 : 0,
       }}
-      className={`relative aspect-square overflow-hidden rounded-lg border bg-surface-soft shadow-lg ${
+      className={`relative aspect-square overflow-visible rounded-lg border bg-surface-soft shadow-lg ${
         isOverlay
           ? "w-[7.25rem] border-memory/80 shadow-2xl"
           : "w-full border-memory/20"
@@ -526,7 +526,7 @@ function ClipPreview({
         {...attributes}
         {...listeners}
         aria-label={`Preview clip ${index + 1}`}
-        className="absolute inset-0 cursor-grab touch-none overflow-hidden outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="absolute inset-0 cursor-grab touch-none overflow-hidden rounded-[inherit] outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         disabled={isOverlay}
         draggable={false}
         type="button"
@@ -577,14 +577,64 @@ function ClipPreview({
         }`}
       />
       {isProcessing ? (
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/38 text-white backdrop-blur-[1px]">
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[inherit] bg-black/38 text-white backdrop-blur-[1px]">
           <span className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/58 shadow-[0_8px_24px_rgba(0,0,0,0.24)]">
             <LoaderCircle className="size-5 animate-spin" />
             <span className="sr-only">Analyzing clip</span>
           </span>
         </span>
       ) : null}
+      {!isOverlay ? <ClipAnalysisGuide clip={clip} index={index} /> : null}
     </motion.div>
+  );
+}
+
+function ClipAnalysisGuide({ clip, index }: { clip: ClipRecord; index: number }) {
+  const analysis = clip.analysis;
+  const hasAnalysis = Boolean(analysis);
+
+  return (
+    <div
+      aria-label={`Clip ${index + 1} model output`}
+      className="pointer-events-none absolute left-1/2 top-[calc(100%+0.5rem)] z-40 w-[min(16rem,calc(100vw_-_2rem))] -translate-x-1/2 rounded-lg border border-white/22 bg-black/82 p-3 text-left text-white opacity-0 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-md transition duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+      data-testid="clip-analysis-guide"
+      role="status"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute -top-1.5 left-1/2 size-3 -translate-x-1/2 rotate-45 border-l border-t border-white/22 bg-black/82"
+      />
+      <div className="relative">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-memory">
+          Local model output
+        </p>
+        {hasAnalysis && analysis ? (
+          <>
+            <p className="mt-1 text-sm font-semibold leading-5">{analysis.description}</p>
+            <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/70">
+              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">
+                {analysis.mood}
+              </span>
+              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">
+                {analysis.energy}
+              </span>
+              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">
+                {analysis.brightness}
+              </span>
+            </div>
+            {analysis.tags.length > 0 ? (
+              <p className="mt-2 text-xs leading-5 text-white/68">
+                {analysis.tags.map((tag) => `#${tag}`).join(" ")}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="mt-1 text-xs leading-5 text-white/74">
+            Analyzing local frames. The generated description will appear here.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 

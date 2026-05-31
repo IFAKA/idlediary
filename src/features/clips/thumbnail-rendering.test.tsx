@@ -280,6 +280,46 @@ describe("thumbnail rendering", () => {
     expect(makeVideoButton()).toBeEnabled();
   });
 
+  it("shows local model output on draft clip hover cards", () => {
+    const readyClip = clip({
+      analysis: {
+        version: clipAnalysisVersion,
+        description: "coffee cup / table",
+        tags: ["coffee", "table"],
+        mood: "coffee",
+        energy: "low",
+        brightness: "normal",
+        analyzedAt: "2026-05-27T10:01:00.000Z",
+      },
+    });
+    const processingClip = clip({ id: "clip-2", order: 1 });
+
+    act(() => {
+      root.render(
+        <ClipReviewPanel
+          clips={[readyClip, processingClip]}
+          isFinishing={false}
+          onBack={() => undefined}
+          onClearDraft={async () => true}
+          onDeleteClip={async () => true}
+          onMakeVideo={() => undefined}
+          onReorderClips={async () => true}
+        />,
+      );
+    });
+
+    expect(container.querySelectorAll('[data-testid="clip-analysis-guide"]')).toHaveLength(2);
+    expect(container).toHaveTextContent("Local model output");
+    expect(container).toHaveTextContent("coffee cup / table");
+    expect(container).toHaveTextContent("coffee");
+    expect(container).toHaveTextContent("low");
+    expect(container).toHaveTextContent("normal");
+    expect(container).toHaveTextContent("#coffee #table");
+    expect(container).toHaveTextContent(
+      "Analyzing local frames. The generated description will appear here.",
+    );
+  });
+
   it("saved video cards prefer image thumbnails and fall back to video", async () => {
     const withThumbnail = vlog({
       thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
