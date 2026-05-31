@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildTinyMusicianPrompt,
   generateTinyMusicianWav,
@@ -6,6 +6,21 @@ import {
   resetTinyMusicianForTests,
 } from "./tinymusician";
 import type { ClipMoodDescription, MusicPlan } from "./types";
+
+const transformerMocks = vi.hoisted(() => ({
+  pipeline: vi.fn(),
+  generatedAudio: vi.fn(),
+}));
+
+vi.mock("@huggingface/transformers", () => ({
+  env: {
+    allowLocalModels: false,
+    allowRemoteModels: true,
+    localModelPath: "",
+    backends: { onnx: {} },
+  },
+  pipeline: transformerMocks.pipeline,
+}));
 
 const plan: MusicPlan = {
   seed: "seed-1",
@@ -29,9 +44,20 @@ const description: ClipMoodDescription = {
 };
 
 describe("TinyMusician generation", () => {
+  beforeEach(() => {
+    transformerMocks.pipeline.mockReset();
+    transformerMocks.generatedAudio.mockReset();
+    transformerMocks.generatedAudio.mockResolvedValue({
+      audio: new Float32Array([0, 0.2, -0.2, 0.1]),
+      sampling_rate: 24_000,
+    });
+    transformerMocks.pipeline.mockResolvedValue(transformerMocks.generatedAudio);
+  });
+
   afterEach(() => {
     resetTinyMusicianForTests();
     delete (window as typeof window & { __idleDiaryMockTinyMusician?: unknown }).__idleDiaryMockTinyMusician;
+    delete (navigator as Navigator & { gpu?: unknown }).gpu;
   });
 
   it("builds an instrumental lo-fi prompt from plan and video analysis", () => {
@@ -69,7 +95,44 @@ describe("TinyMusician generation", () => {
     expect(result.musicDurationSeconds).toBe(8);
   });
 
+  it("loads TinyMusician from local WebGPU assets without requesting quantized filenames", async () => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: {},
+    });
+
+    const result = await generateTinyMusicianWav({
+      plan,
+      descriptions: [description],
+      durationSeconds: 8,
+    });
+
+    expect(result.musicWav.slice(0, 4)).toEqual(new Uint8Array([82, 73, 70, 70]));
+    expect(transformerMocks.pipeline).toHaveBeenCalledWith(
+      "text-to-audio",
+      "itsmax/TinyMusician",
+      {
+        device: "webgpu",
+        dtype: "fp32",
+        local_files_only: true,
+      },
+    );
+    expect(transformerMocks.generatedAudio).toHaveBeenCalledWith(
+      expect.stringContaining("Instrumental classic lo-fi hip-hop loop"),
+      expect.objectContaining({
+        guidance_scale: 3,
+        temperature: 0.9,
+      }),
+    );
+  });
+
   it("throws a clear local-model error when TinyMusician cannot load", async () => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: {},
+    });
+    transformerMocks.pipeline.mockRejectedValue(new Error("missing local model file"));
+
     await expect(
       generateTinyMusicianWav({
         plan,

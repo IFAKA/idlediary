@@ -128,7 +128,7 @@ async function loadTinyMusicianPipeline() {
 
     return (await transformers.pipeline("text-to-audio", tinyMusicianModel, {
       device: "webgpu",
-      dtype: "q8",
+      dtype: "fp32",
       local_files_only: true,
     })) as TextToAudioPipeline;
   })();
