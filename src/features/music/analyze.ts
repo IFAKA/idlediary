@@ -62,7 +62,7 @@ async function loadLocalVisionClassifier() {
     return {
       model,
       processor,
-      readImage: transformers.RawImage.read,
+      readImage: (image: string) => transformers.RawImage.read(image),
       idToLabel: (model as { config?: { id2label?: Record<string, string> } }).config?.id2label,
     } satisfies LocalVisionClassifier;
   } catch (cause) {
@@ -99,6 +99,10 @@ async function classifyFrame(classifier: LocalVisionClassifier, dataUrl: string)
       message: "Local image analysis failed",
       userMessage: "Generated music could not understand these clips locally.",
       cause,
+      context: {
+        causeName: cause instanceof Error ? cause.name : typeof cause,
+        causeMessage: cause instanceof Error ? cause.message : String(cause),
+      },
     });
   }
 }
