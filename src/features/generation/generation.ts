@@ -4,7 +4,7 @@ import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
-import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbnail";
+import { thumbnailSizes, type ThumbnailResult } from "@/features/clips/thumbnail";
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
 import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
@@ -26,6 +26,7 @@ export type GenerationProgress = {
 
 const maxLogLines = 8;
 const musicVolume = 0.45;
+const thumbnailOutput = "vlog-thumbnail.jpg";
 const technicalSummary = `MP4 concat demuxer | generated music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC, faststart`;
 
 const progressCopy: Record<
@@ -116,6 +117,29 @@ export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleM
     "make_zero",
     "-shortest",
     exportProfile.output,
+  ];
+}
+
+export function buildFfmpegThumbnailArgs({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) {
+  return [
+    "-y",
+    "-ss",
+    "0.1",
+    "-i",
+    exportProfile.output,
+    "-frames:v",
+    "1",
+    "-vf",
+    `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1`,
+    "-q:v",
+    "3",
+    thumbnailOutput,
   ];
 }
 
@@ -277,6 +301,34 @@ async function loadFfmpeg() {
   return ffmpegPromise;
 }
 
+function ffmpegFileToUint8Array(data: Awaited<ReturnType<FFmpeg["readFile"]>>) {
+  return typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
+}
+
+async function extractGeneratedVlogThumbnail(
+  ffmpeg: FFmpeg,
+  size: (typeof thumbnailSizes)["vlog"],
+): Promise<ThumbnailResult> {
+  await ffmpeg.exec(buildFfmpegThumbnailArgs(size));
+  const bytes = ffmpegFileToUint8Array(await ffmpeg.readFile(thumbnailOutput));
+  if (bytes.byteLength === 0) {
+    throw new AppError({
+      code: "generation-failed",
+      area: "generation",
+      message: "FFmpeg generated an empty saved-video thumbnail",
+      userMessage: "Generation failed before the video thumbnail could be saved.",
+      context: { width: size.width, height: size.height },
+    });
+  }
+
+  return {
+    thumbnailBlob: new Blob([bytes], { type: "image/jpeg" }),
+    thumbnailMimeType: "image/jpeg",
+    thumbnailWidth: size.width,
+    thumbnailHeight: size.height,
+  };
+}
+
 export function isFastConcatCompatibleClip(clip: Pick<ClipRecord, "mimeType" | "blob">) {
   const mimeType = clip.mimeType || clip.blob.type;
   return /^video\/mp4(?:\s*;|$)/i.test(mimeType);
@@ -334,7 +386,7 @@ export async function generateVlog(
       profileVersion: musicProfileVersion,
     });
     const cachedVlog = await getVlogByGenerationFingerprint(generationFingerprint, sessionId);
-    if (cachedVlog) {
+    if (cachedVlog?.thumbnailBlob) {
       emitProgress(generationProgress("done", 100));
       addDebugEvent("vlog-generation-reused", "generation", {
         vlogId: cachedVlog.id,
@@ -375,33 +427,22 @@ export async function generateVlog(
 
     emitProgress(generationProgress("rendering", 24));
     await ffmpeg.exec(buildFfmpegArgs(totalDurationMs));
+    const thumbnailFields = await extractGeneratedVlogThumbnail(ffmpeg, thumbnailSizes.vlog);
 
     emitProgress(generationProgress("saving", 92));
-    const data = await ffmpeg.readFile(exportProfile.output);
-    const bytes =
-      typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
+    const bytes = ffmpegFileToUint8Array(await ffmpeg.readFile(exportProfile.output));
     const output = bytes.buffer.slice(
       bytes.byteOffset,
       bytes.byteOffset + bytes.byteLength,
     ) as ArrayBuffer;
     const blob = new Blob([output], { type: "video/mp4" });
-    let thumbnailFields: Pick<
-      VlogRecord,
-      "thumbnailBlob" | "thumbnailMimeType" | "thumbnailWidth" | "thumbnailHeight"
-    > | null = null;
-
-    try {
-      thumbnailFields = await generateVideoThumbnail(blob, thumbnailSizes.vlog);
-    } catch (error) {
-      if (!(error instanceof AppError)) reportError(error);
-    }
 
     const vlog: VlogRecord = {
       id: crypto.randomUUID(),
       sessionId,
       blob,
       mimeType: "video/mp4",
-      ...(thumbnailFields ?? {}),
+      ...thumbnailFields,
       clipCount: clips.length,
       title: suggestTitle(clips.length),
       caption: suggestCaption(clips.length),

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClipRecord } from "@/features/clips/types";
 import {
   buildFfmpegArgs,
+  buildFfmpegThumbnailArgs,
   buildGenerationFingerprint,
   exportProfile,
   generateVlog,
@@ -158,6 +159,23 @@ describe("generation export profile", () => {
     expect(args.at(-1)).toBe("vlog.mp4");
   });
 
+  it("extracts generated thumbnails from the FFmpeg output", () => {
+    expect(buildFfmpegThumbnailArgs({ width: 360, height: 640 })).toEqual([
+      "-y",
+      "-ss",
+      "0.1",
+      "-i",
+      "vlog.mp4",
+      "-frames:v",
+      "1",
+      "-vf",
+      "scale=360:640:force_original_aspect_ratio=increase,crop=360:640,setsar=1",
+      "-q:v",
+      "3",
+      "vlog-thumbnail.jpg",
+    ]);
+  });
+
   it("captures progress phases, technical detail, and bounded FFmpeg logs", async () => {
     const execArgs: string[][] = [];
     const writtenFiles: string[] = [];
@@ -197,12 +215,6 @@ describe("generation export profile", () => {
     (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
       MockFFmpeg;
     storageMocks.getVlogByGenerationFingerprint.mockResolvedValue(null);
-    thumbnailMocks.generateVideoThumbnail.mockResolvedValue({
-      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
-      thumbnailMimeType: "image/webp",
-      thumbnailWidth: 360,
-      thumbnailHeight: 640,
-    });
 
     const progress: GenerationProgress[] = [];
     const vlog = await generateVlog(
@@ -214,15 +226,16 @@ describe("generation export profile", () => {
       { generatedMusic: true, musicSeed: "seed-1" },
     );
 
-    expect(execArgs).toEqual([buildFfmpegArgs(3_000)]);
+    expect(execArgs).toEqual([
+      buildFfmpegArgs(3_000),
+      buildFfmpegThumbnailArgs({ width: 360, height: 640 }),
+    ]);
     expect(writtenFiles).toEqual(["music.wav", "clip-0.mp4", "inputs.txt"]);
     expect(musicMocks.extractClipKeyframes).toHaveBeenCalledWith([expect.objectContaining({ id: "clip-1" })]);
     expect(musicMocks.buildMusicPlan).toHaveBeenCalledWith(expect.any(Array), 3_000, "seed-1");
-    expect(thumbnailMocks.generateVideoThumbnail).toHaveBeenCalledWith(
-      vlog.blob,
-      expect.objectContaining({ width: 360, height: 640 }),
-    );
+    expect(thumbnailMocks.generateVideoThumbnail).not.toHaveBeenCalled();
     expect(vlog.thumbnailBlob).toBeDefined();
+    expect(vlog.thumbnailMimeType).toBe("image/jpeg");
     expect(progress.map((entry) => entry.label)).toEqual(
       expect.arrayContaining([
         "Opening your diary",
@@ -234,7 +247,7 @@ describe("generation export profile", () => {
       ]),
     );
     expect(progress.some((entry) => entry.technical.includes("generated music mix"))).toBe(true);
-    expect(progress.at(-1)?.logs).toHaveLength(2);
+    expect(progress.at(-1)?.logs).toHaveLength(4);
   });
 
   it("identifies MP4 clips as compatible for fast concat", () => {
@@ -342,6 +355,10 @@ describe("generation export profile", () => {
       caption: "",
       createdAt: "2026-05-27T11:00:00.000Z",
       size: cachedBlob.size,
+      thumbnailBlob: new Blob(["cached-thumb"], { type: "image/jpeg" }),
+      thumbnailMimeType: "image/jpeg",
+      thumbnailWidth: 360,
+      thumbnailHeight: 640,
       generationFingerprint: buildGenerationFingerprint([sourceClip], exportProfile, {
         seed: "seed-1",
         profileVersion: 2,
