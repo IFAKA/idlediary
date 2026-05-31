@@ -9,6 +9,19 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_OFFLINE_CACHE_VERSION: offlineCacheVersion,
   },
+  turbopack: {
+    resolveAlias: {
+      fs: "./src/lib/empty-node-module.ts",
+    },
+  },
+  webpack: (config) => {
+    config.resolve = config.resolve ?? {};
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;

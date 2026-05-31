@@ -1,6 +1,7 @@
+import { arp as scribbleArp, clip as scribbleClip, type NoteObject } from "scribbletune";
 import { Midi, Scale } from "tonal";
 import { AppError } from "@/features/errors/app-error";
-import { composeGeneratedMusic, lofiLoopTemplateForSeed } from "./compose";
+import { composeGeneratedMusic } from "./compose";
 import { renderCompositionToWav } from "./render";
 import type { ClipMoodDescription, MusicPlan } from "./types";
 
@@ -8,6 +9,9 @@ export const localMusicEngine = "scribbletune-spessasynth";
 
 const fadeOutSeconds = 2.4;
 const targetSampleRate = 48_000;
+const midiTicksPerQuarter = 480;
+const scribbleTicksPerQuarter = 128;
+const scribbleToMidiTicks = midiTicksPerQuarter / scribbleTicksPerQuarter;
 const soundFontPath = "/soundfonts/lofi-diary.sf2";
 const spessaWorkletPath = "/spessasynth/spessasynth_processor.min.js";
 let spessaSynthModulesPromise: Promise<typeof import("spessasynth_lib") & typeof import("spessasynth_core")> | null = null;
@@ -87,105 +91,109 @@ export function buildPlanMidi(plan: MusicPlan) {
   const tracks = buildMidiTrackPlan(plan);
   return encodeMidi({
     bpm: plan.bpm,
-    ticksPerQuarter: 480,
+    ticksPerQuarter: midiTicksPerQuarter,
     tracks,
   });
 }
 
 export function buildMidiTrackPlan(plan: MusicPlan): MidiTrackPlan[] {
   const durationSeconds = Math.max(1, plan.durationMs / 1000);
-  const ticksPerQuarter = 480;
+  const ticksPerQuarter = midiTicksPerQuarter;
   const beatSeconds = 60 / plan.bpm;
-  const barTicks = ticksPerQuarter * 4;
   const totalTicks = Math.ceil((durationSeconds / beatSeconds) * ticksPerQuarter);
   const scaleNotes = scaleNoteNames(plan.key, plan.scale);
-  const loop = lofiLoopTemplateForSeed(plan.seed);
-  const scribblePattern = expandScribblePattern("x_x_x___x_x_x___", scaleNotes);
-  const seedOffset = scribblePattern.length % 4;
   const random = seededRandom(`${plan.seed}|midi`);
   const activity = plan.activity ?? (plan.energy === "medium" ? "medium" : "low");
-  const drumVelocityLift = activity === "high" ? 12 : activity === "medium" ? 6 : 0;
-  const bassVelocityLift = activity === "high" ? 15 : activity === "medium" ? 9 : 3;
-  const motifEveryBars = activity === "high" ? 2 : 4;
+  const progression = scribbleChordProgression(plan, scaleNotes, random);
+  const bassNotes = scribbleArp({ chords: progression.join(" "), count: 4, order: "0123" })
+    .filter((_, index) => index % 4 === 0)
+    .map((note) => note.replace(/\d$/, "2"));
+  const motifNotes = scaleNotes.map((note) => `${note}5`);
+  const drumVelocityLift = activity === "high" ? 14 : activity === "medium" ? 8 : 0;
 
-  const chords: MidiNoteEvent[] = [];
-  const bass: MidiNoteEvent[] = [];
-  const drums: MidiNoteEvent[] = [];
-  const motif: MidiNoteEvent[] = [];
-  const texture: MidiNoteEvent[] = [];
-
-  for (let barStart = 0; barStart < totalTicks; barStart += barTicks) {
-    const barIndex = Math.floor(barStart / barTicks);
-    const degree = loop.chordDegrees[(barIndex + seedOffset) % loop.chordDegrees.length];
-    const rootName = scaleNotes[degree % scaleNotes.length];
-    const rootMidi = Midi.toMidi(`${rootName}4`) ?? 60;
-    for (const interval of chordIntervals(plan.scale, random())) {
-      chords.push({
-        midi: rootMidi - 12 + interval,
-        startTicks: barStart + 28 + jitterTicks(random, 12),
-        durationTicks: barTicks * 2 - 24,
-        velocity: 48 + Math.floor(random() * 12) + (activity === "low" ? 0 : 4),
-      });
-    }
-
-    for (const note of loop.bassNotes) {
-      const scaleMidi = Midi.toMidi(`${scaleNotes[note.degree % scaleNotes.length]}3`) ?? rootMidi - 12;
-      bass.push({
-        midi: scaleMidi - 12,
-        startTicks: barStart + swingTicks(note.step, ticksPerQuarter) + jitterTicks(random, 4),
-        durationTicks: Math.max(80, Math.round((ticksPerQuarter / 4) * note.lengthSteps * 0.88)),
-        velocity: Math.round(58 * note.gain + bassVelocityLift),
-      });
-    }
-
-    for (const event of loop.kickSteps) {
-      drums.push({
-        midi: 36,
-        startTicks: barStart + swingTicks(event.step, ticksPerQuarter),
-        durationTicks: 60,
-        velocity: Math.round(64 * event.gain + 28 + drumVelocityLift),
-      });
-    }
-    drums.push({ midi: 38, startTicks: barStart + ticksPerQuarter, durationTicks: 70, velocity: 50 + drumVelocityLift });
-    drums.push({ midi: 38, startTicks: barStart + ticksPerQuarter * 3, durationTicks: 70, velocity: 46 + drumVelocityLift });
-    for (let step = 0; step < 8; step += activity === "low" ? 2 : 1) {
-      drums.push({
-        midi: 42,
-        startTicks: barStart + swingTicks(step * 2, ticksPerQuarter),
-        durationTicks: 36,
-        velocity: (step % 2 === 0 ? 38 : 32) + drumVelocityLift,
-      });
-    }
-    if (activity === "high") {
-      drums.push({
-        midi: 42,
-        startTicks: barStart + swingTicks(15, ticksPerQuarter) + jitterTicks(random, 5),
-        durationTicks: 32,
-        velocity: 34 + drumVelocityLift,
-      });
-    }
-
-    if (barIndex % motifEveryBars === 1) {
-      for (const note of loop.melodyNotes) {
-        const scaleMidi = Midi.toMidi(`${scaleNotes[note.degree % scaleNotes.length]}5`) ?? rootMidi + 12;
-        motif.push({
-          midi: scaleMidi,
-          startTicks: barStart + swingTicks(note.step, ticksPerQuarter) + jitterTicks(random, 8),
-          durationTicks: Math.max(80, Math.round((ticksPerQuarter / 4) * note.lengthSteps * 0.82)),
-          velocity: Math.round(40 * note.gain + 20 + (activity === "high" ? 8 : 0)),
-        });
-      }
-    }
-
-    if (barIndex % 2 === 0) {
-      texture.push({
-        midi: rootMidi + 12,
-        startTicks: barStart + 12,
-        durationTicks: barTicks * 2 - 32,
-        velocity: plan.texture === "none" ? 0 : 26,
-      });
-    }
-  }
+  const chords = repeatScribbleClip(
+    scribbleClip({
+      notes: progression,
+      pattern: "x___x___x___x___",
+      subdiv: "4n",
+      amp: activity === "high" ? 104 : 96,
+    }),
+    totalTicks,
+    random,
+    8,
+  );
+  const bass = repeatScribbleClip(
+    scribbleClip({
+      notes: bassNotes,
+      pattern: activity === "low" ? "x---x---x---x---" : "x-x-x---x-x-x---",
+      subdiv: "8n",
+      amp: activity === "high" ? 116 : activity === "medium" ? 108 : 102,
+      accent: "x---x---x---x---",
+    }),
+    totalTicks,
+    random,
+    4,
+  );
+  const drums = [
+    ...repeatScribbleClip(
+      scribbleClip({
+        notes: "C2",
+        pattern: activity === "low" ? "x-----x---x-----" : "x---x-x---x-x---",
+        subdiv: "16n",
+        amp: 116 + drumVelocityLift,
+      }),
+      totalTicks,
+      random,
+      1,
+    ),
+    ...repeatScribbleClip(
+      scribbleClip({
+        notes: "D2",
+        pattern: "----x-------x---",
+        subdiv: "16n",
+        amp: 88 + drumVelocityLift,
+      }),
+      totalTicks,
+      random,
+      1,
+    ),
+    ...repeatScribbleClip(
+      scribbleClip({
+        notes: "F#2",
+        pattern: activity === "low" ? "x---x---x---x---" : "x-x-x-x-x-x-x-x-",
+        subdiv: "16n",
+        amp: 56 + drumVelocityLift,
+      }),
+      totalTicks,
+      random,
+      1,
+    ),
+  ];
+  const motif = repeatScribbleClip(
+    scribbleClip({
+      notes: seededRotate(motifNotes, random),
+      pattern: activity === "high" ? "----x--x----x--x" : "----x-------x---",
+      subdiv: "16n",
+      amp: activity === "high" ? 78 : 68,
+    }),
+    totalTicks,
+    random,
+    10,
+  ).filter((_, index) => activity === "high" || index % 2 === 0);
+  const texture =
+    plan.texture === "none"
+      ? []
+      : repeatScribbleClip(
+          scribbleClip({
+            notes: progression.map((chord) => chord.replace("_3", "_4")),
+            pattern: "x_______x_______",
+            subdiv: "4n",
+            amp: plan.texture === "rain" ? 50 : 44,
+          }),
+          totalTicks,
+          random,
+          12,
+        );
 
   return [
     { name: "warm chords", channel: 0, program: 4, notes: bounded(chords, totalTicks) },
@@ -314,26 +322,81 @@ function scaleNoteNames(key: string, scale: string) {
   return Scale.get(`${key} major pentatonic`).notes;
 }
 
-function chordIntervals(scale: string, randomValue: number) {
+function scribbleChordProgression(plan: MusicPlan, scaleNotes: string[], random: () => number) {
+  const minorColor = plan.scale.includes("minor") || plan.scale.includes("dorian");
+  const templates = minorColor
+    ? [
+        [0, 3, 4, 2],
+        [0, 4, 1, 3],
+        [0, 2, 4, 3],
+      ]
+    : [
+        [0, 3, 4, 2],
+        [0, 4, 1, 3],
+        [0, 2, 3, 4],
+      ];
+  const template = templates[Math.floor(random() * templates.length)] ?? templates[0];
+  return template.map((degree, index) => {
+    const root = scaleNotes[degree % scaleNotes.length] ?? plan.key;
+    const quality = minorColor ? (index === 1 ? "M" : "m") : index === 2 ? "m" : "M";
+    return `${root}${quality}_3`;
+  });
+}
+
+function repeatScribbleClip(
+  clipNotes: NoteObject[],
+  totalTicks: number,
+  random: () => number,
+  jitterAmount: number,
+) {
+  const cycleTicks = Math.max(
+    1,
+    Math.round(clipNotes.reduce((total, note) => total + note.length, 0) * scribbleToMidiTicks),
+  );
+  const notes: MidiNoteEvent[] = [];
+  for (let cycleStart = 0; cycleStart < totalTicks; cycleStart += cycleTicks) {
+    notes.push(...scribbleNotesToMidiEvents(clipNotes, cycleStart, random, jitterAmount));
+  }
+  return notes;
+}
+
+function scribbleNotesToMidiEvents(
+  clipNotes: NoteObject[],
+  startOffsetTicks: number,
+  random: () => number,
+  jitterAmount: number,
+) {
+  const notes: MidiNoteEvent[] = [];
+  let cursorTicks = startOffsetTicks;
+  for (const clipNote of clipNotes) {
+    const durationTicks = Math.max(1, Math.round(clipNote.length * scribbleToMidiTicks));
+    if (clipNote.note) {
+      for (const note of clipNote.note) {
+        const midi = Midi.toMidi(note);
+        if (midi === null) continue;
+        notes.push({
+          midi,
+          startTicks: cursorTicks + jitterTicks(random, jitterAmount),
+          durationTicks: Math.max(36, durationTicks - 18),
+          velocity: clipNote.level,
+        });
+      }
+    }
+    cursorTicks += durationTicks;
+  }
+  return notes;
+}
+
+function seededRotate<T>(values: T[], random: () => number) {
+  if (values.length === 0) return values;
+  const offset = Math.floor(random() * values.length);
+  return [...values.slice(offset), ...values.slice(0, offset)];
+}
+
+export function chordIntervals(scale: string, randomValue: number) {
   const minorColor = scale.includes("minor") || scale.includes("dorian");
   if (minorColor) return randomValue > 0.46 ? [0, 3, 10, 14] : [0, 3, 10, 17];
   return randomValue > 0.46 ? [0, 4, 11, 14] : [0, 4, 11, 16];
-}
-
-function swingTicks(sixteenthStep: number, ticksPerQuarter: number) {
-  const beat = Math.floor(sixteenthStep / 4);
-  const stepInBeat = sixteenthStep % 4;
-  const straightSixteenth = ticksPerQuarter / 4;
-  const swungEighth = ticksPerQuarter * 0.59;
-  const offset =
-    stepInBeat === 0
-      ? 0
-      : stepInBeat === 1
-        ? straightSixteenth
-        : stepInBeat === 2
-          ? swungEighth
-          : swungEighth + straightSixteenth;
-  return Math.round(beat * ticksPerQuarter + offset);
 }
 
 function bounded(notes: MidiNoteEvent[], totalTicks: number) {
@@ -344,21 +407,6 @@ function bounded(notes: MidiNoteEvent[], totalTicks: number) {
     durationTicks: clamp(Math.round(note.durationTicks), 1, totalTicks),
     velocity: clamp(Math.round(note.velocity), 1, 127),
   }));
-}
-
-function expandScribblePattern(pattern: string, notes: string[]) {
-  const events: string[] = [];
-  let noteIndex = 0;
-  for (const char of pattern) {
-    if (char === "x") {
-      events.push(notes[noteIndex % notes.length]);
-      noteIndex += 1;
-    }
-    if (char === "_") {
-      noteIndex = Math.max(0, noteIndex - 1);
-    }
-  }
-  return events;
 }
 
 function jitterTicks(random: () => number, amount: number) {
