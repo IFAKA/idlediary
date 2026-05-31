@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeGeneratedMusic } from "./compose";
+import { composeGeneratedMusic, jazzChordIntervals } from "./compose";
 import { renderCompositionToWav } from "./render";
 import type { MusicPlan } from "./types";
 
@@ -38,11 +38,26 @@ describe("generated music rendering", () => {
     expect(rms(first.samples)).toBeGreaterThan(0.01);
     expect(zeroCrossingRate(first.samples)).toBeLessThan(0.08);
     expect(spectralCentroid(first.samples, first.sampleRate)).toBeLessThan(1_800);
+    expect(onsetCount(first.samples, first.sampleRate)).toBeGreaterThan(8);
 
     for (const sample of first.samples) {
       expect(Number.isFinite(sample)).toBe(true);
       expect(Math.abs(sample)).toBeLessThanOrEqual(0.821);
     }
+  });
+
+  it("renders recurring drum transients inside a short lofi loop", async () => {
+    const composition = await composeGeneratedMusic({ ...plan, durationMs: 8_000, energy: "medium", bpm: 80 });
+
+    expect(onsetCount(composition.samples, composition.sampleRate)).toBeGreaterThan(24);
+    expect(quarterSecondWindowsWithTransients(composition.samples, composition.sampleRate)).toBeGreaterThanOrEqual(14);
+  });
+
+  it("uses jazz seventh and ninth chord colors instead of open fifth stacks", () => {
+    expect(jazzChordIntervals("major pentatonic", 0.2)).toEqual([0, 4, 11, 16]);
+    expect(jazzChordIntervals("major pentatonic", 0.8)).toEqual([0, 4, 11, 14]);
+    expect(jazzChordIntervals("minor pentatonic", 0.2)).toEqual([0, 3, 10, 17]);
+    expect(jazzChordIntervals("dorian", 0.8)).toEqual([0, 3, 10, 14]);
   });
 });
 
@@ -92,4 +107,34 @@ function spectralCentroid(samples: Float32Array, rate: number) {
   }
 
   return weightedSum / Math.max(magnitudeSum, Number.EPSILON);
+}
+
+function onsetCount(samples: Float32Array, rate: number) {
+  const windowSize = Math.floor(rate * 0.025);
+  let previousEnergy = 0;
+  let count = 0;
+
+  for (let start = 0; start + windowSize < samples.length; start += windowSize) {
+    let energy = 0;
+    for (let index = start; index < start + windowSize; index += 1) {
+      energy += Math.abs(samples[index]);
+    }
+    energy /= windowSize;
+    if (previousEnergy > 0 && energy > previousEnergy * 1.32 && energy > 0.018) count += 1;
+    previousEnergy = previousEnergy * 0.62 + energy * 0.38;
+  }
+
+  return count;
+}
+
+function quarterSecondWindowsWithTransients(samples: Float32Array, rate: number) {
+  const windowSize = Math.floor(rate * 0.25);
+  let activeWindows = 0;
+
+  for (let start = 0; start + windowSize < samples.length; start += windowSize) {
+    const window = samples.subarray(start, start + windowSize);
+    if (onsetCount(window, rate) > 0) activeWindows += 1;
+  }
+
+  return activeWindows;
 }

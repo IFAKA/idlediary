@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMusicPlan } from "./plan";
+import { buildMusicPlan, musicProfileVersion } from "./plan";
 import type { ClipMoodDescription } from "./types";
 
 const cozyDescription: ClipMoodDescription = {
@@ -28,12 +28,23 @@ describe("buildMusicPlan", () => {
     expect(first.key).toEqual(expect.any(String));
     expect(first.scale).toEqual(expect.any(String));
     expect(first.instruments.length).toBeGreaterThan(0);
-    expect(first.bpm).toBeGreaterThanOrEqual(62);
-    expect(first.bpm).toBeLessThanOrEqual(83);
+    expect(first.bpm).toBeGreaterThanOrEqual(70);
+    expect(first.bpm).toBeLessThanOrEqual(78);
     expect(["minor pentatonic", "major pentatonic", "dorian"]).toContain(first.scale);
     expect(first.texture).not.toBe("none");
     expect(first.instruments).not.toContain("pluck");
     expect(first.instruments).not.toContain("mallet");
+  });
+
+  it("uses the classic lofi profile version and BPM ranges", () => {
+    const low = buildMusicPlan([cozyDescription], 6_000, "seed-1");
+    const medium = buildMusicPlan([{ ...cozyDescription, energy: "medium" }], 6_000, "seed-1");
+
+    expect(musicProfileVersion).toBe(4);
+    expect(low.bpm).toBeGreaterThanOrEqual(70);
+    expect(low.bpm).toBeLessThanOrEqual(78);
+    expect(medium.bpm).toBeGreaterThanOrEqual(76);
+    expect(medium.bpm).toBeLessThanOrEqual(86);
   });
 
   it("lets seed and AI caption words change the generated profile", () => {

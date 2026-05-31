@@ -1,6 +1,6 @@
 import type { ClipMoodDescription, MusicPlan } from "./types";
 
-export const musicProfileVersion = 3;
+export const musicProfileVersion = 4;
 
 const keys = ["C", "D", "E", "F", "G", "A", "Bb"] as const;
 const scales = ["minor pentatonic", "major pentatonic", "dorian"] as const;
@@ -23,14 +23,14 @@ export function buildMusicPlan(
   const energy = mediumEnergyCount > descriptions.length / 2 ? "medium" : "low";
   const profileSeed = [seed, mood, ...descriptions.flatMap((description) => description.tags)].join("|");
   const pick = picker(profileSeed);
-  const baseBpm = 62 + pick(16);
+  const baseBpm = energy === "medium" ? 76 + pick(11) : 70 + pick(9);
 
   return {
     seed,
     durationMs,
     mood,
     energy,
-    bpm: baseBpm + (energy === "medium" ? 6 : 0),
+    bpm: baseBpm,
     key: keys[pick(keys.length)],
     scale: scales[pick(scales.length)],
     instruments: [...instrumentPalettes[pick(instrumentPalettes.length)]],

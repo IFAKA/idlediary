@@ -11,6 +11,8 @@ const sampleRate = 48_000;
 const twoPi = Math.PI * 2;
 const targetPeak = 0.82;
 const humanizeSeconds = 0.032;
+const snareLagSeconds = 0.008;
+const swingRatio = 0.59;
 
 type ToneWave = "sine" | "triangle" | "warm";
 
@@ -38,29 +40,20 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
     const barIndex = Math.floor(barStart / barSeconds);
     const root = scaleNotes[chordDegrees[barIndex % chordDegrees.length] % scaleNotes.length];
     if (barIndex % 2 === 0) {
-      renderChord(samples, root, barStart, barSeconds * 2.12, plan.energy === "medium" ? 0.062 : 0.052, random);
+      renderChord(
+        samples,
+        root,
+        barStart + beatSeconds * 0.06,
+        barSeconds * 2.02,
+        plan.scale,
+        plan.energy === "medium" ? 0.046 : 0.04,
+        random,
+      );
     }
-    renderBass(samples, root - 24, barStart, beatSeconds, plan.energy === "medium" ? 0.074 : 0.062, random);
+    renderBass(samples, root - 24, barStart, beatSeconds, plan.energy === "medium" ? 0.078 : 0.066, random);
+    renderDrumBar(samples, barStart, beatSeconds, plan.energy, random);
 
-    for (let beat = 0; beat < 4; beat += 1) {
-      const beatStart = barStart + beat * beatSeconds;
-      if (beat === 0 || (plan.energy === "medium" && beat === 2 && random() > 0.34)) {
-        renderKick(samples, beatStart + humanize(random, 0.01), plan.energy === "medium" ? 0.068 : 0.046);
-      }
-      if (beat === 2) {
-        renderBrush(samples, beatStart + humanize(random, 0.024), 0.018 + random() * 0.006, random);
-      }
-      if (random() > 0.3) {
-        renderHat(
-          samples,
-          barStart + (beat + 0.5) * beatSeconds + humanize(random, 0.024),
-          0.006 + random() * 0.004,
-          random,
-        );
-      }
-    }
-
-    if (barIndex % 2 === 1 && random() > 0.28) {
+    if (barIndex % 4 === 1 && random() > 0.18) {
       renderMotif(samples, scaleNotes, barStart, beatSeconds, random);
     }
   }
@@ -83,17 +76,25 @@ function humanize(random: () => number, amountSeconds: number) {
   return (random() * 2 - 1) * amountSeconds;
 }
 
+export function jazzChordIntervals(scale: string, randomValue = 0) {
+  const minorColor = scale.includes("minor") || scale.includes("dorian");
+  if (minorColor) return randomValue > 0.46 ? [0, 3, 10, 14] : [0, 3, 10, 17];
+  return randomValue > 0.46 ? [0, 4, 11, 14] : [0, 4, 11, 16];
+}
+
 function renderChord(
   samples: Float32Array,
   rootMidi: number,
   start: number,
   duration: number,
+  scale: string,
   gain: number,
   random: () => number,
 ) {
-  for (const interval of [0, 7, 14]) {
-    const noteStart = start + humanize(random, 0.04);
-    const noteGain = (gain / 3) * (0.82 + random() * 0.18);
+  const intervals = jazzChordIntervals(scale, random());
+  for (const interval of intervals) {
+    const noteStart = start + humanize(random, 0.028);
+    const noteGain = (gain / intervals.length) * (0.76 + random() * 0.18);
     renderTone(samples, rootMidi + interval, noteStart, duration + humanize(random, 0.08), noteGain, {
       wave: "warm",
       attackSeconds: 0.32 + random() * 0.18,
@@ -112,28 +113,83 @@ function renderBass(
   gain: number,
   random: () => number,
 ) {
-  renderTone(samples, midi, barStart + humanize(random, 0.012), beatSeconds * 1.8, gain, {
+  renderTone(samples, midi, barStart + humanize(random, 0.01), beatSeconds * 0.78, gain, {
     wave: "warm",
-    attackSeconds: 0.1,
-    releaseSeconds: 0.42,
+    attackSeconds: 0.045,
+    releaseSeconds: 0.18,
     detuneCents: -3,
   });
-  if (random() > 0.52) {
+  renderTone(samples, midi + (random() > 0.72 ? 7 : 0), swungStepTime(barStart, beatSeconds, 5) + humanize(random, 0.008), beatSeconds * 0.42, gain * 0.62, {
+    wave: "warm",
+    attackSeconds: 0.035,
+    releaseSeconds: 0.15,
+    detuneCents: -2,
+    phaseOffset: 0.22,
+  });
+  if (random() > 0.38) {
     renderTone(
       samples,
-      midi + 7,
-      barStart + beatSeconds * 2 + humanize(random, 0.018),
-      beatSeconds * 1.34,
-      gain * 0.42,
+      midi + (random() > 0.58 ? 10 : 7),
+      swungStepTime(barStart, beatSeconds, 10) + humanize(random, 0.01),
+      beatSeconds * 0.52,
+      gain * 0.5,
       {
         wave: "warm",
-        attackSeconds: 0.12,
-        releaseSeconds: 0.38,
+        attackSeconds: 0.04,
+        releaseSeconds: 0.16,
         detuneCents: 2,
         phaseOffset: 0.4,
       },
     );
   }
+}
+
+function renderDrumBar(
+  samples: Float32Array,
+  barStart: number,
+  beatSeconds: number,
+  energy: MusicPlan["energy"],
+  random: () => number,
+) {
+  const kickGain = energy === "medium" ? 0.092 : 0.074;
+  const brushGain = energy === "medium" ? 0.032 : 0.027;
+  const hatGain = energy === "medium" ? 0.014 : 0.011;
+
+  renderKick(samples, barStart + humanize(random, 0.006), kickGain);
+  renderKick(samples, swungStepTime(barStart, beatSeconds, random() > 0.48 ? 5 : 7) + humanize(random, 0.006), kickGain * 0.72);
+  if (energy === "medium" || random() > 0.45) {
+    renderKick(samples, swungStepTime(barStart, beatSeconds, 10) + humanize(random, 0.008), kickGain * 0.52);
+  }
+
+  renderBrush(samples, barStart + beatSeconds + snareLagSeconds + humanize(random, 0.004), brushGain, random);
+  renderBrush(samples, barStart + beatSeconds * 3 + snareLagSeconds + humanize(random, 0.004), brushGain * 0.95, random);
+  if (energy === "medium" && random() > 0.38) {
+    renderBrush(samples, swungStepTime(barStart, beatSeconds, random() > 0.5 ? 6 : 12), brushGain * 0.34, random);
+  }
+
+  for (let step = 0; step < 8; step += 1) {
+    const accent = step % 2 === 0 ? 1 : 0.74;
+    renderHat(samples, swungStepTime(barStart, beatSeconds, step * 2) + humanize(random, 0.005), hatGain * accent * (0.82 + random() * 0.28), random);
+    if (energy === "medium" && step % 2 === 1 && random() > 0.52) {
+      renderHat(samples, swungStepTime(barStart, beatSeconds, step * 2 + 1) + humanize(random, 0.004), hatGain * 0.38, random);
+    }
+  }
+}
+
+function swungStepTime(barStart: number, beatSeconds: number, sixteenthStep: number) {
+  const beat = Math.floor(sixteenthStep / 4);
+  const stepInBeat = sixteenthStep % 4;
+  const straightSixteenth = beatSeconds / 4;
+  const swungEighth = beatSeconds * swingRatio;
+  const offset =
+    stepInBeat === 0
+      ? 0
+      : stepInBeat === 1
+        ? straightSixteenth
+        : stepInBeat === 2
+          ? swungEighth
+          : swungEighth + straightSixteenth;
+  return barStart + beat * beatSeconds + offset;
 }
 
 function renderMotif(
@@ -143,16 +199,16 @@ function renderMotif(
   beatSeconds: number,
   random: () => number,
 ) {
-  const noteCount = random() > 0.56 ? 2 : 1;
-  const motifStart = barStart + beatSeconds * (1.2 + random() * 1.6);
+  const noteCount = random() > 0.5 ? 2 : 1;
+  const motifStart = barStart + beatSeconds * (1.55 + random() * 1.25);
   for (let note = 0; note < noteCount; note += 1) {
     const melodyDegree = Math.floor(random() * scaleNotes.length);
     renderTone(
       samples,
       scaleNotes[melodyDegree] + 12,
       motifStart + note * beatSeconds * 0.72 + humanize(random, humanizeSeconds),
-      beatSeconds * (0.46 + random() * 0.28),
-      0.014 + random() * 0.008,
+      beatSeconds * (0.28 + random() * 0.18),
+      0.011 + random() * 0.006,
       {
         wave: "warm",
         attackSeconds: 0.11,
