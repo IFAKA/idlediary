@@ -265,7 +265,6 @@ export function FirstLaunchIntro({ onStart }: FirstLaunchIntroProps) {
                 alt=""
                 aria-hidden="true"
                 draggable={false}
-                priority
               />
               <svg
                 className="pointer-events-none absolute inset-1.5 z-10 size-[calc(100%-0.75rem)] rounded-[1.48rem] min-[390px]:rounded-[1.58rem]"
