@@ -193,11 +193,11 @@ async function generateOneVideo(page: Page) {
   });
 }
 
-async function seedDemoClipIntoTodayDraft(page: Page) {
+async function seedDemoClipIntoTodayDraft(page: Page, options: { withAnalysis?: boolean } = {}) {
   await page.goto("/draft");
   await expect(page.getByRole("heading", { name: "No draft clips yet" })).toBeVisible();
 
-  await page.evaluate(async () => {
+  await page.evaluate(async ({ withAnalysis }) => {
     const sessionId = new Date().toISOString().slice(0, 10);
     const response = await fetch("/demo-clips/coffee.mp4");
     if (!response.ok) throw new Error("Demo clip fixture is missing");
@@ -223,6 +223,19 @@ async function seedDemoClipIntoTodayDraft(page: Page) {
           order: 0,
           createdAt: now,
           size: blob.size,
+          ...(withAnalysis
+            ? {
+                analysis: {
+                  version: "mobilevit-small-q8-v1",
+                  description: "coffee on a table at home",
+                  tags: ["coffee", "home"],
+                  mood: "cozy",
+                  energy: "low",
+                  brightness: "normal",
+                  analyzedAt: now,
+                },
+              }
+            : {}),
         });
         tx.objectStore("clip-media").put({
           clipId: "e2e-demo-coffee",
@@ -236,7 +249,7 @@ async function seedDemoClipIntoTodayDraft(page: Page) {
         tx.onabort = () => reject(tx.error);
       };
     });
-  });
+  }, options);
 
   await page.reload();
   await expect(page.getByRole("button", { name: "Preview clip 1" })).toBeVisible();
@@ -724,6 +737,7 @@ test("make video loads local music AI assets and generates music from a real dem
         const testWindow = window as typeof window & {
           __idleDiaryGeneratedInputs?: string[];
           __idleDiaryGeneratedMusicBytes?: number;
+          __idleDiaryGeneratedMusicStats?: { peak: number; rms: number };
         };
         if (path.startsWith("clip-")) {
           testWindow.__idleDiaryGeneratedInputs = [
@@ -733,6 +747,20 @@ test("make video loads local music AI assets and generates music from a real dem
         }
         if (path === "music.wav" && data instanceof Uint8Array) {
           testWindow.__idleDiaryGeneratedMusicBytes = data.byteLength;
+          const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+          let peak = 0;
+          let sumSquares = 0;
+          let sampleCount = 0;
+          for (let offset = 44; offset + 1 < data.byteLength; offset += 2) {
+            const sample = view.getInt16(offset, true) / 0x8000;
+            peak = Math.max(peak, Math.abs(sample));
+            sumSquares += sample * sample;
+            sampleCount += 1;
+          }
+          testWindow.__idleDiaryGeneratedMusicStats = {
+            peak,
+            rms: sampleCount > 0 ? Math.sqrt(sumSquares / sampleCount) : 0,
+          };
         }
       }
 
@@ -770,7 +798,7 @@ test("make video loads local music AI assets and generates music from a real dem
     });
   });
 
-  await seedDemoClipIntoTodayDraft(page);
+  await seedDemoClipIntoTodayDraft(page, { withAnalysis: true });
   await page.getByRole("button", { name: "Make video" }).click();
 
   await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible({
@@ -785,6 +813,22 @@ test("make video loads local music AI assets and generates music from a real dem
       ),
     )
     .toBeGreaterThan(44);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryGeneratedMusicStats?: { peak: number; rms: number } })
+            .__idleDiaryGeneratedMusicStats ?? { peak: 0, rms: 0 },
+      ),
+    )
+    .toEqual(expect.objectContaining({ peak: expect.any(Number), rms: expect.any(Number) }));
+  const musicStats = await page.evaluate(
+    () =>
+      (window as typeof window & { __idleDiaryGeneratedMusicStats?: { peak: number; rms: number } })
+        .__idleDiaryGeneratedMusicStats,
+  );
+  expect(musicStats?.peak).toBeGreaterThan(0.05);
+  expect(musicStats?.rms).toBeGreaterThan(0.005);
   await expect
     .poll(() =>
       page.evaluate(
