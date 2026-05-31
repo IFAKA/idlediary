@@ -4,12 +4,7 @@ const CACHE_NAME = `idlediary-${CACHE_VERSION}`;
 const OFFLINE_ASSETS_URL = "/offline-assets.json";
 const APP_ROUTES = ["/", "/videos", "/draft", "/result", "/demo/launch"];
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg", "/favicon.ico"];
-const REQUIRED_ASSETS = [
-  ...APP_ROUTES,
-  ...APP_SHELL,
-  "/ffmpeg/ffmpeg-core.js",
-  "/ffmpeg/ffmpeg-core.wasm",
-];
+const REQUIRED_ASSETS = [...APP_ROUTES, ...APP_SHELL];
 const STATIC_ASSET_PATTERN =
   /\.(?:css|js|mjs|png|jpg|jpeg|webp|svg|ico|json|woff2?|wasm|mp4)$/;
 

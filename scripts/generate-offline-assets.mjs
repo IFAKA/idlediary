@@ -8,6 +8,7 @@ const outputPath = join(publicDir, "offline-assets.json");
 const buildIdPath = join(root, ".next", "BUILD_ID");
 
 const excludedPublicPaths = new Set(["/sw.js", "/offline-assets.json"]);
+const lazyPublicPathPrefixes = ["/ffmpeg/", "/models/", "/transformers/"];
 const appRoutes = ["/", "/videos", "/draft", "/result", "/demo/launch"];
 
 async function fileExists(path) {
@@ -48,7 +49,11 @@ async function readPublicAssets() {
   const files = await walkFiles(publicDir);
   return files
     .map((file) => toUrl("", publicDir, file))
-    .filter((asset) => !excludedPublicPaths.has(asset));
+    .filter(
+      (asset) =>
+        !excludedPublicPaths.has(asset) &&
+        !lazyPublicPathPrefixes.some((prefix) => asset.startsWith(prefix)),
+    );
 }
 
 async function readBuildId() {
