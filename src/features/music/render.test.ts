@@ -22,6 +22,7 @@ describe("generated music rendering", () => {
 
     expect(composition.sampleRate).toBe(48_000);
     expect(composition.samples).toHaveLength(48_000);
+    expect(Math.max(...composition.samples.map((sample) => Math.abs(sample)))).toBeCloseTo(0.82);
     expect(wav.slice(0, 4)).toEqual(new Uint8Array([82, 73, 70, 70]));
     expect(wav.length).toBe(44 + 48_000 * 2);
   });

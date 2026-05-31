@@ -25,7 +25,7 @@ export type GenerationProgress = {
 };
 
 const maxLogLines = 8;
-const musicVolume = 0.32;
+const musicVolume = 0.45;
 const technicalSummary = `MP4 concat demuxer | generated music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC, faststart`;
 
 const progressCopy: Record<
@@ -80,7 +80,7 @@ export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleM
   const filterComplex = [
     "[0:a:0]aformat=sample_rates=48000:channel_layouts=stereo,dynaudnorm=f=150:g=9,volume=1.0[clipaudio]",
     `[1:a:0]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${durationSeconds.toFixed(3)},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=2.4,volume=${musicVolume}[music]`,
-    "[clipaudio][music]amix=inputs=2:duration=first:dropout_transition=0,alimiter=limit=0.95[aout]",
+    "[clipaudio][music]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[aout]",
   ].join(";");
 
   return [

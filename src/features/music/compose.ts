@@ -9,6 +9,7 @@ export type MusicComposition = {
 
 const sampleRate = 48_000;
 const twoPi = Math.PI * 2;
+const targetPeak = 0.82;
 
 export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicComposition> {
   await import("tone");
@@ -48,6 +49,7 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
   renderTexture(samples, plan.texture, random);
   applyFade(samples, 1.2, Math.min(2.4, durationSeconds / 4));
   softLimit(samples);
+  normalizePeak(samples, targetPeak);
 
   return { plan, sampleRate, samples };
 }
@@ -159,6 +161,19 @@ function applyFade(samples: Float32Array, fadeInSeconds: number, fadeOutSeconds:
 function softLimit(samples: Float32Array) {
   for (let index = 0; index < samples.length; index += 1) {
     samples[index] = Math.tanh(samples[index] * 1.25) * 0.75;
+  }
+}
+
+function normalizePeak(samples: Float32Array, peak: number) {
+  let currentPeak = 0;
+  for (const sample of samples) {
+    currentPeak = Math.max(currentPeak, Math.abs(sample));
+  }
+  if (currentPeak <= 0) return;
+
+  const gain = peak / currentPeak;
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] *= gain;
   }
 }
 
