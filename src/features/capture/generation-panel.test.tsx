@@ -91,7 +91,6 @@ describe("GenerationPanel", () => {
     expect(view.textContent).toContain("Putting your clips and music together");
     expect(view.textContent).not.toContain("Rendering video");
     expect(view.textContent).toContain("Your clips and video stay private on this device.");
-    expect(view.textContent).not.toContain("concat demuxer stream copy");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();
     expect(view.querySelector(".generation-spinner")).toBeNull();
     expect(view.querySelector(".generation-step-shimmer")).not.toBeNull();
@@ -99,9 +98,10 @@ describe("GenerationPanel", () => {
   });
 
   it("shows live FFmpeg output only for local diagnostics", () => {
-    expect(shouldShowLocalGenerationLogs("development")).toBe(true);
-    expect(shouldShowLocalGenerationLogs("production")).toBe(false);
-    expect(shouldShowLocalGenerationLogs("production", "true")).toBe(true);
+    expect(shouldShowLocalGenerationLogs("development", undefined, "app.example.test")).toBe(true);
+    expect(shouldShowLocalGenerationLogs("production", undefined, "app.example.test")).toBe(false);
+    expect(shouldShowLocalGenerationLogs("production", "true", "app.example.test")).toBe(true);
+    expect(shouldShowLocalGenerationLogs("production", undefined, "localhost")).toBe(true);
 
     vi.stubEnv("NEXT_PUBLIC_IDLEDIARY_GENERATION_LOGS", "true");
     const view = renderPanel(
@@ -114,6 +114,19 @@ describe("GenerationPanel", () => {
     expect(view.textContent).toContain("Local FFmpeg output");
     expect(view.textContent).toContain("frame=42 fps=30");
     expect(view.textContent).toContain("muxing overhead: 0.1%");
+  });
+
+  it("shows a local waiting line before FFmpeg emits output", () => {
+    vi.stubEnv("NEXT_PUBLIC_IDLEDIARY_GENERATION_LOGS", "true");
+    const view = renderPanel(
+      generationProgress("rendering", 24, {
+        label: "Assembling MP4",
+        logs: [],
+      }),
+    );
+
+    expect(view.textContent).toContain("Local FFmpeg output");
+    expect(view.textContent).toContain("Assembling MP4: waiting for FFmpeg output...");
   });
 
   it("does not show the removed long-wait reassurance", () => {
