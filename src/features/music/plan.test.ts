@@ -40,7 +40,7 @@ describe("buildMusicPlan", () => {
     const low = buildMusicPlan([cozyDescription], 6_000, "seed-1");
     const medium = buildMusicPlan([{ ...cozyDescription, energy: "medium" }], 6_000, "seed-1");
 
-    expect(musicProfileVersion).toBe(5);
+    expect(musicProfileVersion).toBe(6);
     expect(low.bpm).toBeGreaterThanOrEqual(70);
     expect(low.bpm).toBeLessThanOrEqual(78);
     expect(medium.bpm).toBeGreaterThanOrEqual(76);

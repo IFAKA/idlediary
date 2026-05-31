@@ -1,6 +1,6 @@
 import type { ClipMoodDescription, MusicPlan } from "./types";
 
-export const musicProfileVersion = 5;
+export const musicProfileVersion = 6;
 
 const keys = ["C", "D", "E", "F", "G", "A", "Bb"] as const;
 const scales = ["minor pentatonic", "major pentatonic", "dorian"] as const;

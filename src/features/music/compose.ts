@@ -125,14 +125,15 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
   for (let barStart = 0; barStart < durationSeconds; barStart += barSeconds) {
     const barIndex = Math.floor(barStart / barSeconds);
     const root = scaleNotes[loop.chordDegrees[barIndex % loop.chordDegrees.length] % scaleNotes.length];
+    const chordRoot = root - 12;
     if (barIndex % 2 === 0) {
       renderChord(
         samples,
-        root,
+        chordRoot,
         barStart + beatSeconds * 0.06,
         barSeconds * 2.02,
         plan.scale,
-        plan.energy === "medium" ? 0.046 : 0.04,
+        plan.energy === "medium" ? 0.034 : 0.03,
         random,
       );
     }
@@ -247,9 +248,9 @@ function renderDrumBar(
   energy: MusicPlan["energy"],
   random: () => number,
 ) {
-  const kickGain = energy === "medium" ? 0.108 : 0.088;
-  const brushGain = energy === "medium" ? 0.038 : 0.032;
-  const hatGain = energy === "medium" ? 0.016 : 0.013;
+  const kickGain = energy === "medium" ? 0.124 : 0.102;
+  const brushGain = energy === "medium" ? 0.048 : 0.04;
+  const hatGain = energy === "medium" ? 0.021 : 0.017;
 
   for (const event of loop.kickSteps) {
     renderKick(samples, swungStepTime(barStart, beatSeconds, event.step) + humanize(random, 0.004), kickGain * event.gain);
