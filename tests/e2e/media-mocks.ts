@@ -101,6 +101,11 @@ export async function mockMediaCapture(
       value: MockFFmpeg,
     });
 
+    Object.defineProperty(window, "__idleDiaryMockGeneratedMusic", {
+      configurable: true,
+      value: async () => new Uint8Array([82, 73, 70, 70]),
+    });
+
     Object.defineProperty(window, "__idleDiaryMockVideoThumbnail", {
       configurable: true,
       value: async (_videoBlob: Blob, options: { width: number; height: number }) => ({

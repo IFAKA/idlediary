@@ -8,6 +8,11 @@ import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbna
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
 import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
+import { analyzeClipMoodDescriptions } from "@/features/music/analyze";
+import { composeGeneratedMusic } from "@/features/music/compose";
+import { extractClipKeyframes } from "@/features/music/keyframes";
+import { buildMusicPlan, musicProfileVersion } from "@/features/music/plan";
+import { renderCompositionToWav } from "@/features/music/render";
 export { exportProfile } from "@/features/video/export-profile";
 
 export type GenerationProgress = {
@@ -20,7 +25,8 @@ export type GenerationProgress = {
 };
 
 const maxLogLines = 8;
-const technicalSummary = `MP4 concat demuxer | stream copy | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC, faststart`;
+const musicVolume = 0.18;
+const technicalSummary = `MP4 concat demuxer | generated music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC, faststart`;
 
 const progressCopy: Record<
   GenerationProgress["step"],
@@ -38,8 +44,8 @@ const progressCopy: Record<
   },
   writing: {
     label: "Gathering moments",
-    detail: "Pulling today's little clips together",
-    technical: `${technicalSummary} | concat demuxer input list`,
+    detail: "Reading your clips and composing a quiet soundtrack",
+    technical: `${technicalSummary} | local keyframes, local music synthesis`,
   },
   rendering: {
     label: "Assembling MP4",
@@ -68,7 +74,15 @@ let activeProgressSink: ((progress: GenerationProgress) => void) | null = null;
 let recentFfmpegLogs: string[] = [];
 let activeRenderValue = 24;
 
-export function buildFfmpegArgs() {
+export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleMs) {
+  const durationSeconds = Math.max(0.1, durationMs / 1000);
+  const fadeOutStart = Math.max(0, durationSeconds - 2.4).toFixed(3);
+  const filterComplex = [
+    "[0:a:0]aformat=sample_rates=48000:channel_layouts=stereo,dynaudnorm=f=150:g=9,volume=1.0[clipaudio]",
+    `[1:a:0]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${durationSeconds.toFixed(3)},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=2.4,volume=${musicVolume}[music]`,
+    "[clipaudio][music]amix=inputs=2:duration=first:dropout_transition=0,alimiter=limit=0.95[aout]",
+  ].join(";");
+
   return [
     "-fflags",
     "+genpts",
@@ -78,12 +92,24 @@ export function buildFfmpegArgs() {
     "0",
     "-i",
     "inputs.txt",
+    "-i",
+    "music.wav",
+    "-filter_complex",
+    filterComplex,
     "-map",
     "0:v:0",
     "-map",
-    "0:a?",
-    "-c",
+    "[aout]",
+    "-c:v",
     "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
     "-movflags",
     "+faststart",
     "-avoid_negative_ts",
@@ -111,6 +137,10 @@ function stableJson(value: unknown): string {
 export function buildGenerationFingerprint(
   clips: ClipRecord[],
   profile: Record<string, unknown> = exportProfile,
+  music: { seed: string; profileVersion: number } = {
+    seed: "default",
+    profileVersion: musicProfileVersion,
+  },
 ) {
   return stableJson({
     clips: clips.map((clip) => ({
@@ -120,6 +150,7 @@ export function buildGenerationFingerprint(
       mimeType: clip.mimeType,
     })),
     exportProfile: profile,
+    music,
   });
 }
 
@@ -146,6 +177,41 @@ export function resetGenerationForTests() {
   activeProgressSink = null;
   recentFfmpegLogs = [];
   activeRenderValue = 24;
+}
+
+async function createGeneratedMusicWav(clips: ClipRecord[], durationMs: number, seed: string) {
+  const MockGeneratedMusic =
+    typeof window !== "undefined"
+      ? (
+          window as typeof window & {
+            __idleDiaryMockGeneratedMusic?: (input: {
+              clips: ClipRecord[];
+              durationMs: number;
+              seed: string;
+            }) => Uint8Array | Promise<Uint8Array>;
+          }
+        ).__idleDiaryMockGeneratedMusic
+      : undefined;
+  if (MockGeneratedMusic) {
+    return {
+      musicWav: await MockGeneratedMusic({ clips, durationMs, seed }),
+      debug: { mocked: true },
+    };
+  }
+
+  const keyframes = await extractClipKeyframes(clips);
+  const descriptions = await analyzeClipMoodDescriptions(keyframes);
+  const musicPlan = buildMusicPlan(descriptions, durationMs, seed);
+  const composition = await composeGeneratedMusic(musicPlan);
+  return {
+    musicWav: renderCompositionToWav(composition),
+    debug: {
+      mocked: false,
+      musicSeed: seed,
+      musicProfileVersion,
+      musicMood: musicPlan.mood,
+    },
+  };
 }
 
 function renderingLabelFor(value: number) {
@@ -239,6 +305,7 @@ export async function generateVlog(
   clips: ClipRecord[],
   sessionId: string,
   onProgress: (progress: GenerationProgress) => void,
+  options: { generatedMusic?: true; musicSeed?: string } = { generatedMusic: true },
 ): Promise<VlogRecord> {
   if (clips.length === 0) {
     throw reportError(
@@ -257,11 +324,15 @@ export async function generateVlog(
     activeProgressSink = onProgress;
     recentFfmpegLogs = [];
     activeRenderValue = 24;
+    const musicSeed = options.musicSeed ?? crypto.randomUUID();
     if (typeof window !== "undefined") {
       (window as typeof window & { __idleDiaryGenerationClipIds?: string[] })
         .__idleDiaryGenerationClipIds = clips.map((clip) => clip.id);
     }
-    const generationFingerprint = buildGenerationFingerprint(clips, exportProfile);
+    const generationFingerprint = buildGenerationFingerprint(clips, exportProfile, {
+      seed: musicSeed,
+      profileVersion: musicProfileVersion,
+    });
     const cachedVlog = await getVlogByGenerationFingerprint(generationFingerprint, sessionId);
     if (cachedVlog) {
       emitProgress(generationProgress("done", 100));
@@ -274,7 +345,20 @@ export async function generateVlog(
     }
 
     const ffmpeg = await loadFfmpeg();
-    emitProgress(generationProgress("writing", 14));
+    emitProgress(
+      generationProgress("writing", 14, {
+        label: "Composing music",
+        detail: "Looking at keyframes and making a quiet backing track",
+      }),
+    );
+
+    const totalDurationMs = clips.reduce((total, clip) => total + clip.durationMs, 0);
+    const { musicWav, debug: musicDebug } = await createGeneratedMusicWav(
+      clips,
+      totalDurationMs,
+      musicSeed,
+    );
+    await ffmpeg.writeFile("music.wav", musicWav);
 
     const listLines: string[] = [];
     for (const [index, clip] of clips.entries()) {
@@ -286,10 +370,11 @@ export async function generateVlog(
     addDebugEvent("ffmpeg-inputs-written", "generation", {
       clipCount: clips.length,
       bytes: clips.reduce((total, clip) => total + clip.size, 0),
+      ...musicDebug,
     });
 
     emitProgress(generationProgress("rendering", 24));
-    await ffmpeg.exec(buildFfmpegArgs());
+    await ffmpeg.exec(buildFfmpegArgs(totalDurationMs));
 
     emitProgress(generationProgress("saving", 92));
     const data = await ffmpeg.readFile(exportProfile.output);
@@ -332,6 +417,10 @@ export async function generateVlog(
     });
     return vlog;
   } catch (cause) {
+    if (cause instanceof AppError) {
+      throw reportError(cause);
+    }
+
     throw reportError(
       new AppError({
         code: "generation-failed",

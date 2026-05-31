@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClipRecord } from "@/features/clips/types";
 import {
   buildFfmpegArgs,
@@ -18,6 +18,13 @@ const storageMocks = vi.hoisted(() => ({
 const thumbnailMocks = vi.hoisted(() => ({
   generateVideoThumbnail: vi.fn(),
 }));
+const musicMocks = vi.hoisted(() => ({
+  extractClipKeyframes: vi.fn(),
+  analyzeClipMoodDescriptions: vi.fn(),
+  buildMusicPlan: vi.fn(),
+  composeGeneratedMusic: vi.fn(),
+  renderCompositionToWav: vi.fn(),
+}));
 
 vi.mock("@/features/clips/storage", () => ({
   getVlogByGenerationFingerprint: storageMocks.getVlogByGenerationFingerprint,
@@ -27,6 +34,22 @@ vi.mock("@/features/clips/thumbnail", () => ({
   thumbnailSizes: {
     vlog: { width: 360, height: 640 },
   },
+}));
+vi.mock("@/features/music/keyframes", () => ({
+  extractClipKeyframes: musicMocks.extractClipKeyframes,
+}));
+vi.mock("@/features/music/analyze", () => ({
+  analyzeClipMoodDescriptions: musicMocks.analyzeClipMoodDescriptions,
+}));
+vi.mock("@/features/music/plan", async (importOriginal) => ({
+  ...((await importOriginal()) as object),
+  buildMusicPlan: musicMocks.buildMusicPlan,
+}));
+vi.mock("@/features/music/compose", () => ({
+  composeGeneratedMusic: musicMocks.composeGeneratedMusic,
+}));
+vi.mock("@/features/music/render", () => ({
+  renderCompositionToWav: musicMocks.renderCompositionToWav,
 }));
 
 function clip(id: string): ClipRecord {
@@ -42,10 +65,53 @@ function clip(id: string): ClipRecord {
 }
 
 describe("generation export profile", () => {
+  beforeEach(() => {
+    resetGenerationForTests();
+    storageMocks.getVlogByGenerationFingerprint.mockReset();
+    thumbnailMocks.generateVideoThumbnail.mockReset();
+    musicMocks.extractClipKeyframes.mockReset();
+    musicMocks.analyzeClipMoodDescriptions.mockReset();
+    musicMocks.buildMusicPlan.mockReset();
+    musicMocks.composeGeneratedMusic.mockReset();
+    musicMocks.renderCompositionToWav.mockReset();
+    musicMocks.extractClipKeyframes.mockResolvedValue([{ clipId: "clip-1", timeMs: 600, dataUrl: "data:image/jpeg;base64,aa" }]);
+    musicMocks.analyzeClipMoodDescriptions.mockResolvedValue([
+      {
+        clipId: "clip-1",
+        description: "a cozy room",
+        tags: ["home"],
+        mood: "cozy",
+        energy: "low",
+        brightness: "normal",
+      },
+    ]);
+    musicMocks.buildMusicPlan.mockReturnValue({
+      seed: "seed-1",
+      durationMs: 3_000,
+      mood: "cozy",
+      energy: "low",
+      bpm: 74,
+      key: "C",
+      scale: "major pentatonic",
+      instruments: ["felt-piano"],
+      texture: "room",
+    });
+    musicMocks.composeGeneratedMusic.mockResolvedValue({
+      sampleRate: 48_000,
+      samples: new Float32Array(48_000),
+    });
+    musicMocks.renderCompositionToWav.mockReturnValue(new Uint8Array([82, 73, 70, 70]));
+  });
+
   afterEach(() => {
     resetGenerationForTests();
     storageMocks.getVlogByGenerationFingerprint.mockReset();
     thumbnailMocks.generateVideoThumbnail.mockReset();
+    musicMocks.extractClipKeyframes.mockReset();
+    musicMocks.analyzeClipMoodDescriptions.mockReset();
+    musicMocks.buildMusicPlan.mockReset();
+    musicMocks.composeGeneratedMusic.mockReset();
+    musicMocks.renderCompositionToWav.mockReset();
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
   });
 
@@ -60,34 +126,33 @@ describe("generation export profile", () => {
     );
   });
 
-  it("uses stream copy concat/remux args without transcoding options", () => {
-    const args = buildFfmpegArgs();
+  it("uses concat plus generated music mixing args", () => {
+    const args = buildFfmpegArgs(3_000);
 
-    expect(args).toEqual(expect.arrayContaining(["-c", "copy"]));
+    expect(args).toEqual(expect.arrayContaining(["-i", "inputs.txt", "-i", "music.wav"]));
+    expect(args).toEqual(expect.arrayContaining(["-c:v", "copy"]));
+    expect(args).toEqual(expect.arrayContaining(["-c:a", "aac"]));
+    expect(args).toEqual(expect.arrayContaining(["-ar", "48000", "-ac", "2"]));
     expect(args).toContain("-movflags");
     expect(args).toContain("+faststart");
-    expect(args).not.toContain("-vf");
-    expect(args).not.toContain("libx264");
-    expect(args).not.toContain("aac");
-    expect(args).not.toContain("-preset");
-    expect(args).not.toContain("-r");
-    expect(args).not.toContain("-pix_fmt");
-    expect(args).not.toContain("-ar");
-    expect(args).not.toContain("-ac");
+    expect(args).toContain("-filter_complex");
+    expect(args.join(" ")).toContain("dynaudnorm");
+    expect(args.join(" ")).toContain("amix=inputs=2");
+    expect(args.join(" ")).toContain("alimiter=limit=0.95");
   });
 
-  it("includes timestamp hardening without post-processing short-clip audio", () => {
+  it("includes timestamp hardening and exports the MP4 output", () => {
     const args = buildFfmpegArgs();
 
     expect(args).toEqual(expect.arrayContaining(["-fflags", "+genpts"]));
     expect(args).toEqual(expect.arrayContaining(["-avoid_negative_ts", "make_zero"]));
     expect(args).toContain("-shortest");
-    expect(args).not.toContain("-af");
     expect(args.at(-1)).toBe("vlog.mp4");
   });
 
   it("captures progress phases, technical detail, and bounded FFmpeg logs", async () => {
     const execArgs: string[][] = [];
+    const writtenFiles: string[] = [];
 
     class MockFFmpeg {
       private readonly handlers = new Map<string, Array<(event: never) => void>>();
@@ -98,7 +163,9 @@ describe("generation export profile", () => {
 
       async load() {}
 
-      async writeFile() {}
+      async writeFile(path: string) {
+        writtenFiles.push(path);
+      }
 
       async exec(args: string[]) {
         execArgs.push(args);
@@ -130,11 +197,19 @@ describe("generation export profile", () => {
     });
 
     const progress: GenerationProgress[] = [];
-    const vlog = await generateVlog([clip("clip-1")], "session-1", (nextProgress) => {
-      progress.push(nextProgress);
-    });
+    const vlog = await generateVlog(
+      [clip("clip-1")],
+      "session-1",
+      (nextProgress) => {
+        progress.push(nextProgress);
+      },
+      { generatedMusic: true, musicSeed: "seed-1" },
+    );
 
-    expect(execArgs).toEqual([buildFfmpegArgs()]);
+    expect(execArgs).toEqual([buildFfmpegArgs(3_000)]);
+    expect(writtenFiles).toEqual(["music.wav", "clip-0.mp4", "inputs.txt"]);
+    expect(musicMocks.extractClipKeyframes).toHaveBeenCalledWith([expect.objectContaining({ id: "clip-1" })]);
+    expect(musicMocks.buildMusicPlan).toHaveBeenCalledWith(expect.any(Array), 3_000, "seed-1");
     expect(thumbnailMocks.generateVideoThumbnail).toHaveBeenCalledWith(
       vlog.blob,
       expect.objectContaining({ width: 360, height: 640 }),
@@ -143,14 +218,14 @@ describe("generation export profile", () => {
     expect(progress.map((entry) => entry.label)).toEqual(
       expect.arrayContaining([
         "Opening your diary",
-        "Gathering moments",
+        "Composing music",
         "Assembling MP4",
         "Making playback ready",
         "Saving privately",
         "Ready",
       ]),
     );
-    expect(progress.some((entry) => entry.technical.includes("stream copy"))).toBe(true);
+    expect(progress.some((entry) => entry.technical.includes("generated music mix"))).toBe(true);
     expect(progress.at(-1)?.logs).toHaveLength(2);
   });
 
@@ -241,6 +316,9 @@ describe("generation export profile", () => {
     expect(buildGenerationFingerprint([first, second])).not.toBe(
       buildGenerationFingerprint([first, second], { ...exportProfile, fps: 24 }),
     );
+    expect(buildGenerationFingerprint([first, second], exportProfile, { seed: "a", profileVersion: 1 })).not.toBe(
+      buildGenerationFingerprint([first, second], exportProfile, { seed: "b", profileVersion: 1 }),
+    );
   });
 
   it("reuses a matching generated vlog without running FFmpeg", async () => {
@@ -256,7 +334,10 @@ describe("generation export profile", () => {
       caption: "",
       createdAt: "2026-05-27T11:00:00.000Z",
       size: cachedBlob.size,
-      generationFingerprint: buildGenerationFingerprint([sourceClip]),
+      generationFingerprint: buildGenerationFingerprint([sourceClip], exportProfile, {
+        seed: "seed-1",
+        profileVersion: 1,
+      }),
     });
 
     class MockFFmpeg {
@@ -273,8 +354,12 @@ describe("generation export profile", () => {
     (window as typeof window & { __idleDiaryMockFFmpeg?: typeof MockFFmpeg }).__idleDiaryMockFFmpeg =
       MockFFmpeg;
 
-    const vlog = await generateVlog([sourceClip], "session-1", () => undefined);
+    const vlog = await generateVlog([sourceClip], "session-1", () => undefined, {
+      generatedMusic: true,
+      musicSeed: "seed-1",
+    });
 
     expect(vlog.id).toBe("cached-vlog");
+    expect(musicMocks.extractClipKeyframes).not.toHaveBeenCalled();
   });
 });
