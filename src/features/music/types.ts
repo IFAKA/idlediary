@@ -2,7 +2,7 @@ export type ClipMoodDescription = {
   clipId: string;
   description: string;
   tags: string[];
-  mood: "cozy" | "rainy" | "night" | "bright" | "travel" | "neutral";
+  mood: string;
   energy: "low" | "medium";
   brightness: "dim" | "normal" | "bright";
 };
@@ -10,7 +10,7 @@ export type ClipMoodDescription = {
 export type MusicPlan = {
   seed: string;
   durationMs: number;
-  mood: ClipMoodDescription["mood"];
+  mood: string;
   energy: "low" | "medium";
   bpm: number;
   key: string;

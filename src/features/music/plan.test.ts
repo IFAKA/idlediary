@@ -6,7 +6,7 @@ const cozyDescription: ClipMoodDescription = {
   clipId: "clip-1",
   description: "coffee on a table at home",
   tags: ["coffee", "home"],
-  mood: "cozy",
+  mood: "coffee",
   energy: "low",
   brightness: "normal",
 };
@@ -21,15 +21,16 @@ describe("buildMusicPlan", () => {
       expect.objectContaining({
         seed: "seed-1",
         durationMs: 6_000,
-        mood: "cozy",
+        mood: "coffee",
         energy: "low",
-        key: "C",
-        scale: "major pentatonic",
       }),
     );
+    expect(first.key).toEqual(expect.any(String));
+    expect(first.scale).toEqual(expect.any(String));
+    expect(first.instruments.length).toBeGreaterThan(0);
   });
 
-  it("lets seed and mood change the generated profile", () => {
+  it("lets seed and AI caption words change the generated profile", () => {
     const rainy: ClipMoodDescription = {
       ...cozyDescription,
       clipId: "clip-2",

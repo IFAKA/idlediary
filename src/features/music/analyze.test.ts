@@ -6,9 +6,9 @@ describe("descriptionFromCaptions", () => {
     expect(descriptionFromCaptions("clip-1", ["a rainy night street through a window"])).toEqual({
       clipId: "clip-1",
       description: "a rainy night street through a window",
-      tags: ["rain", "night", "street", "window"],
+      tags: ["rainy", "night", "street", "window"],
       mood: "rainy",
-      energy: "medium",
+      energy: "low",
       brightness: "dim",
     });
   });

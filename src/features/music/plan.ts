@@ -1,76 +1,40 @@
 import type { ClipMoodDescription, MusicPlan } from "./types";
 
-export const musicProfileVersion = 1;
+export const musicProfileVersion = 2;
 
-const moodSettings: Record<
-  ClipMoodDescription["mood"],
-  Pick<MusicPlan, "bpm" | "key" | "scale" | "instruments" | "texture">
-> = {
-  cozy: {
-    bpm: 74,
-    key: "C",
-    scale: "major pentatonic",
-    instruments: ["felt-piano", "soft-bass", "brush-kit"],
-    texture: "room",
-  },
-  rainy: {
-    bpm: 68,
-    key: "D",
-    scale: "minor pentatonic",
-    instruments: ["electric-piano", "sub-bass", "brush-kit"],
-    texture: "rain",
-  },
-  night: {
-    bpm: 72,
-    key: "A",
-    scale: "minor",
-    instruments: ["electric-piano", "warm-pad", "soft-kick"],
-    texture: "vinyl",
-  },
-  bright: {
-    bpm: 84,
-    key: "G",
-    scale: "major",
-    instruments: ["mallet", "felt-piano", "soft-kit"],
-    texture: "room",
-  },
-  travel: {
-    bpm: 88,
-    key: "E",
-    scale: "dorian",
-    instruments: ["pluck", "soft-bass", "soft-kit"],
-    texture: "none",
-  },
-  neutral: {
-    bpm: 76,
-    key: "F",
-    scale: "major pentatonic",
-    instruments: ["felt-piano", "soft-bass", "brush-kit"],
-    texture: "room",
-  },
-};
+const keys = ["C", "D", "E", "F", "G", "A", "Bb"] as const;
+const scales = ["major pentatonic", "minor pentatonic", "major", "minor", "dorian"] as const;
+const instrumentPalettes = [
+  ["felt-piano", "soft-bass", "brush-kit"],
+  ["electric-piano", "sub-bass", "brush-kit"],
+  ["electric-piano", "warm-pad", "soft-kick"],
+  ["mallet", "felt-piano", "soft-kit"],
+  ["pluck", "soft-bass", "soft-kit"],
+] as const;
+const textures = ["vinyl", "rain", "room", "none"] as const;
 
 export function buildMusicPlan(
   descriptions: ClipMoodDescription[],
   durationMs: number,
   seed: string,
 ): MusicPlan {
-  const mood = mostCommon(descriptions.map((description) => description.mood)) ?? "neutral";
+  const mood = mostCommon(descriptions.map((description) => description.mood)) ?? "daily";
   const mediumEnergyCount = descriptions.filter((description) => description.energy === "medium").length;
   const energy = mediumEnergyCount > descriptions.length / 2 ? "medium" : "low";
-  const settings = moodSettings[mood];
-  const seedOffset = seededInt(seed, -3, 3);
+  const profileSeed = [seed, mood, ...descriptions.flatMap((description) => description.tags)].join("|");
+  const pick = picker(profileSeed);
+  const baseBpm = 66 + pick(23);
 
   return {
     seed,
     durationMs,
     mood,
     energy,
-    bpm: settings.bpm + (energy === "medium" ? 4 : 0) + seedOffset,
-    key: settings.key,
-    scale: settings.scale,
-    instruments: settings.instruments,
-    texture: settings.texture,
+    bpm: baseBpm + (energy === "medium" ? 8 : 0),
+    key: keys[pick(keys.length)],
+    scale: scales[pick(scales.length)],
+    instruments: [...instrumentPalettes[pick(instrumentPalettes.length)]],
+    texture: textures[pick(textures.length)],
   };
 }
 
@@ -80,11 +44,20 @@ function mostCommon<T extends string>(values: T[]) {
   return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0];
 }
 
-function seededInt(seed: string, min: number, max: number) {
-  let hash = 2166136261;
+function picker(seed: string) {
+  let state = hash(seed);
+  return (max: number) => {
+    state = Math.imul(state ^ (state >>> 15), state | 1);
+    state ^= state + Math.imul(state ^ (state >>> 7), state | 61);
+    return Math.abs(state >>> 0) % max;
+  };
+}
+
+function hash(seed: string) {
+  let value = 2166136261;
   for (const char of seed) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
+    value ^= char.charCodeAt(0);
+    value = Math.imul(value, 16777619);
   }
-  return min + (Math.abs(hash) % (max - min + 1));
+  return value;
 }

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "postinstall": "node scripts/install-music-model.mjs",
     "build": "next build && node scripts/generate-offline-assets.mjs",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
@@ -15,7 +16,8 @@
     "demo:inspect": "demo-director inspect dist/demo/main.mp4",
     "demo:doctor": "demo-director doctor demo/main.demo.ts",
     "launch-video": "node scripts/launch-video/render.mjs",
-    "launch-video:clean": "node scripts/launch-video/clean.mjs"
+    "launch-video:clean": "node scripts/launch-video/clean.mjs",
+    "music:model:install": "node scripts/install-music-model.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

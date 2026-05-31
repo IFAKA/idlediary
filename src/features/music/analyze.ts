@@ -5,6 +5,8 @@ type CaptionResult = { generated_text?: string; caption?: string };
 type ImageToTextPipeline = (image: string) => Promise<CaptionResult[] | CaptionResult>;
 
 const captionModel = "Xenova/vit-gpt2-image-captioning";
+const modelPath = "/models/";
+const wasmPath = "/transformers/";
 
 export async function analyzeClipMoodDescriptions(
   keyframes: ClipKeyframe[],
@@ -18,20 +20,7 @@ export async function analyzeClipMoodDescriptions(
     });
   }
 
-  let classifier: ImageToTextPipeline;
-  try {
-    const transformers = await import("@huggingface/transformers");
-    classifier = (await transformers.pipeline("image-to-text", captionModel)) as ImageToTextPipeline;
-  } catch (cause) {
-    throw new AppError({
-      code: "generation-unavailable",
-      area: "generation",
-      message: "Local image analysis model could not load",
-      userMessage: "Generated music needs local AI support on this device.",
-      cause,
-    });
-  }
-
+  const classifier = await loadLocalCaptioner();
   const captionsByClip = new Map<string, string[]>();
   for (const frame of keyframes) {
     const caption = await captionFrame(classifier, frame.dataUrl);
@@ -41,6 +30,39 @@ export async function analyzeClipMoodDescriptions(
   return [...captionsByClip.entries()].map(([clipId, captions]) =>
     descriptionFromCaptions(clipId, captions),
   );
+}
+
+async function loadLocalCaptioner() {
+  try {
+    const transformers = await import("@huggingface/transformers");
+    transformers.env.allowLocalModels = true;
+    transformers.env.allowRemoteModels = false;
+    transformers.env.localModelPath = modelPath;
+    const onnxBackend = transformers.env.backends.onnx as {
+      wasm?: { wasmPaths?: string };
+    };
+    onnxBackend.wasm ??= {};
+    onnxBackend.wasm.wasmPaths = wasmPath;
+
+    return (await transformers.pipeline("image-to-text", captionModel, {
+      dtype: "q8",
+      local_files_only: true,
+    })) as ImageToTextPipeline;
+  } catch (cause) {
+    throw new AppError({
+      code: "generation-unavailable",
+      area: "generation",
+      message: "Local image analysis model could not load",
+      userMessage: "Generated music needs the local music AI model installed on this device.",
+      cause,
+      context: {
+        model: captionModel,
+        modelPath,
+        wasmPath,
+        installCommand: "npm run music:model:install",
+      },
+    });
+  }
 }
 
 async function captionFrame(classifier: ImageToTextPipeline, dataUrl: string) {
@@ -66,56 +88,51 @@ export function descriptionFromCaptions(
   captions: string[],
 ): ClipMoodDescription {
   const text = captions.join(" ").toLowerCase();
-  const tags = uniqueTags(text);
+  const tags = extractCaptionTags(text);
   const brightness = /night|dark|dim|black|shadow|rain|cloud/.test(text)
     ? "dim"
     : /sun|bright|white|day|sky|beach|light/.test(text)
       ? "bright"
       : "normal";
-  const mood = chooseMood(text, tags, brightness);
 
   return {
     clipId,
     description: captions.join(" / "),
     tags,
-    mood,
-    energy: /street|city|car|train|crowd|walk|road|travel|beach|market/.test(text)
-      ? "medium"
-      : "low",
+    mood: tags[0] ?? "daily",
+    energy: tags.length >= 5 ? "medium" : "low",
     brightness,
   };
 }
 
-function chooseMood(
-  text: string,
-  tags: string[],
-  brightness: ClipMoodDescription["brightness"],
-): ClipMoodDescription["mood"] {
-  if (/rain|wet|umbrella|cloud|storm|window/.test(text)) return "rainy";
-  if (/night|dark|lamp|bar|streetlight|shadow/.test(text)) return "night";
-  if (/road|train|plane|car|bus|street|city|beach|mountain|walk/.test(text)) return "travel";
-  if (brightness === "bright" || /sun|garden|flower|park|sky/.test(text)) return "bright";
-  if (tags.some((tag) => ["home", "food", "coffee", "table", "room"].includes(tag))) return "cozy";
-  return "neutral";
-}
+function extractCaptionTags(text: string) {
+  const stopWords = new Set([
+    "with",
+    "from",
+    "that",
+    "this",
+    "there",
+    "their",
+    "into",
+    "onto",
+    "through",
+    "another",
+    "some",
+    "very",
+    "over",
+    "under",
+    "laying",
+    "standing",
+    "sitting",
+    "looking",
+    "showing",
+    "holding",
+  ]);
+  const words = text
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length > 3 && !stopWords.has(word));
 
-function uniqueTags(text: string) {
-  const tagWords = [
-    "home",
-    "food",
-    "coffee",
-    "table",
-    "room",
-    "rain",
-    "night",
-    "city",
-    "street",
-    "travel",
-    "sun",
-    "park",
-    "beach",
-    "window",
-  ];
-  const tags = tagWords.filter((word) => text.includes(word));
-  return tags.length > 0 ? tags : ["daily"];
+  return [...new Set(words)].slice(0, 8);
 }

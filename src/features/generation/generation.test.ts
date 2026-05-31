@@ -74,7 +74,13 @@ describe("generation export profile", () => {
     musicMocks.buildMusicPlan.mockReset();
     musicMocks.composeGeneratedMusic.mockReset();
     musicMocks.renderCompositionToWav.mockReset();
-    musicMocks.extractClipKeyframes.mockResolvedValue([{ clipId: "clip-1", timeMs: 600, dataUrl: "data:image/jpeg;base64,aa" }]);
+    musicMocks.extractClipKeyframes.mockResolvedValue([
+      {
+        clipId: "clip-1",
+        timeMs: 600,
+        dataUrl: "data:image/jpeg;base64,aa",
+      },
+    ]);
     musicMocks.analyzeClipMoodDescriptions.mockResolvedValue([
       {
         clipId: "clip-1",
@@ -316,8 +322,8 @@ describe("generation export profile", () => {
     expect(buildGenerationFingerprint([first, second])).not.toBe(
       buildGenerationFingerprint([first, second], { ...exportProfile, fps: 24 }),
     );
-    expect(buildGenerationFingerprint([first, second], exportProfile, { seed: "a", profileVersion: 1 })).not.toBe(
-      buildGenerationFingerprint([first, second], exportProfile, { seed: "b", profileVersion: 1 }),
+    expect(buildGenerationFingerprint([first, second], exportProfile, { seed: "a", profileVersion: 2 })).not.toBe(
+      buildGenerationFingerprint([first, second], exportProfile, { seed: "b", profileVersion: 2 }),
     );
   });
 
@@ -336,7 +342,7 @@ describe("generation export profile", () => {
       size: cachedBlob.size,
       generationFingerprint: buildGenerationFingerprint([sourceClip], exportProfile, {
         seed: "seed-1",
-        profileVersion: 1,
+        profileVersion: 2,
       }),
     });
 

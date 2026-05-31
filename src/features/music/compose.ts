@@ -20,7 +20,7 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
   const scaleNotes = scaleMidiNotes(plan.key, plan.scale);
   const beatSeconds = 60 / plan.bpm;
   const barSeconds = beatSeconds * 4;
-  const chordDegrees = plan.mood === "night" || plan.mood === "rainy" ? [0, 3, 4, 2] : [0, 4, 3, 5];
+  const chordDegrees = plan.scale.includes("minor") ? [0, 3, 4, 2] : [0, 4, 3, 5];
 
   for (let barStart = 0; barStart < durationSeconds; barStart += barSeconds) {
     const barIndex = Math.floor(barStart / barSeconds);

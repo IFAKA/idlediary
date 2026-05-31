@@ -7,6 +7,8 @@ next-env.d.ts
 out
 public/offline-assets.json
 public/demo-clips/
+public/models/
+public/transformers/
 
 # production
 build

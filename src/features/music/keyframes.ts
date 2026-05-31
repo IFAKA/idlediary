@@ -59,13 +59,21 @@ async function extractFrameDataUrl(
   video.playsInline = true;
   video.preload = "metadata";
   video.src = src;
+  video.load();
 
   try {
-    await waitForVideoEvent(video, "loadedmetadata");
+    const metadataResult = await waitForVideoEvent(video, "loadedmetadata");
+    if (metadataResult === "timeout") throw new Error("Video metadata load timed out");
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      await waitForVideoEvent(video, "loadeddata");
+    }
+
     const durationSeconds = Number.isFinite(video.duration) ? video.duration : timeMs / 1000;
     const seekSeconds = Math.min(timeMs / 1000, Math.max(0, durationSeconds - 0.08));
-    video.currentTime = seekSeconds;
-    await waitForVideoEvent(video, "seeked");
+    if (Math.abs(video.currentTime - seekSeconds) > 0.001) {
+      video.currentTime = seekSeconds;
+      await waitForVideoEvent(video, "seeked");
+    }
 
     const sourceWidth = video.videoWidth || targetWidth;
     const sourceHeight = video.videoHeight || targetWidth;
@@ -94,15 +102,24 @@ async function extractFrameDataUrl(
   }
 }
 
-function waitForVideoEvent(video: HTMLVideoElement, eventName: "loadedmetadata" | "seeked") {
-  return new Promise<void>((resolve, reject) => {
+function waitForVideoEvent(
+  video: HTMLVideoElement,
+  eventName: "loadedmetadata" | "loadeddata" | "seeked",
+  timeoutMs = 3_500,
+) {
+  return new Promise<"event" | "timeout">((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      resolve("timeout");
+    }, timeoutMs);
     const cleanup = () => {
+      window.clearTimeout(timeoutId);
       video.removeEventListener(eventName, handleSuccess);
       video.removeEventListener("error", handleError);
     };
     const handleSuccess = () => {
       cleanup();
-      resolve();
+      resolve("event");
     };
     const handleError = () => {
       cleanup();
