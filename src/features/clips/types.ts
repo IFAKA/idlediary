@@ -7,6 +7,16 @@ export type ThumbnailFields = {
 
 export type ThumbnailMetadataFields = Omit<ThumbnailFields, "thumbnailBlob">;
 
+export type ClipAnalysisRecord = {
+  version: string;
+  description: string;
+  tags: string[];
+  mood: string;
+  energy: "low" | "medium";
+  brightness: "dim" | "normal" | "bright";
+  analyzedAt: string;
+};
+
 export type ClipMetadataRecord = ThumbnailMetadataFields & {
   id: string;
   sessionId: string;
@@ -15,6 +25,7 @@ export type ClipMetadataRecord = ThumbnailMetadataFields & {
   order?: number;
   createdAt: string;
   size: number;
+  analysis?: ClipAnalysisRecord;
 };
 
 export type ClipRecord = ClipMetadataRecord &

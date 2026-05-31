@@ -4,6 +4,7 @@ import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
 import type { ThumbnailResult } from "./thumbnail";
 import type {
+  ClipAnalysisRecord,
   ClipMetadataRecord,
   ClipRecord,
   SessionSummary,
@@ -168,6 +169,7 @@ function clipMetadata(clip: ClipRecord | ClipMetadataRecord): ClipMetadataStoreR
     createdAt: clip.createdAt,
     size: clip.size,
     ...(typeof clip.order === "number" ? { order: clip.order } : {}),
+    ...(clip.analysis ? { analysis: clip.analysis } : {}),
     ...(clip.thumbnailMimeType ? { thumbnailMimeType: clip.thumbnailMimeType } : {}),
     ...(typeof clip.thumbnailWidth === "number" ? { thumbnailWidth: clip.thumbnailWidth } : {}),
     ...(typeof clip.thumbnailHeight === "number" ? { thumbnailHeight: clip.thumbnailHeight } : {}),
@@ -515,6 +517,41 @@ export async function saveClipThumbnail(id: string, thumbnail: ThumbnailResult) 
         userMessage: "This clip thumbnail could not be saved.",
         cause,
         context: { clipId: id },
+      }),
+    );
+  }
+}
+
+export async function saveClipAnalysis(id: string, analysis: ClipAnalysisRecord) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction(["clips", "clip-media", "clip-thumbnails"], "readwrite");
+    const clipsStore = tx.objectStore("clips");
+    const clip = await clipsStore.get(id);
+    if (!clip) {
+      await tx.done;
+      return null;
+    }
+
+    const updatedMetadata = { ...clip, analysis };
+    await clipsStore.put(updatedMetadata);
+    const updated = await hydrateClip(tx, updatedMetadata);
+    await tx.done;
+    addDebugEvent("clip-analysis-saved", "storage", {
+      clipId: id,
+      analysisVersion: analysis.version,
+      tags: analysis.tags,
+    });
+    return updated;
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-write-failed",
+        area: "storage",
+        message: "Could not save clip analysis",
+        userMessage: "This clip could not be analyzed locally.",
+        cause,
+        context: { clipId: id, analysisVersion: analysis.version },
       }),
     );
   }

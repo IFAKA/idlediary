@@ -13,6 +13,7 @@ import {
   markVlogHandled,
   resetStorageForTests,
   saveClip,
+  saveClipAnalysis,
   saveClipThumbnail,
   saveVlog,
   saveVlogThumbnail,
@@ -214,6 +215,33 @@ describe("storage media split", () => {
     expect(rawThumbnail?.blob).toBeDefined();
     expect(originalMedia?.blob).toBeDefined();
     expect(currentMedia?.blob).toBeDefined();
+  });
+
+  it("persists clip analysis in metadata without rewriting media", async () => {
+    const savedClip = clip();
+    await saveClip(savedClip);
+    const originalMedia = await getRawStoreRecord<{ blob: Blob }>("clip-media", savedClip.id);
+
+    const updated = await saveClipAnalysis(savedClip.id, {
+      version: "vit-base-patch16-224-q8-v1",
+      description: "coffee cup / table",
+      tags: ["coffee", "table"],
+      mood: "coffee",
+      energy: "low",
+      brightness: "normal",
+      analyzedAt: "2026-05-27T10:01:00.000Z",
+    });
+
+    const rawMetadata = await getRawStoreRecord<Record<string, unknown>>("clips", savedClip.id);
+    const currentMedia = await getRawStoreRecord<{ blob: Blob }>("clip-media", savedClip.id);
+    const listed = await listClips(savedClip.sessionId);
+
+    expect(updated?.analysis?.tags).toEqual(["coffee", "table"]);
+    expect(rawMetadata?.blob).toBeUndefined();
+    expect(rawMetadata?.analysis).toMatchObject({ mood: "coffee" });
+    expect(originalMedia?.blob).toBeDefined();
+    expect(currentMedia?.blob).toBeDefined();
+    expect(listed[0]?.analysis?.description).toBe("coffee cup / table");
   });
 
   it("migrates v1 embedded clip and vlog blobs into media and thumbnail stores", async () => {

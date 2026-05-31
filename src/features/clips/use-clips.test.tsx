@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   saveClipThumbnail: vi.fn(),
   saveClipOrder: vi.fn(),
   generateVideoThumbnail: vi.fn(),
+  enqueueClipMoodAnalysis: vi.fn(),
   releaseAllClipObjectUrls: vi.fn(),
   releaseClipObjectUrl: vi.fn(),
   retainClipObjectUrls: vi.fn(),
@@ -34,6 +35,10 @@ vi.mock("./thumbnail", () => ({
     clip: { width: 256, height: 256 },
     vlog: { width: 360, height: 640 },
   },
+}));
+
+vi.mock("@/features/music/clip-analysis-queue", () => ({
+  enqueueClipMoodAnalysis: mocks.enqueueClipMoodAnalysis,
 }));
 
 vi.mock("./media-cache", () => ({
@@ -119,6 +124,14 @@ describe("useClips", () => {
       thumbnailWidth: 256,
       thumbnailHeight: 256,
     });
+    mocks.enqueueClipMoodAnalysis.mockResolvedValue({
+      clipId: "clip-new",
+      description: "daily clip",
+      tags: ["daily"],
+      mood: "daily",
+      energy: "low",
+      brightness: "normal",
+    });
     mocks.deleteClip.mockResolvedValue(undefined);
     mocks.clearClipsForSession.mockResolvedValue(undefined);
     container = document.createElement("div");
@@ -187,6 +200,9 @@ describe("useClips", () => {
       }),
     );
     expect(mocks.listClips).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueClipMoodAnalysis).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "clip-new" }),
+    );
 
     await act(async () => {
       await latest!.reorderClips(["clip-new", "clip-1"]);

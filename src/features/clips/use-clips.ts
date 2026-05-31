@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { reportError } from "@/features/errors/report-error";
+import { enqueueClipMoodAnalysis } from "@/features/music/clip-analysis-queue";
 import {
   clearClipsForSession,
   deleteClip,
@@ -205,6 +206,7 @@ export function useClips({ sessionId }: { sessionId?: string } = {}) {
     await saveClip(clip);
     ++requestVersionRef.current;
     dispatch({ type: "add", clip });
+    void enqueueClipMoodAnalysis(clip);
     return clip;
   }, [sessionId]);
 

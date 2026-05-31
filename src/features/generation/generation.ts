@@ -8,8 +8,7 @@ import { thumbnailSizes, type ThumbnailResult } from "@/features/clips/thumbnail
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
 import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
-import { analyzeClipMoodDescriptions } from "@/features/music/analyze";
-import { extractClipKeyframes } from "@/features/music/keyframes";
+import { getQueuedClipMoodDescriptions } from "@/features/music/clip-analysis-queue";
 import { buildMusicPlan, musicProfileVersion } from "@/features/music/plan";
 import { generateTinyMusicianWav, musicDurationSecondsForVideo } from "@/features/music/tinymusician";
 export { exportProfile } from "@/features/video/export-profile";
@@ -224,8 +223,7 @@ async function createGeneratedMusicWav(clips: ClipRecord[], durationMs: number, 
     };
   }
 
-  const keyframes = await extractClipKeyframes(clips);
-  const descriptions = await analyzeClipMoodDescriptions(keyframes);
+  const descriptions = await getQueuedClipMoodDescriptions(clips);
   const musicDurationSeconds = musicDurationSecondsForVideo(durationMs);
   const musicPlan = buildMusicPlan(descriptions, musicDurationSeconds * 1000, seed);
   const generatedMusic = await generateTinyMusicianWav({

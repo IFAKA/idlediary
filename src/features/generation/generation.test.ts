@@ -21,8 +21,7 @@ const thumbnailMocks = vi.hoisted(() => ({
   generateVideoThumbnail: vi.fn(),
 }));
 const musicMocks = vi.hoisted(() => ({
-  extractClipKeyframes: vi.fn(),
-  analyzeClipMoodDescriptions: vi.fn(),
+  getQueuedClipMoodDescriptions: vi.fn(),
   buildMusicPlan: vi.fn(),
   generateTinyMusicianWav: vi.fn(),
 }));
@@ -36,11 +35,8 @@ vi.mock("@/features/clips/thumbnail", () => ({
     vlog: { width: 360, height: 640 },
   },
 }));
-vi.mock("@/features/music/keyframes", () => ({
-  extractClipKeyframes: musicMocks.extractClipKeyframes,
-}));
-vi.mock("@/features/music/analyze", () => ({
-  analyzeClipMoodDescriptions: musicMocks.analyzeClipMoodDescriptions,
+vi.mock("@/features/music/clip-analysis-queue", () => ({
+  getQueuedClipMoodDescriptions: musicMocks.getQueuedClipMoodDescriptions,
 }));
 vi.mock("@/features/music/plan", async (importOriginal) => ({
   ...((await importOriginal()) as object),
@@ -68,18 +64,10 @@ describe("generation export profile", () => {
     resetGenerationForTests();
     storageMocks.getVlogByGenerationFingerprint.mockReset();
     thumbnailMocks.generateVideoThumbnail.mockReset();
-    musicMocks.extractClipKeyframes.mockReset();
-    musicMocks.analyzeClipMoodDescriptions.mockReset();
+    musicMocks.getQueuedClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
     musicMocks.generateTinyMusicianWav.mockReset();
-    musicMocks.extractClipKeyframes.mockResolvedValue([
-      {
-        clipId: "clip-1",
-        timeMs: 600,
-        dataUrl: "data:image/jpeg;base64,aa",
-      },
-    ]);
-    musicMocks.analyzeClipMoodDescriptions.mockResolvedValue([
+    musicMocks.getQueuedClipMoodDescriptions.mockResolvedValue([
       {
         clipId: "clip-1",
         description: "a cozy room",
@@ -111,8 +99,7 @@ describe("generation export profile", () => {
     resetGenerationForTests();
     storageMocks.getVlogByGenerationFingerprint.mockReset();
     thumbnailMocks.generateVideoThumbnail.mockReset();
-    musicMocks.extractClipKeyframes.mockReset();
-    musicMocks.analyzeClipMoodDescriptions.mockReset();
+    musicMocks.getQueuedClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
     musicMocks.generateTinyMusicianWav.mockReset();
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
@@ -227,7 +214,9 @@ describe("generation export profile", () => {
       buildFfmpegThumbnailArgs({ width: 360, height: 640 }),
     ]);
     expect(writtenFiles).toEqual(["music.wav", "clip-0.mp4", "inputs.txt"]);
-    expect(musicMocks.extractClipKeyframes).toHaveBeenCalledWith([expect.objectContaining({ id: "clip-1" })]);
+    expect(musicMocks.getQueuedClipMoodDescriptions).toHaveBeenCalledWith([
+      expect.objectContaining({ id: "clip-1" }),
+    ]);
     expect(musicMocks.buildMusicPlan).toHaveBeenCalledWith(expect.any(Array), 8_000, "seed-1");
     expect(musicMocks.generateTinyMusicianWav).toHaveBeenCalledWith({
       plan: expect.objectContaining({ seed: "seed-1", bpm: 74 }),
@@ -423,6 +412,6 @@ describe("generation export profile", () => {
     });
 
     expect(vlog.id).toBe("cached-vlog");
-    expect(musicMocks.extractClipKeyframes).not.toHaveBeenCalled();
+    expect(musicMocks.getQueuedClipMoodDescriptions).not.toHaveBeenCalled();
   });
 });
