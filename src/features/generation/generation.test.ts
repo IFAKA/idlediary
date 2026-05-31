@@ -10,6 +10,7 @@ import {
   isFastConcatCompatibleClip,
   recentGenerationLogs,
   recentRawGenerationLogs,
+  renderPipelineVersion,
   resetGenerationForTests,
   warmGenerationPipeline,
   type GenerationProgress,
@@ -151,7 +152,9 @@ describe("generation export profile", () => {
     expect(args).toContain("-filter_complex");
     expect(args.join(" ")).toContain("loudnorm=I=-16:TP=-1.5:LRA=11");
     expect(args.join(" ")).toContain("dynaudnorm");
-    expect(args.join(" ")).toContain("eq=contrast=1.045");
+    expect(args.join(" ")).toContain("eq=contrast=0.985:saturation=1.14");
+    expect(args.join(" ")).toContain("colorbalance=rs=0.035");
+    expect(args.join(" ")).toContain("curves=r='0/0.035 0.22/0.25 0.78/0.82 1/0.965'");
     expect(args.join(" ")).toContain("format=yuv420p[vout]");
     expect(args.join(" ")).toContain("volume=0.24[musicbase]");
     expect(args.join(" ")).toContain("sidechaincompress=threshold=0.055:ratio=8");
@@ -254,6 +257,7 @@ describe("generation export profile", () => {
       ]),
     );
     expect(progress.some((entry) => entry.technical.includes("original music mix"))).toBe(true);
+    expect(progress.some((entry) => entry.technical.includes("silent-vlog color grade"))).toBe(true);
     expect(progress.at(-1)?.logs).toHaveLength(8);
     expect(progress.at(-1)?.rawLogs).toEqual(
       expect.arrayContaining([
@@ -291,7 +295,7 @@ describe("generation export profile", () => {
         clipCount: 1,
         outputBytes: vlog.size,
         audioFilters: ["loudnorm", "dynaudnorm", "afade", "sidechaincompress", "amix", "alimiter"],
-        videoFilters: ["scale", "crop", "fps", "eq", "unsharp", "format"],
+        videoFilters: ["scale", "crop", "fps", "eq", "colorbalance", "curves", "unsharp", "format"],
       }),
     );
   });
@@ -507,6 +511,9 @@ describe("generation export profile", () => {
     );
     expect(buildGenerationFingerprint([first, second], exportProfile, { seed: "a", profileVersion: 2 })).not.toBe(
       buildGenerationFingerprint([first, second], exportProfile, { seed: "b", profileVersion: 2 }),
+    );
+    expect(buildGenerationFingerprint([first, second])).toContain(
+      `"renderPipelineVersion":${renderPipelineVersion}`,
     );
   });
 

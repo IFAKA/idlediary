@@ -34,7 +34,13 @@ export type GenerationProgress = {
 const maxLogLines = 8;
 const maxRawLogLines = 120;
 const musicVolume = 0.24;
-const technicalSummary = `local concat | original music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC`;
+export const renderPipelineVersion = 2;
+const silentVlogColorGradeFilters = [
+  "eq=contrast=0.985:saturation=1.14:brightness=0.018:gamma=1.025",
+  "colorbalance=rs=0.035:gs=0.012:bs=-0.024:rm=0.026:gm=0.012:bm=-0.018:rh=0.014:gh=0.006:bh=-0.01",
+  "curves=r='0/0.035 0.22/0.25 0.78/0.82 1/0.965':g='0/0.032 0.22/0.25 0.80/0.84 1/0.975':b='0/0.045 0.24/0.265 0.82/0.845 1/0.99'",
+];
+const technicalSummary = `local concat | original music mix | silent-vlog color grade | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC`;
 
 const progressCopy: Record<
   GenerationProgress["step"],
@@ -91,7 +97,7 @@ export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleM
     `scale=${exportProfile.width}:${exportProfile.height}:force_original_aspect_ratio=increase`,
     `crop=${exportProfile.width}:${exportProfile.height}`,
     `fps=${exportProfile.fps}`,
-    "eq=contrast=1.045:saturation=1.08:brightness=0.012:gamma=1.015",
+    ...silentVlogColorGradeFilters,
     "unsharp=5:5:0.35:3:3:0.12",
     "format=yuv420p",
   ].join(",");
@@ -177,6 +183,7 @@ export function buildGenerationFingerprint(
     })),
     exportProfile: profile,
     music,
+    renderPipelineVersion,
   });
 }
 
@@ -616,7 +623,7 @@ export async function generateVlog(
       clipCount: clips.length,
       outputBytes: blob.size,
       audioFilters: ["loudnorm", "dynaudnorm", "afade", "sidechaincompress", "amix", "alimiter"],
-      videoFilters: ["scale", "crop", "fps", "eq", "unsharp", "format"],
+      videoFilters: ["scale", "crop", "fps", "eq", "colorbalance", "curves", "unsharp", "format"],
     });
     addDebugEvent("vlog-generated", "generation", {
       vlogId: vlog.id,
