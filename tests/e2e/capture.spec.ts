@@ -187,6 +187,55 @@ async function generateOneVideo(page: Page) {
   });
 }
 
+async function seedDemoClipIntoTodayDraft(page: Page) {
+  await page.goto("/draft");
+  await expect(page.getByRole("heading", { name: "No draft clips yet" })).toBeVisible();
+
+  await page.evaluate(async () => {
+    const sessionId = new Date().toISOString().slice(0, 10);
+    const response = await fetch("/demo-clips/coffee.mp4");
+    if (!response.ok) throw new Error("Demo clip fixture is missing");
+    const blob = await response.blob();
+    const now = new Date().toISOString();
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open("idlediary", 2);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction(["sessions", "clips", "clip-media"], "readwrite");
+        tx.objectStore("sessions").put({
+          id: sessionId,
+          startedAt: now,
+          updatedAt: now,
+        });
+        tx.objectStore("clips").put({
+          id: "e2e-demo-coffee",
+          sessionId,
+          mimeType: blob.type || "video/mp4",
+          durationMs: 3250,
+          order: 0,
+          createdAt: now,
+          size: blob.size,
+        });
+        tx.objectStore("clip-media").put({
+          clipId: "e2e-demo-coffee",
+          blob,
+        });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      };
+    });
+  });
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Preview clip 1" })).toBeVisible();
+}
+
 test("first launch shows intro screen", async ({ page }) => {
   await mockMediaCapture(page);
   await page.goto("/");
@@ -585,8 +634,16 @@ test("draft review stops the camera before generation", async ({ page }) => {
       expect.arrayContaining([
         "-fflags",
         "+genpts",
-        "-c",
+        "-i",
+        "inputs.txt",
+        "-i",
+        "music.wav",
+        "-filter_complex",
+        expect.stringContaining("amix=inputs=2"),
+        "-c:v",
         "copy",
+        "-c:a",
+        "aac",
         "-movflags",
         "+faststart",
         "vlog.mp4",
@@ -600,12 +657,120 @@ test("draft review stops the camera before generation", async ({ page }) => {
             .__idleDiaryFfmpegExecArgs ?? [],
       ),
     )
-    .not.toContain("-vf");
+    .toContain("-filter_complex");
   await expect(page).toHaveURL("/draft");
   await expect(page.getByRole("heading", { name: "No pressure" })).not.toBeVisible();
   await expect
     .poll(() => page.evaluate(() => (window as typeof window & { __idleDiaryStoppedTracks?: number }).__idleDiaryStoppedTracks ?? 0))
     .toBeGreaterThan(0);
+});
+
+test("make video loads local music AI assets and generates music from a real demo clip", async ({ page }) => {
+  test.setTimeout(90_000);
+
+  const failedLocalAssets: string[] = [];
+  const idleDiaryErrors: string[] = [];
+
+  page.on("requestfailed", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/models/") || url.pathname.startsWith("/transformers/")) {
+      failedLocalAssets.push(`${url.pathname}: ${request.failure()?.errorText ?? "failed"}`);
+    }
+  });
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().includes("[IdleDiary]")) {
+      idleDiaryErrors.push(message.text());
+    }
+  });
+
+  await page.addInitScript(() => {
+    window.localStorage.setItem("idlediary:intro-seen", "true");
+
+    class MockFFmpeg {
+      private readonly handlers = new Map<string, Array<(event: unknown) => void>>();
+
+      on(event: string, handler: (event: unknown) => void) {
+        this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler]);
+      }
+
+      async load() {}
+
+      async writeFile(path: string, data?: Uint8Array | string) {
+        const testWindow = window as typeof window & {
+          __idleDiaryGeneratedInputs?: string[];
+          __idleDiaryGeneratedMusicBytes?: number;
+        };
+        if (path.startsWith("clip-")) {
+          testWindow.__idleDiaryGeneratedInputs = [
+            ...(testWindow.__idleDiaryGeneratedInputs ?? []),
+            path,
+          ];
+        }
+        if (path === "music.wav" && data instanceof Uint8Array) {
+          testWindow.__idleDiaryGeneratedMusicBytes = data.byteLength;
+        }
+      }
+
+      async exec(args: string[]) {
+        const testWindow = window as typeof window & { __idleDiaryFfmpegExecArgs?: string[] };
+        testWindow.__idleDiaryFfmpegExecArgs = args;
+        this.emit("log", { message: "generated music mix" });
+        this.emit("progress", { progress: 0.96 });
+      }
+
+      async readFile() {
+        return new Uint8Array(await new Blob(["mock-generated-video"], { type: "video/mp4" }).arrayBuffer());
+      }
+
+      private emit(event: string, payload: unknown) {
+        for (const handler of this.handlers.get(event) ?? []) {
+          handler(payload);
+        }
+      }
+    }
+
+    Object.defineProperty(window, "__idleDiaryMockFFmpeg", {
+      configurable: true,
+      value: MockFFmpeg,
+    });
+
+    Object.defineProperty(window, "__idleDiaryMockVideoThumbnail", {
+      configurable: true,
+      value: async (_videoBlob: Blob, options: { width: number; height: number }) => ({
+        thumbnailBlob: new Blob(["mock-thumbnail"], { type: "image/webp" }),
+        thumbnailMimeType: "image/webp",
+        thumbnailWidth: options.width,
+        thumbnailHeight: options.height,
+      }),
+    });
+  });
+
+  await seedDemoClipIntoTodayDraft(page);
+  await page.getByRole("button", { name: "Make video" }).click();
+
+  await expect(page.getByRole("heading", { name: "Two Seconds Today" })).toBeVisible({
+    timeout: 75_000,
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryGeneratedMusicBytes?: number })
+            .__idleDiaryGeneratedMusicBytes ?? 0,
+      ),
+    )
+    .toBeGreaterThan(44);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __idleDiaryFfmpegExecArgs?: string[] })
+            .__idleDiaryFfmpegExecArgs ?? [],
+      ),
+    )
+    .toEqual(expect.arrayContaining(["-i", "music.wav", "-filter_complex"]));
+  expect(failedLocalAssets).toEqual([]);
+  expect(idleDiaryErrors).toEqual([]);
 });
 
 test("delete actions require confirmation and cancel preserves clips", async ({ page }) => {

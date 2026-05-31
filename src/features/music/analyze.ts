@@ -1,12 +1,16 @@
 import { AppError } from "@/features/errors/app-error";
 import type { ClipKeyframe, ClipMoodDescription } from "./types";
 
-type CaptionResult = { generated_text?: string; caption?: string };
-type ImageToTextPipeline = (image: string) => Promise<CaptionResult[] | CaptionResult>;
+type ClassificationResult = { label?: string; score?: number };
+type ImageClassificationPipeline = (
+  image: string,
+  options?: { topk?: number },
+) => Promise<ClassificationResult[] | ClassificationResult>;
 
-const captionModel = "Xenova/vit-gpt2-image-captioning";
+const visionModel = "Xenova/vit-base-patch16-224";
 const modelPath = "/models/";
 const wasmPath = "/transformers/";
+const classificationsPerFrame = 5;
 
 export async function analyzeClipMoodDescriptions(
   keyframes: ClipKeyframe[],
@@ -20,19 +24,19 @@ export async function analyzeClipMoodDescriptions(
     });
   }
 
-  const classifier = await loadLocalCaptioner();
-  const captionsByClip = new Map<string, string[]>();
+  const classifier = await loadLocalVisionClassifier();
+  const labelsByClip = new Map<string, string[]>();
   for (const frame of keyframes) {
-    const caption = await captionFrame(classifier, frame.dataUrl);
-    captionsByClip.set(frame.clipId, [...(captionsByClip.get(frame.clipId) ?? []), caption]);
+    const labels = await classifyFrame(classifier, frame.dataUrl);
+    labelsByClip.set(frame.clipId, [...(labelsByClip.get(frame.clipId) ?? []), ...labels]);
   }
 
-  return [...captionsByClip.entries()].map(([clipId, captions]) =>
-    descriptionFromCaptions(clipId, captions),
+  return [...labelsByClip.entries()].map(([clipId, labels]) =>
+    descriptionFromLabels(clipId, labels),
   );
 }
 
-async function loadLocalCaptioner() {
+async function loadLocalVisionClassifier() {
   try {
     const transformers = await import("@huggingface/transformers");
     transformers.env.allowLocalModels = true;
@@ -44,10 +48,10 @@ async function loadLocalCaptioner() {
     onnxBackend.wasm ??= {};
     onnxBackend.wasm.wasmPaths = wasmPath;
 
-    return (await transformers.pipeline("image-to-text", captionModel, {
+    return (await transformers.pipeline("image-classification", visionModel, {
       dtype: "q8",
       local_files_only: true,
-    })) as ImageToTextPipeline;
+    })) as ImageClassificationPipeline;
   } catch (cause) {
     throw new AppError({
       code: "generation-unavailable",
@@ -56,22 +60,26 @@ async function loadLocalCaptioner() {
       userMessage: "Generated music needs the local music AI model installed on this device.",
       cause,
       context: {
-        model: captionModel,
+        model: visionModel,
         modelPath,
         wasmPath,
         installCommand: "npm run music:model:install",
+        causeName: cause instanceof Error ? cause.name : typeof cause,
+        causeMessage: cause instanceof Error ? cause.message : String(cause),
       },
     });
   }
 }
 
-async function captionFrame(classifier: ImageToTextPipeline, dataUrl: string) {
+async function classifyFrame(classifier: ImageClassificationPipeline, dataUrl: string) {
   try {
-    const result = await classifier(dataUrl);
-    const first = Array.isArray(result) ? result[0] : result;
-    const caption = first?.generated_text ?? first?.caption;
-    if (!caption) throw new Error("Image model returned no caption");
-    return caption;
+    const result = await classifier(dataUrl, { topk: classificationsPerFrame });
+    const classifications = Array.isArray(result) ? result : [result];
+    const labels = classifications
+      .map((classification) => classification.label)
+      .filter((label): label is string => Boolean(label));
+    if (labels.length === 0) throw new Error("Image model returned no labels");
+    return labels;
   } catch (cause) {
     throw new AppError({
       code: "generation-unavailable",
@@ -87,7 +95,14 @@ export function descriptionFromCaptions(
   clipId: string,
   captions: string[],
 ): ClipMoodDescription {
-  const text = captions.join(" ").toLowerCase();
+  return descriptionFromLabels(clipId, captions);
+}
+
+export function descriptionFromLabels(
+  clipId: string,
+  labels: string[],
+): ClipMoodDescription {
+  const text = labels.join(" ").toLowerCase();
   const tags = extractCaptionTags(text);
   const brightness = /night|dark|dim|black|shadow|rain|cloud/.test(text)
     ? "dim"
@@ -97,7 +112,7 @@ export function descriptionFromCaptions(
 
   return {
     clipId,
-    description: captions.join(" / "),
+    description: labels.join(" / "),
     tags,
     mood: tags[0] ?? "daily",
     energy: tags.length >= 5 ? "medium" : "low",

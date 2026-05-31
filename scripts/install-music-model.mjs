@@ -1,10 +1,11 @@
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const modelId = "Xenova/vit-gpt2-image-captioning";
+const modelId = "Xenova/vit-base-patch16-224";
+const legacyModelIds = ["Xenova/vit-gpt2-image-captioning"];
 const revision = "main";
 const modelBaseUrl = `https://huggingface.co/${modelId}/resolve/${revision}`;
 const modelOutputDir = join(root, "public", "models", ...modelId.split("/"));
@@ -12,12 +13,8 @@ const wasmOutputDir = join(root, "public", "transformers");
 
 const modelFiles = [
   "config.json",
-  "generation_config.json",
-  "tokenizer.json",
-  "tokenizer_config.json",
   "preprocessor_config.json",
-  "onnx/encoder_model_quantized.onnx",
-  "onnx/decoder_model_merged_quantized.onnx",
+  "onnx/model_quantized.onnx",
 ];
 
 const wasmFiles = [
@@ -61,6 +58,15 @@ async function copyWasmFile(fileName) {
 
 await mkdir(modelOutputDir, { recursive: true });
 await mkdir(wasmOutputDir, { recursive: true });
+
+for (const legacyModelId of legacyModelIds) {
+  if (legacyModelId === modelId) continue;
+  const legacyPath = join(root, "public", "models", ...legacyModelId.split("/"));
+  if (existsSync(legacyPath)) {
+    await rm(legacyPath, { recursive: true, force: true });
+    console.log(`removed legacy model ${legacyModelId}`);
+  }
+}
 
 for (const file of modelFiles) {
   await downloadFile(file);
