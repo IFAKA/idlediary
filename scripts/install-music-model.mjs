@@ -23,6 +23,8 @@ const modelFiles = [
 const wasmFiles = [
   "ort-wasm-simd-threaded.mjs",
   "ort-wasm-simd-threaded.wasm",
+  "ort-wasm-simd-threaded.asyncify.mjs",
+  "ort-wasm-simd-threaded.asyncify.wasm",
   "ort-wasm-simd-threaded.jsep.mjs",
   "ort-wasm-simd-threaded.jsep.wasm",
 ];
