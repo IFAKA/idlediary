@@ -167,6 +167,28 @@ export function shouldPublishGenerationProgress(
   return nextProgress.value >= currentProgress.value;
 }
 
+export function generationProgressWithLiveLogs(
+  displayedProgress: GenerationProgress,
+  nextProgress: GenerationProgress,
+  latestProgress: GenerationProgress,
+) {
+  if (nextProgress.logs.length > 0) return nextProgress;
+  if (latestProgress.logs.length > 0) {
+    return {
+      ...nextProgress,
+      logs: latestProgress.logs,
+    };
+  }
+  if (displayedProgress.logs.length > 0) {
+    return {
+      ...nextProgress,
+      logs: displayedProgress.logs,
+    };
+  }
+
+  return nextProgress;
+}
+
 function requestedViewFromUrl(): DurableView {
   if (typeof window === "undefined") return "capture";
 
@@ -787,8 +809,13 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
           return;
         }
 
-        displayedProgress = nextProgress;
-        setGenerationProgress(nextProgress);
+        const progressWithLogs = generationProgressWithLiveLogs(
+          displayedProgress,
+          nextProgress,
+          latestProgress,
+        );
+        displayedProgress = progressWithLogs;
+        setGenerationProgress(progressWithLogs);
       };
       const publishGenerationProgress = (nextProgress: GenerationProgress) => {
         latestProgress = nextProgress;

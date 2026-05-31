@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { generationProgress } from "@/features/generation/generation";
-import { shouldPublishGenerationProgress } from "./capture-screen";
+import {
+  generationProgressWithLiveLogs,
+  shouldPublishGenerationProgress,
+} from "./capture-screen";
 import { videoConstraintsForDevice, videoConstraintsForFacingMode } from "./use-camera";
 
 describe("shouldPublishGenerationProgress", () => {
@@ -32,6 +35,37 @@ describe("shouldPublishGenerationProgress", () => {
         generationProgress("saving", 92),
       ),
     ).toBe(true);
+  });
+
+  it("keeps live generation logs when the visible intro step has no logs yet", () => {
+    expect(
+      generationProgressWithLiveLogs(
+        generationProgress("writing", 14, { logs: ["Preparing FFmpeg workspace"] }),
+        generationProgress("rendering", 24, { label: "Assembling MP4" }),
+        generationProgress("writing", 20, { logs: ["Writing clip-0.mp4"] }),
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        step: "rendering",
+        label: "Assembling MP4",
+        logs: ["Writing clip-0.mp4"],
+      }),
+    );
+  });
+
+  it("preserves displayed generation logs when the latest progress has no logs", () => {
+    expect(
+      generationProgressWithLiveLogs(
+        generationProgress("rendering", 24, { logs: ["Running FFmpeg stream-copy mux"] }),
+        generationProgress("saving", 92),
+        generationProgress("idle", 0),
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        step: "saving",
+        logs: ["Running FFmpeg stream-copy mux"],
+      }),
+    );
   });
 });
 
