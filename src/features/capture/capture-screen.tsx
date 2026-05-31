@@ -37,7 +37,6 @@ import {
   markVlogHandled,
   saveVlogAndClearSessionDraft,
 } from "@/features/clips/storage";
-import { generateVideoThumbnail, thumbnailSizes } from "@/features/clips/thumbnail";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 import { shareVlog } from "@/features/share/share";
 import { CameraPreview } from "./camera-preview";
@@ -839,13 +838,6 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
       await wait(minimumVisibleDoneStepMs);
 
       const nextVlog = generationResult.value;
-      if (!nextVlog.thumbnailBlob) {
-        try {
-          Object.assign(nextVlog, await generateVideoThumbnail(nextVlog.blob, thumbnailSizes.vlog));
-        } catch (error) {
-          reportError(error);
-        }
-      }
       await saveVlogAndClearSessionDraft(nextVlog);
       clips.clearLocalClips();
       showResult(nextVlog, "replace");
