@@ -223,7 +223,7 @@ describe("storage media split", () => {
     const originalMedia = await getRawStoreRecord<{ blob: Blob }>("clip-media", savedClip.id);
 
     const updated = await saveClipAnalysis(savedClip.id, {
-      version: "vit-base-patch16-224-q8-v1",
+      version: "mobilevit-small-q8-v1",
       description: "coffee cup / table",
       tags: ["coffee", "table"],
       mood: "coffee",

@@ -4,9 +4,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const visionModelId = "Xenova/vit-base-patch16-224";
+const visionModelId = "Xenova/mobilevit-small";
 const tinyMusicianModelId = "itsmax/TinyMusician";
-const legacyModelIds = ["Xenova/vit-gpt2-image-captioning"];
+const legacyModelIds = ["Xenova/vit-base-patch16-224", "Xenova/vit-gpt2-image-captioning"];
 const revision = "main";
 const wasmOutputDir = join(root, "public", "transformers");
 const installTinyMusician = process.argv.includes("--include-tinymusician");

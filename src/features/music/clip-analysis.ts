@@ -5,7 +5,7 @@ import type { ClipMoodDescription } from "./types";
 import { analyzeClipMoodDescriptions } from "./analyze";
 import { extractClipKeyframes } from "./keyframes";
 
-export const clipAnalysisVersion = "vit-base-patch16-224-q8-v1";
+export const clipAnalysisVersion = "mobilevit-small-q8-v1";
 
 const completedDescriptions = new Map<string, ClipMoodDescription>();
 

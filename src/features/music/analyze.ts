@@ -8,7 +8,7 @@ type LocalVisionClassifier = {
   idToLabel?: Record<string, string>;
 };
 
-const visionModel = "Xenova/vit-base-patch16-224";
+const visionModel = "Xenova/mobilevit-small";
 const modelPath = "/models/";
 const wasmPath = "/transformers/";
 const classificationsPerFrame = 5;
