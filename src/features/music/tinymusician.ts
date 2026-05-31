@@ -64,17 +64,24 @@ export function buildTinyMusicianPrompt(
   const moodPhrase = moodWords.length > 0 ? `${moodWords.join(" ")} mood` : "daily mood";
 
   return [
-    "Instrumental classic lo-fi hip-hop loop",
-    `${plan.bpm} BPM`,
-    "warm Rhodes jazz chords",
-    "dusty swung drums",
-    "mellow bass",
-    "vinyl crackle",
-    moodPhrase,
+    "Clean mellow lo-fi hip hop instrumental",
+    `${plan.bpm} BPM steady relaxed groove`,
+    "simple warm Rhodes two chord progression",
+    "soft brushed drums with muted kick and snare",
+    "gentle hi hats",
+    "round sub bass following the chords",
+    "subtle vinyl texture with low noise",
+    `${moodPhrase} background feel`,
     `key ${plan.key} ${plan.scale}`,
     `texture ${plan.texture}`,
+    "minimal arrangement",
+    "no lead melody",
     "no vocals",
-    "seamless background loop",
+    "no distortion",
+    "no glitch",
+    "no busy percussion",
+    "no abrupt changes",
+    "seamless calm loop",
   ].join(", ") + ".";
 }
 
@@ -144,8 +151,8 @@ async function generateWithLocalTinyMusician(prompt: string, durationSeconds: nu
     return await generate(prompt, {
       max_new_tokens: maxNewTokens,
       do_sample: true,
-      guidance_scale: 3,
-      temperature: 0.9,
+      guidance_scale: 4,
+      temperature: 0.65,
     });
   } catch (cause) {
     throw tinyMusicianUnavailable(cause);

@@ -6,6 +6,7 @@ import {
   activeGenerationStage,
   completedGenerationStages,
   GenerationPanel,
+  shouldShowLocalGenerationLogs,
 } from "./generation-panel";
 
 describe("GenerationPanel", () => {
@@ -95,6 +96,24 @@ describe("GenerationPanel", () => {
     expect(view.querySelector(".generation-spinner")).toBeNull();
     expect(view.querySelector(".generation-step-shimmer")).not.toBeNull();
     expect(view.querySelector(".generation-step-shimmer")?.className).toContain("motion-reduce:hidden");
+  });
+
+  it("shows live FFmpeg output only for local diagnostics", () => {
+    expect(shouldShowLocalGenerationLogs("development")).toBe(true);
+    expect(shouldShowLocalGenerationLogs("production")).toBe(false);
+    expect(shouldShowLocalGenerationLogs("production", "true")).toBe(true);
+
+    vi.stubEnv("NEXT_PUBLIC_IDLEDIARY_GENERATION_LOGS", "true");
+    const view = renderPanel(
+      generationProgress("rendering", 56, {
+        label: "Assembling MP4",
+        logs: ["frame=42 fps=30", "muxing overhead: 0.1%"],
+      }),
+    );
+
+    expect(view.textContent).toContain("Local FFmpeg output");
+    expect(view.textContent).toContain("frame=42 fps=30");
+    expect(view.textContent).toContain("muxing overhead: 0.1%");
   });
 
   it("does not show the removed long-wait reassurance", () => {

@@ -30,6 +30,13 @@ const stages: GenerationStage[] = [
   { id: "saving", label: "Saving privately" },
 ];
 
+export function shouldShowLocalGenerationLogs(
+  env = process.env.NODE_ENV,
+  flag = process.env.NEXT_PUBLIC_IDLEDIARY_GENERATION_LOGS,
+) {
+  return env === "development" || flag === "true";
+}
+
 export function activeGenerationStage(progress: Pick<GenerationProgress, "step" | "label" | "value">) {
   if (progress.step === "done") return "saving";
   if (progress.step === "saving") return "saving";
@@ -59,6 +66,7 @@ export function completedGenerationStages(
 export function GenerationPanel({ progress }: GenerationPanelProps) {
   const activeStage = activeGenerationStage(progress);
   const completedStages = completedGenerationStages(progress);
+  const showLocalLogs = shouldShowLocalGenerationLogs() && progress.logs.length > 0;
 
   return (
     <div className="relative z-10 flex h-[100svh] flex-col overflow-hidden bg-background top-level-screen">
@@ -134,6 +142,20 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
               <LockKeyhole className="size-3.5" aria-hidden="true" />
               Your clips and video stay private on this device.
             </p>
+            {showLocalLogs ? (
+              <div className="mt-3 rounded-lg border border-border/60 bg-black/28 px-3 py-2.5">
+                <div className="mb-1 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span>Local FFmpeg output</span>
+                  <span>{progress.logs.length} lines</span>
+                </div>
+                <pre
+                  aria-label="Local FFmpeg output"
+                  className="max-h-28 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-4 text-foreground/82"
+                >
+                  {progress.logs.join("\n")}
+                </pre>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

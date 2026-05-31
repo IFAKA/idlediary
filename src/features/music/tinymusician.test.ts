@@ -83,7 +83,7 @@ describe("TinyMusician generation", () => {
 
   it("builds an instrumental lo-fi prompt from plan and video analysis", () => {
     expect(buildTinyMusicianPrompt(plan, [description])).toBe(
-      "Instrumental classic lo-fi hip-hop loop, 74 BPM, warm Rhodes jazz chords, dusty swung drums, mellow bass, vinyl crackle, coffee home mood, key C major pentatonic, texture vinyl, no vocals, seamless background loop.",
+      "Clean mellow lo-fi hip hop instrumental, 74 BPM steady relaxed groove, simple warm Rhodes two chord progression, soft brushed drums with muted kick and snare, gentle hi hats, round sub bass following the chords, subtle vinyl texture with low noise, coffee home mood background feel, key C major pentatonic, texture vinyl, minimal arrangement, no lead melody, no vocals, no distortion, no glitch, no busy percussion, no abrupt changes, seamless calm loop.",
     );
   });
 
@@ -141,7 +141,7 @@ describe("TinyMusician generation", () => {
       },
     );
     expect(transformerMocks.tokenizer).toHaveBeenCalledWith(
-      expect.stringContaining("Instrumental classic lo-fi hip-hop loop"),
+      expect.stringContaining("Clean mellow lo-fi hip hop instrumental"),
       {
         padding: true,
         truncation: true,
@@ -152,8 +152,8 @@ describe("TinyMusician generation", () => {
         input_ids: "input-ids",
         attention_mask: "attention-mask",
         do_sample: true,
-        guidance_scale: 3,
-        temperature: 0.9,
+        guidance_scale: 4,
+        temperature: 0.65,
       }),
     );
   });
