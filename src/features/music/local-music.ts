@@ -101,6 +101,10 @@ export function buildMidiTrackPlan(plan: MusicPlan): MidiTrackPlan[] {
   const scribblePattern = expandScribblePattern("x_x_x___x_x_x___", scaleNotes);
   const seedOffset = scribblePattern.length % 4;
   const random = seededRandom(`${plan.seed}|midi`);
+  const activity = plan.activity ?? (plan.energy === "medium" ? "medium" : "low");
+  const drumVelocityLift = activity === "high" ? 12 : activity === "medium" ? 6 : 0;
+  const bassVelocityLift = activity === "high" ? 15 : activity === "medium" ? 9 : 3;
+  const motifEveryBars = activity === "high" ? 2 : 4;
 
   const chords: MidiNoteEvent[] = [];
   const bass: MidiNoteEvent[] = [];
@@ -118,7 +122,7 @@ export function buildMidiTrackPlan(plan: MusicPlan): MidiTrackPlan[] {
         midi: rootMidi - 12 + interval,
         startTicks: barStart + 28 + jitterTicks(random, 12),
         durationTicks: barTicks * 2 - 24,
-        velocity: 52 + Math.floor(random() * 12),
+        velocity: 48 + Math.floor(random() * 12) + (activity === "low" ? 0 : 4),
       });
     }
 
@@ -128,7 +132,7 @@ export function buildMidiTrackPlan(plan: MusicPlan): MidiTrackPlan[] {
         midi: scaleMidi - 12,
         startTicks: barStart + swingTicks(note.step, ticksPerQuarter) + jitterTicks(random, 4),
         durationTicks: Math.max(80, Math.round((ticksPerQuarter / 4) * note.lengthSteps * 0.88)),
-        velocity: Math.round(58 * note.gain + (plan.energy === "medium" ? 12 : 5)),
+        velocity: Math.round(58 * note.gain + bassVelocityLift),
       });
     }
 
@@ -137,28 +141,36 @@ export function buildMidiTrackPlan(plan: MusicPlan): MidiTrackPlan[] {
         midi: 36,
         startTicks: barStart + swingTicks(event.step, ticksPerQuarter),
         durationTicks: 60,
-        velocity: Math.round(64 * event.gain + 36),
+        velocity: Math.round(64 * event.gain + 28 + drumVelocityLift),
       });
     }
-    drums.push({ midi: 38, startTicks: barStart + ticksPerQuarter, durationTicks: 70, velocity: 56 });
-    drums.push({ midi: 38, startTicks: barStart + ticksPerQuarter * 3, durationTicks: 70, velocity: 52 });
-    for (let step = 0; step < 8; step += 1) {
+    drums.push({ midi: 38, startTicks: barStart + ticksPerQuarter, durationTicks: 70, velocity: 50 + drumVelocityLift });
+    drums.push({ midi: 38, startTicks: barStart + ticksPerQuarter * 3, durationTicks: 70, velocity: 46 + drumVelocityLift });
+    for (let step = 0; step < 8; step += activity === "low" ? 2 : 1) {
       drums.push({
         midi: 42,
         startTicks: barStart + swingTicks(step * 2, ticksPerQuarter),
         durationTicks: 36,
-        velocity: step % 2 === 0 ? 42 : 34,
+        velocity: (step % 2 === 0 ? 38 : 32) + drumVelocityLift,
+      });
+    }
+    if (activity === "high") {
+      drums.push({
+        midi: 42,
+        startTicks: barStart + swingTicks(15, ticksPerQuarter) + jitterTicks(random, 5),
+        durationTicks: 32,
+        velocity: 34 + drumVelocityLift,
       });
     }
 
-    if (barIndex % 4 === 1) {
+    if (barIndex % motifEveryBars === 1) {
       for (const note of loop.melodyNotes) {
         const scaleMidi = Midi.toMidi(`${scaleNotes[note.degree % scaleNotes.length]}5`) ?? rootMidi + 12;
         motif.push({
           midi: scaleMidi,
           startTicks: barStart + swingTicks(note.step, ticksPerQuarter) + jitterTicks(random, 8),
           durationTicks: Math.max(80, Math.round((ticksPerQuarter / 4) * note.lengthSteps * 0.82)),
-          velocity: Math.round(42 * note.gain + 24),
+          velocity: Math.round(40 * note.gain + 20 + (activity === "high" ? 8 : 0)),
         });
       }
     }

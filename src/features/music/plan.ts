@@ -1,13 +1,23 @@
-import type { ClipMoodDescription, MusicPlan } from "./types";
-import { musicSafeMood, musicSafeTags } from "./music-vocab";
+import { profileSignature, visualMusicProfileVersion } from "./profile";
+import type { MusicPlan, VisualMusicProfile } from "./types";
 
-export const musicProfileVersion = 9;
+export const musicProfileVersion = visualMusicProfileVersion;
 
 const keys = ["C", "D", "E", "F", "G", "A", "Bb"] as const;
-const scales = ["minor pentatonic", "major pentatonic", "dorian"] as const;
-const instrumentPalettes = [
+const darkScales = ["minor pentatonic", "dorian", "minor pentatonic", "dorian"] as const;
+const brightScales = ["major pentatonic", "major pentatonic", "dorian"] as const;
+const balancedScales = ["minor pentatonic", "major pentatonic", "dorian"] as const;
+const darkInstrumentPalettes = [
+  ["felt-piano", "warm-pad", "brush-kit"],
+  ["electric-piano", "warm-pad", "soft-kick"],
+  ["felt-piano", "soft-bass", "brush-kit"],
+] as const;
+const brightInstrumentPalettes = [
   ["felt-piano", "soft-bass", "brush-kit"],
   ["electric-piano", "sub-bass", "brush-kit"],
+  ["electric-piano", "soft-bass", "room-kit"],
+] as const;
+const balancedInstrumentPalettes = [
   ["electric-piano", "warm-pad", "soft-kick"],
   ["felt-piano", "warm-pad", "brush-kit"],
   ["electric-piano", "soft-bass", "room-kit"],
@@ -15,43 +25,45 @@ const instrumentPalettes = [
 const textures = ["vinyl", "rain", "room"] as const;
 
 export function buildMusicPlan(
-  descriptions: ClipMoodDescription[],
+  profile: VisualMusicProfile,
   durationMs: number,
   seed: string,
 ): MusicPlan {
-  const mood =
-    mostCommon(
-      descriptions.map((description) =>
-        musicSafeMood(description.mood, description.tags),
-      ),
-    ) ?? "daily";
-  const mediumEnergyCount = descriptions.filter((description) => description.energy === "medium").length;
-  const energy = mediumEnergyCount > descriptions.length / 2 ? "medium" : "low";
-  const profileSeed = [
-    seed,
-    mood,
-    ...descriptions.flatMap((description) => musicSafeTags(description.tags)),
-  ].join("|");
+  const visualBrightness = profile.brightness * 0.62 + profile.saturation * 0.28 + profile.warmth * 0.1;
+  const isDarkMuted = visualBrightness < 0.42 || (profile.brightness < 0.46 && profile.saturation < 0.38);
+  const isBrightColorful = visualBrightness > 0.58 && profile.saturation > 0.42;
+  const activityScore = clamp(
+    profile.pacing * 0.5 + profile.contrast * 0.18 + profile.originalAudioActivity * 0.32,
+    0,
+    1,
+  );
+  const activity = activityScore > 0.66 ? "high" : activityScore > 0.38 ? "medium" : "low";
+  const energy = activity === "high" ? "medium" : "low";
+  const mood = isDarkMuted ? "dim-visual" : isBrightColorful ? "bright-visual" : "balanced-visual";
+  const profileSeed = [seed, profileSignature(profile)].join("|");
   const pick = picker(profileSeed);
-  const baseBpm = energy === "medium" ? 76 + pick(11) : 70 + pick(9);
+  const bpmFloor = isDarkMuted ? 66 : isBrightColorful ? 74 : 70;
+  const bpmRange = isDarkMuted ? 9 : isBrightColorful ? 12 : 10;
+  const activityLift = activity === "high" ? 6 : activity === "medium" ? 3 : 0;
+  const scaleSet = isDarkMuted ? darkScales : isBrightColorful ? brightScales : balancedScales;
+  const paletteSet = isDarkMuted
+    ? darkInstrumentPalettes
+    : isBrightColorful
+      ? brightInstrumentPalettes
+      : balancedInstrumentPalettes;
 
   return {
     seed,
     durationMs,
     mood,
     energy,
-    bpm: baseBpm,
+    activity,
+    bpm: bpmFloor + activityLift + pick(bpmRange),
     key: keys[pick(keys.length)],
-    scale: scales[pick(scales.length)],
-    instruments: [...instrumentPalettes[pick(instrumentPalettes.length)]],
-    texture: textures[pick(textures.length)],
+    scale: scaleSet[pick(scaleSet.length)],
+    instruments: [...paletteSet[pick(paletteSet.length)]],
+    texture: isDarkMuted && pick(4) === 0 ? "none" : textures[pick(textures.length)],
   };
-}
-
-function mostCommon<T extends string>(values: T[]) {
-  const counts = new Map<T, number>();
-  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
-  return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0];
 }
 
 function picker(seed: string) {
@@ -70,4 +82,8 @@ function hash(seed: string) {
     value = Math.imul(value, 16777619);
   }
   return value;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }

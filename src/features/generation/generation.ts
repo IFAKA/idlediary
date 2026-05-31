@@ -12,8 +12,8 @@ import {
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
 import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
-import { getQueuedClipMoodDescriptions } from "@/features/music/clip-analysis-queue";
 import { buildMusicPlan, musicProfileVersion } from "@/features/music/plan";
+import { buildVisualMusicProfile } from "@/features/music/profile";
 import {
   localMusicEngine,
   renderLocalMusicWav,
@@ -33,7 +33,7 @@ export type GenerationProgress = {
 
 const maxLogLines = 8;
 const maxRawLogLines = 120;
-const musicVolume = 0.45;
+const musicVolume = 0.24;
 const technicalSummary = `local concat | original music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC`;
 
 const progressCopy: Record<
@@ -97,9 +97,10 @@ export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleM
   ].join(",");
   const filterComplex = [
     `[0:v:0]${videoFilter}[vout]`,
-    "[0:a:0]aformat=sample_rates=48000:channel_layouts=stereo,dynaudnorm=f=150:g=9,volume=1.0[clipaudio]",
-    `[1:a:0]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${durationSeconds.toFixed(3)},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=2.4,volume=${musicVolume}[music]`,
-    "[clipaudio][music]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[aout]",
+    "[0:a:0]aformat=sample_rates=48000:channel_layouts=stereo,loudnorm=I=-16:TP=-1.5:LRA=11,dynaudnorm=f=150:g=9,volume=1.0,asplit=2[clipmix][clipduck]",
+    `[1:a:0]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${durationSeconds.toFixed(3)},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=2.4,volume=${musicVolume}[musicbase]`,
+    "[musicbase][clipduck]sidechaincompress=threshold=0.055:ratio=8:attack=18:release=260:makeup=1[duckedmusic]",
+    "[clipmix][duckedmusic]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11,alimiter=limit=0.84[aout]",
   ].join(";");
 
   return [
@@ -238,12 +239,12 @@ async function createGeneratedMusicWav(
     };
   }
 
-  const descriptions = await getQueuedClipMoodDescriptions(clips);
   const musicDurationSeconds = musicDurationSecondsForVideo(durationMs);
-  const musicPlan = buildMusicPlan(descriptions, musicDurationSeconds * 1000, seed);
+  const visualProfile = await buildVisualMusicProfile(clips);
+  const musicPlan = buildMusicPlan(visualProfile, musicDurationSeconds * 1000, seed);
   const generatedMusic = await renderLocalMusicWav({
     plan: musicPlan,
-    descriptions,
+    descriptions: [],
     durationSeconds: musicDurationSeconds,
     onRawLog,
   });
@@ -256,6 +257,7 @@ async function createGeneratedMusicWav(
       musicSeed: seed,
       musicProfileVersion,
       musicMood: musicPlan.mood,
+      visualMusicProfile: visualProfile,
     },
   };
 }
@@ -598,7 +600,7 @@ export async function generateVlog(
       totalMs: Math.round(performance.now() - startedAt),
       clipCount: clips.length,
       outputBytes: blob.size,
-      audioFilters: ["dynaudnorm", "afade", "amix", "alimiter"],
+      audioFilters: ["loudnorm", "dynaudnorm", "afade", "sidechaincompress", "amix", "alimiter"],
       videoFilters: ["scale", "crop", "fps", "eq", "unsharp", "format"],
     });
     addDebugEvent("vlog-generated", "generation", {

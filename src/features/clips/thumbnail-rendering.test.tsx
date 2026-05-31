@@ -309,13 +309,12 @@ describe("thumbnail rendering", () => {
     });
 
     expect(container.querySelectorAll('[data-testid="clip-analysis-guide"]')).toHaveLength(2);
-    expect(container).toHaveTextContent("Local music guide");
-    expect(container).toHaveTextContent("mood coffee");
+    expect(container).toHaveTextContent("Local visual profile");
     expect(container).toHaveTextContent("low");
     expect(container).toHaveTextContent("normal");
-    expect(container).toHaveTextContent("Music cues: #coffee #table");
+    expect(container).toHaveTextContent("Visual brightness and pacing help shape the private lo-fi profile.");
     expect(container).not.toHaveTextContent("oxygen mask");
-    expect(container).toHaveTextContent("Analyzing local frames for the music guide.");
+    expect(container).toHaveTextContent("Reading local frames for the visual profile.");
   });
 
   it("saved video cards prefer image thumbnails and fall back to video", async () => {

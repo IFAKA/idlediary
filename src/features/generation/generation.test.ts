@@ -26,8 +26,8 @@ const debugMocks = vi.hoisted(() => ({
   addDebugError: vi.fn(),
 }));
 const musicMocks = vi.hoisted(() => ({
-  getQueuedClipMoodDescriptions: vi.fn(),
   buildMusicPlan: vi.fn(),
+  buildVisualMusicProfile: vi.fn(),
   renderLocalMusicWav: vi.fn(),
 }));
 
@@ -44,12 +44,13 @@ vi.mock("@/features/clips/thumbnail", () => ({
     vlog: { width: 360, height: 640 },
   },
 }));
-vi.mock("@/features/music/clip-analysis-queue", () => ({
-  getQueuedClipMoodDescriptions: musicMocks.getQueuedClipMoodDescriptions,
-}));
 vi.mock("@/features/music/plan", async (importOriginal) => ({
   ...((await importOriginal()) as object),
   buildMusicPlan: musicMocks.buildMusicPlan,
+}));
+vi.mock("@/features/music/profile", async (importOriginal) => ({
+  ...((await importOriginal()) as object),
+  buildVisualMusicProfile: musicMocks.buildVisualMusicProfile,
 }));
 vi.mock("@/features/music/local-music", async (importOriginal) => ({
   ...((await importOriginal()) as object),
@@ -75,24 +76,24 @@ describe("generation export profile", () => {
     thumbnailMocks.generateVideoThumbnail.mockReset();
     debugMocks.addDebugEvent.mockReset();
     debugMocks.addDebugError.mockReset();
-    musicMocks.getQueuedClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
+    musicMocks.buildVisualMusicProfile.mockReset();
     musicMocks.renderLocalMusicWav.mockReset();
-    musicMocks.getQueuedClipMoodDescriptions.mockResolvedValue([
-      {
-        clipId: "clip-1",
-        description: "a cozy room",
-        tags: ["home"],
-        mood: "cozy",
-        energy: "low",
-        brightness: "normal",
-      },
-    ]);
+    musicMocks.buildVisualMusicProfile.mockResolvedValue({
+      version: 10,
+      brightness: 0.5,
+      saturation: 0.4,
+      contrast: 0.35,
+      warmth: 0.5,
+      pacing: 0.2,
+      originalAudioActivity: 0.2,
+    });
     musicMocks.buildMusicPlan.mockReturnValue({
       seed: "seed-1",
       durationMs: 3_000,
       mood: "cozy",
       energy: "low",
+      activity: "low",
       bpm: 74,
       key: "C",
       scale: "major pentatonic",
@@ -120,8 +121,8 @@ describe("generation export profile", () => {
     thumbnailMocks.generateVideoThumbnail.mockReset();
     debugMocks.addDebugEvent.mockReset();
     debugMocks.addDebugError.mockReset();
-    musicMocks.getQueuedClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
+    musicMocks.buildVisualMusicProfile.mockReset();
     musicMocks.renderLocalMusicWav.mockReset();
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
   });
@@ -148,13 +149,16 @@ describe("generation export profile", () => {
     expect(args).not.toContain("-movflags");
     expect(args).not.toContain("+faststart");
     expect(args).toContain("-filter_complex");
+    expect(args.join(" ")).toContain("loudnorm=I=-16:TP=-1.5:LRA=11");
     expect(args.join(" ")).toContain("dynaudnorm");
     expect(args.join(" ")).toContain("eq=contrast=1.045");
     expect(args.join(" ")).toContain("format=yuv420p[vout]");
-    expect(args.join(" ")).toContain("volume=0.45[music]");
+    expect(args.join(" ")).toContain("volume=0.24[musicbase]");
+    expect(args.join(" ")).toContain("sidechaincompress=threshold=0.055:ratio=8");
     expect(args.join(" ")).toContain("amix=inputs=2");
     expect(args.join(" ")).toContain("normalize=0");
-    expect(args.join(" ")).toContain("alimiter=limit=0.95");
+    expect(args.join(" ")).toContain("loudnorm=I=-14:TP=-1.5:LRA=11");
+    expect(args.join(" ")).toContain("alimiter=limit=0.84");
   });
 
   it("includes timestamp hardening and exports the MP4 output", () => {
@@ -225,13 +229,13 @@ describe("generation export profile", () => {
 
     expect(execArgs).toEqual([buildFfmpegArgs(3_000)]);
     expect(writtenFiles).toEqual(["music.wav", "clip-0.mp4", "inputs.txt"]);
-    expect(musicMocks.getQueuedClipMoodDescriptions).toHaveBeenCalledWith([
+    expect(musicMocks.buildVisualMusicProfile).toHaveBeenCalledWith([
       expect.objectContaining({ id: "clip-1" }),
     ]);
-    expect(musicMocks.buildMusicPlan).toHaveBeenCalledWith(expect.any(Array), 8_000, "seed-1");
+    expect(musicMocks.buildMusicPlan).toHaveBeenCalledWith(expect.objectContaining({ version: 10 }), 8_000, "seed-1");
     expect(musicMocks.renderLocalMusicWav).toHaveBeenCalledWith({
       plan: expect.objectContaining({ seed: "seed-1", bpm: 74 }),
-      descriptions: expect.any(Array),
+      descriptions: [],
       durationSeconds: 8,
       onRawLog: expect.any(Function),
     });
@@ -286,7 +290,7 @@ describe("generation export profile", () => {
         totalMs: expect.any(Number),
         clipCount: 1,
         outputBytes: vlog.size,
-        audioFilters: ["dynaudnorm", "afade", "amix", "alimiter"],
+        audioFilters: ["loudnorm", "dynaudnorm", "afade", "sidechaincompress", "amix", "alimiter"],
         videoFilters: ["scale", "crop", "fps", "eq", "unsharp", "format"],
       }),
     );
@@ -586,6 +590,6 @@ describe("generation export profile", () => {
     });
 
     expect(vlog.id).toBe("cached-vlog");
-    expect(musicMocks.getQueuedClipMoodDescriptions).not.toHaveBeenCalled();
+    expect(musicMocks.buildVisualMusicProfile).not.toHaveBeenCalled();
   });
 });

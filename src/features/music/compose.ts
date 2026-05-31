@@ -121,6 +121,7 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
   const beatSeconds = 60 / plan.bpm;
   const barSeconds = beatSeconds * 4;
   const loop = lofiLoopTemplateForSeed(plan.seed);
+  const activity = plan.activity ?? (plan.energy === "medium" ? "medium" : "low");
 
   for (let barStart = 0; barStart < durationSeconds; barStart += barSeconds) {
     const barIndex = Math.floor(barStart / barSeconds);
@@ -138,9 +139,9 @@ export async function composeGeneratedMusic(plan: MusicPlan): Promise<MusicCompo
       );
     }
     renderBassPattern(samples, scaleNotes, root, loop, barStart, beatSeconds, plan.energy, random);
-    renderDrumBar(samples, loop, barStart, beatSeconds, plan.energy, random);
+    renderDrumBar(samples, loop, barStart, beatSeconds, plan.energy, activity, random);
 
-    if (barIndex % 4 === 1) {
+    if (barIndex % (activity === "high" ? 2 : 4) === 1) {
       renderMotif(samples, scaleNotes, loop, barStart, beatSeconds, random);
     }
   }
@@ -246,29 +247,31 @@ function renderDrumBar(
   barStart: number,
   beatSeconds: number,
   energy: MusicPlan["energy"],
+  activity: NonNullable<MusicPlan["activity"]>,
   random: () => number,
 ) {
   const kickGain = energy === "medium" ? 0.124 : 0.102;
   const brushGain = energy === "medium" ? 0.048 : 0.04;
   const hatGain = energy === "medium" ? 0.021 : 0.017;
+  const activityGain = activity === "high" ? 1.16 : activity === "medium" ? 1.06 : 0.9;
 
   for (const event of loop.kickSteps) {
-    renderKick(samples, swungStepTime(barStart, beatSeconds, event.step) + humanize(random, 0.004), kickGain * event.gain);
+    renderKick(samples, swungStepTime(barStart, beatSeconds, event.step) + humanize(random, 0.004), kickGain * event.gain * activityGain);
   }
 
-  renderBrush(samples, barStart + beatSeconds + snareLagSeconds + humanize(random, 0.004), brushGain, random);
-  renderBrush(samples, barStart + beatSeconds * 3 + snareLagSeconds + humanize(random, 0.004), brushGain * 0.95, random);
-  if (energy === "medium") {
+  renderBrush(samples, barStart + beatSeconds + snareLagSeconds + humanize(random, 0.004), brushGain * activityGain, random);
+  renderBrush(samples, barStart + beatSeconds * 3 + snareLagSeconds + humanize(random, 0.004), brushGain * 0.95 * activityGain, random);
+  if (activity !== "low") {
     for (const event of loop.ghostBrushSteps) {
-      renderBrush(samples, swungStepTime(barStart, beatSeconds, event.step), brushGain * event.gain, random);
+      renderBrush(samples, swungStepTime(barStart, beatSeconds, event.step), brushGain * event.gain * activityGain, random);
     }
   }
 
-  for (let step = 0; step < 8; step += 1) {
+  for (let step = 0; step < 8; step += activity === "low" ? 2 : 1) {
     const accent = step % 2 === 0 ? 1 : 0.74;
-    renderHat(samples, swungStepTime(barStart, beatSeconds, step * 2) + humanize(random, 0.005), hatGain * accent * (0.82 + random() * 0.28), random);
-    if (energy === "medium" && step % 2 === 1 && random() > 0.52) {
-      renderHat(samples, swungStepTime(barStart, beatSeconds, step * 2 + 1) + humanize(random, 0.004), hatGain * 0.38, random);
+    renderHat(samples, swungStepTime(barStart, beatSeconds, step * 2) + humanize(random, 0.005), hatGain * accent * activityGain * (0.82 + random() * 0.28), random);
+    if (activity === "high" && step % 2 === 1 && random() > 0.52) {
+      renderHat(samples, swungStepTime(barStart, beatSeconds, step * 2 + 1) + humanize(random, 0.004), hatGain * 0.38 * activityGain, random);
     }
   }
 }

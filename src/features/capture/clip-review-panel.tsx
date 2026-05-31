@@ -50,7 +50,6 @@ import {
 } from "@/features/clips/media-cache";
 import type { ClipRecord } from "@/features/clips/types";
 import { clipMoodDescriptionFromAnalysis } from "@/features/music/clip-analysis";
-import { musicSafeMood, musicSafeTags } from "@/features/music/music-vocab";
 import { useHistoryOverlay } from "@/hooks/use-history-overlay";
 import { spring } from "@/lib/motion";
 
@@ -593,8 +592,6 @@ function ClipPreview({
 function ClipAnalysisGuide({ clip, index }: { clip: ClipRecord; index: number }) {
   const analysis = clip.analysis;
   const hasAnalysis = Boolean(analysis);
-  const musicTags = analysis ? musicSafeTags(analysis.tags) : [];
-  const mood = analysis ? musicSafeMood(analysis.mood, analysis.tags) : "daily";
   const alignClass =
     index % 3 === 0
       ? "left-0"
@@ -621,28 +618,21 @@ function ClipAnalysisGuide({ clip, index }: { clip: ClipRecord; index: number })
       />
       <div className="relative">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-memory">
-          Local music guide
+          Local visual profile
         </p>
         {hasAnalysis && analysis ? (
           <>
             <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
-              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">mood {mood}</span>
               <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">{analysis.energy}</span>
               <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">{analysis.brightness}</span>
             </div>
-            {musicTags.length > 0 ? (
-              <p className="mt-2 max-h-10 overflow-hidden text-xs leading-5 text-white/60">
-                Music cues: {musicTags.slice(0, 6).map((tag) => `#${tag}`).join(" ")}
-              </p>
-            ) : (
-              <p className="mt-2 text-xs leading-5 text-white/60">
-                No reliable visual cues. Using the default calm lo-fi profile.
-              </p>
-            )}
+            <p className="mt-2 text-xs leading-5 text-white/60">
+              Visual brightness and pacing help shape the private lo-fi profile.
+            </p>
           </>
         ) : (
           <p className="mt-1 text-xs leading-5 text-white/74">
-            Analyzing local frames for the music guide.
+            Reading local frames for the visual profile.
           </p>
         )}
       </div>

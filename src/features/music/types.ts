@@ -12,11 +12,22 @@ export type MusicPlan = {
   durationMs: number;
   mood: string;
   energy: "low" | "medium";
+  activity?: "low" | "medium" | "high";
   bpm: number;
   key: string;
   scale: string;
   instruments: string[];
   texture: "vinyl" | "rain" | "room" | "none";
+};
+
+export type VisualMusicProfile = {
+  version: number;
+  brightness: number;
+  saturation: number;
+  contrast: number;
+  warmth: number;
+  pacing: number;
+  originalAudioActivity: number;
 };
 
 export type ClipKeyframe = {
