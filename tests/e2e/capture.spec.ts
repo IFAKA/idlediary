@@ -171,6 +171,12 @@ async function expectClipRecorded(page: Page, clipCount: number) {
   ).toBeVisible();
 }
 
+async function expectDraftClipCount(page: Page, clipCount: number) {
+  await expect(
+    page.getByRole("button", { name: "Review draft clips" }).getByText(`+${clipCount}`),
+  ).toBeVisible({ timeout: 8_000 });
+}
+
 async function recordOneClipAndOpenReview(page: Page) {
   await mockMediaCapture(page);
   await openRecord(page);
@@ -552,6 +558,25 @@ test("record button cancels an active take without adding a draft clip", async (
   await page.getByRole("button", { name: "Review draft clips" }).click();
   await expect(page).toHaveURL("/draft");
   await expect(page.getByRole("heading", { name: "No draft clips yet" })).toBeVisible();
+});
+
+test("space toggles automatic recording shots", async ({ page }) => {
+  await mockMediaCapture(page);
+  await openRecord(page);
+
+  await expect(page.getByRole("button", { name: "Record three second clip" })).toBeVisible();
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("button", { name: "Cancel recording" })).toBeVisible();
+  await expectDraftClipCount(page, 1);
+  await expect(page.getByRole("button", { name: "Cancel recording" })).toBeVisible({
+    timeout: 2_000,
+  });
+
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("button", { name: "Record three second clip" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Review draft clips" }).getByText("+2"),
+  ).toHaveCount(0, { timeout: 4_000 });
 });
 
 test("record screen videos button navigates to videos", async ({ page }) => {

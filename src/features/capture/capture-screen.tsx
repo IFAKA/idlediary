@@ -207,6 +207,13 @@ function isInteractiveTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest("button, a, input, textarea, select"));
 }
 
+function isTextEntryTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("input, textarea, select, [contenteditable='true']"))
+  );
+}
+
 function hasSeenFirstRecordGuide() {
   if (typeof window === "undefined") return true;
   return window.localStorage.getItem(FIRST_RECORD_GUIDE_SEEN_KEY) === "true";
@@ -245,12 +252,15 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   const [hasNeedsActionVlog, setHasNeedsActionVlog] = useState(false);
   const [showFirstRecordGuide, setShowFirstRecordGuide] = useState(false);
   const [showSavedVideoGuide, setShowSavedVideoGuide] = useState(false);
+  const [autoShotsEnabled, setAutoShotsEnabled] = useState(false);
   const shouldReduceMotion = useReducedMotion() === true;
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
   const demoSeededAfterCapture = useRef(false);
   const cameraSwipeStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const previousClipCountRef = useRef<number | null>(null);
+  const captureInFlightRef = useRef(false);
+  const autoCaptureTimerRef = useRef<number | null>(null);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     ...makeGenerationProgress("idle", 0),
   });
@@ -515,11 +525,17 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     }
   };
 
-  const captureClip = async () => {
-    if (clipLimitReached) {
+  const captureClip = useCallback(async () => {
+    if (captureInFlightRef.current) {
       return;
     }
 
+    if (clipLimitReached) {
+      setAutoShotsEnabled(false);
+      return;
+    }
+
+    captureInFlightRef.current = true;
     try {
       const blob = demo
         ? await recordDemoClip(
@@ -542,11 +558,14 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
       }
     } catch (error) {
       reportError(error);
+    } finally {
+      captureInFlightRef.current = false;
     }
-  };
+  }, [clipLimitReached, clips, demo, recorder]);
 
   const handleRecordButtonClick = () => {
     if (recorderState === "recording") {
+      setAutoShotsEnabled(false);
       if (demo) return;
       recorder.cancel();
       return;
@@ -554,6 +573,61 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
 
     void captureClip();
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || (event.code !== "Space" && event.key !== " ")) return;
+      if (mode !== "capture" || isTextEntryTarget(event.target)) return;
+
+      event.preventDefault();
+      if (recorderState === "recording") {
+        setAutoShotsEnabled(false);
+        if (!demo) {
+          recorder.cancel();
+        }
+        return;
+      }
+
+      setAutoShotsEnabled((enabled) => !enabled);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [demo, mode, recorder, recorderState]);
+
+  useEffect(() => {
+    if (
+      !autoShotsEnabled ||
+      mode !== "capture" ||
+      needsPermission ||
+      clipLimitReached ||
+      clips.loading ||
+      recorderState === "recording" ||
+      recorderState === "saving"
+    ) {
+      return;
+    }
+
+    autoCaptureTimerRef.current = window.setTimeout(() => {
+      autoCaptureTimerRef.current = null;
+      void captureClip();
+    }, 0);
+
+    return () => {
+      if (autoCaptureTimerRef.current !== null) {
+        window.clearTimeout(autoCaptureTimerRef.current);
+        autoCaptureTimerRef.current = null;
+      }
+    };
+  }, [
+    autoShotsEnabled,
+    captureClip,
+    clipLimitReached,
+    clips.loading,
+    mode,
+    needsPermission,
+    recorderState,
+  ]);
 
   const switchCamera = useCallback(async () => {
     if (!canSwitchCamera) return;
