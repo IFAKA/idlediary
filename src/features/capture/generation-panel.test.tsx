@@ -80,6 +80,7 @@ describe("GenerationPanel", () => {
         label: "Assembling MP4",
         detail: "Putting your clips and music together",
         logs: ["concat demuxer stream copy"],
+        rawLogs: ["concat demuxer stream copy"],
       }),
     );
 
@@ -107,26 +108,29 @@ describe("GenerationPanel", () => {
     const view = renderPanel(
       generationProgress("rendering", 56, {
         label: "Assembling MP4",
-        logs: ["frame=42 fps=30", "muxing overhead: 0.1%"],
+        logs: ["friendly summary"],
+        rawLogs: ["frame=42 fps=30", "muxing overhead: 0.1%"],
       }),
     );
 
-    expect(view.textContent).toContain("Local generation output");
+    expect(view.textContent).toContain("Raw local output");
     expect(view.textContent).toContain("frame=42 fps=30");
     expect(view.textContent).toContain("muxing overhead: 0.1%");
+    expect(view.textContent).not.toContain("friendly summary");
   });
 
-  it("shows a local waiting line before FFmpeg emits output", () => {
+  it("shows a local waiting line before raw generation output arrives", () => {
     vi.stubEnv("NEXT_PUBLIC_IDLEDIARY_GENERATION_LOGS", "true");
     const view = renderPanel(
       generationProgress("rendering", 24, {
         label: "Assembling MP4",
         logs: [],
+        rawLogs: [],
       }),
     );
 
-    expect(view.textContent).toContain("Local generation output");
-    expect(view.textContent).toContain("Assembling MP4: waiting for generation output...");
+    expect(view.textContent).toContain("Raw local output");
+    expect(view.textContent).toContain("Assembling MP4: waiting for raw generation output...");
   });
 
   it("does not show the removed long-wait reassurance", () => {

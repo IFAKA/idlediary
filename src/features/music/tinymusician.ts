@@ -44,6 +44,7 @@ export type TinyMusicianGenerationInput = {
   plan: MusicPlan;
   descriptions: ClipMoodDescription[];
   durationSeconds?: number;
+  onRawLog?: (message: string) => void;
 };
 
 export type TinyMusicianGenerationResult = {
@@ -92,12 +93,13 @@ export async function generateTinyMusicianWav({
   plan,
   descriptions,
   durationSeconds = musicDurationSecondsForVideo(plan.durationMs),
+  onRawLog,
 }: TinyMusicianGenerationInput): Promise<TinyMusicianGenerationResult> {
   const musicPrompt = buildTinyMusicianPrompt(plan, descriptions);
   const mock = tinyMusicianMock();
   const audio = mock
     ? await mock({ prompt: musicPrompt, durationSeconds, plan, descriptions })
-    : await generateWithLocalTinyMusician(musicPrompt, durationSeconds);
+    : await generateWithLocalTinyMusician(musicPrompt, durationSeconds, onRawLog);
 
   const samples = normalizeAudioSamples(audio);
   const samplingRate = audioSamplingRate(audio);
@@ -116,6 +118,7 @@ export function resetTinyMusicianForTests() {
 
 export async function verifyTinyMusicianReadiness(
   fetcher: typeof fetch = fetch,
+  onRawLog?: (message: string) => void,
 ): Promise<void> {
   try {
     if (typeof window === "undefined" || typeof navigator === "undefined") {
@@ -131,6 +134,7 @@ export async function verifyTinyMusicianReadiness(
           cache: "force-cache",
           method: "HEAD",
         });
+        onRawLog?.(`HEAD ${tinyMusicianAssetUrl(file)} -> ${response.status}`);
         if (!response.ok) {
           throw new Error(`TinyMusician file missing: ${file} (${response.status})`);
         }
@@ -147,10 +151,17 @@ export async function warmTinyMusician(): Promise<void> {
   await loadTinyMusicianGenerator();
 }
 
-async function generateWithLocalTinyMusician(prompt: string, durationSeconds: number) {
+async function generateWithLocalTinyMusician(
+  prompt: string,
+  durationSeconds: number,
+  onRawLog?: (message: string) => void,
+) {
   try {
-    const generate = await loadTinyMusicianGenerator();
+    const generate = await loadTinyMusicianGenerator(onRawLog);
     const maxNewTokens = Math.max(64, Math.round(durationSeconds * 50));
+    onRawLog?.(
+      `$ TinyMusician.generate max_new_tokens=${maxNewTokens} guidance_scale=4 temperature=0.65`,
+    );
     return await generate(prompt, {
       max_new_tokens: maxNewTokens,
       do_sample: true,
@@ -162,7 +173,7 @@ async function generateWithLocalTinyMusician(prompt: string, durationSeconds: nu
   }
 }
 
-async function loadTinyMusicianGenerator() {
+async function loadTinyMusicianGenerator(onRawLog?: (message: string) => void) {
   if (tinyMusicianGeneratorPromise) return tinyMusicianGeneratorPromise;
 
   tinyMusicianGeneratorPromise = (async () => {
@@ -183,16 +194,23 @@ async function loadTinyMusicianGenerator() {
     onnxBackend.wasm ??= {};
     onnxBackend.wasm.wasmPaths = wasmPath;
 
+    const progressCallback = (data: unknown) => {
+      onRawLog?.(`transformers.js ${JSON.stringify(data)}`);
+    };
+    onRawLog?.(`$ transformers.js load ${tinyMusicianModel} local_files_only=true device=webgpu`);
     const [tokenizer, model] = await Promise.all([
       transformers.AutoTokenizer.from_pretrained(tinyMusicianModel, {
         local_files_only: true,
+        progress_callback: progressCallback,
       }),
       transformers.MusicgenForConditionalGeneration.from_pretrained(tinyMusicianModel, {
         device: "webgpu",
         dtype: "fp32",
         local_files_only: true,
+        progress_callback: progressCallback,
       }),
     ]);
+    onRawLog?.("transformers.js model load complete");
     const samplingRate = (model as { config?: { audio_encoder?: { sampling_rate?: number } } })
       .config?.audio_encoder?.sampling_rate;
 

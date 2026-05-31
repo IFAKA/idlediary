@@ -172,17 +172,32 @@ export function generationProgressWithLiveLogs(
   nextProgress: GenerationProgress,
   latestProgress: GenerationProgress,
 ) {
-  if (nextProgress.logs.length > 0) return nextProgress;
-  if (latestProgress.logs.length > 0) {
+  if (nextProgress.logs.length > 0 && nextProgress.rawLogs.length > 0) return nextProgress;
+  if (nextProgress.logs.length > 0) {
+    return {
+      ...nextProgress,
+      rawLogs:
+        latestProgress.rawLogs.length > 0 ? latestProgress.rawLogs : displayedProgress.rawLogs,
+    };
+  }
+  if (nextProgress.rawLogs.length > 0) {
+    return {
+      ...nextProgress,
+      logs: latestProgress.logs.length > 0 ? latestProgress.logs : displayedProgress.logs,
+    };
+  }
+  if (latestProgress.logs.length > 0 || latestProgress.rawLogs.length > 0) {
     return {
       ...nextProgress,
       logs: latestProgress.logs,
+      rawLogs: latestProgress.rawLogs,
     };
   }
-  if (displayedProgress.logs.length > 0) {
+  if (displayedProgress.logs.length > 0 || displayedProgress.rawLogs.length > 0) {
     return {
       ...nextProgress,
       logs: displayedProgress.logs,
+      rawLogs: displayedProgress.rawLogs,
     };
   }
 

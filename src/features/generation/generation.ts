@@ -29,9 +29,11 @@ export type GenerationProgress = {
   detail: string;
   technical: string;
   logs: string[];
+  rawLogs: string[];
 };
 
 const maxLogLines = 8;
+const maxRawLogLines = 120;
 const musicVolume = 0.45;
 const technicalSummary = `MP4 concat demuxer | generated music mix | ${exportProfile.width}x${exportProfile.height} ${exportProfile.fps}fps H.264/AAC`;
 
@@ -79,6 +81,7 @@ const progressCopy: Record<
 let ffmpegPromise: Promise<FFmpeg> | null = null;
 let activeProgressSink: ((progress: GenerationProgress) => void) | null = null;
 let recentFfmpegLogs: string[] = [];
+let recentRawLogs: string[] = [];
 let activeRenderValue = 24;
 let activeFfmpegProgressBucket = -1;
 
@@ -166,15 +169,22 @@ export function recentGenerationLogs(logs: string[], nextLog: string) {
   return [...logs, nextLog].slice(-maxLogLines);
 }
 
+export function recentRawGenerationLogs(logs: string[], nextLog: string) {
+  return [...logs, nextLog].slice(-maxRawLogLines);
+}
+
 export function generationProgress(
   step: GenerationProgress["step"],
   value: number,
-  overrides: Partial<Pick<GenerationProgress, "label" | "detail" | "technical" | "logs">> = {},
+  overrides: Partial<
+    Pick<GenerationProgress, "label" | "detail" | "technical" | "logs" | "rawLogs">
+  > = {},
 ): GenerationProgress {
   return {
     step,
     value,
     logs: [],
+    rawLogs: [],
     ...progressCopy[step],
     ...overrides,
   };
@@ -184,11 +194,17 @@ export function resetGenerationForTests() {
   ffmpegPromise = null;
   activeProgressSink = null;
   recentFfmpegLogs = [];
+  recentRawLogs = [];
   activeRenderValue = 24;
   activeFfmpegProgressBucket = -1;
 }
 
-async function createGeneratedMusicWav(clips: ClipRecord[], durationMs: number, seed: string) {
+async function createGeneratedMusicWav(
+  clips: ClipRecord[],
+  durationMs: number,
+  seed: string,
+  onRawLog?: (message: string) => void,
+) {
   const MockGeneratedMusic =
     typeof window !== "undefined"
       ? (
@@ -215,6 +231,7 @@ async function createGeneratedMusicWav(clips: ClipRecord[], durationMs: number, 
     plan: musicPlan,
     descriptions,
     durationSeconds: musicDurationSeconds,
+    onRawLog,
   });
   return {
     musicWav: generatedMusic.musicWav,
@@ -239,6 +256,7 @@ function emitProgress(progress: GenerationProgress) {
   activeProgressSink?.({
     ...progress,
     logs: progress.logs.length > 0 ? progress.logs : recentFfmpegLogs,
+    rawLogs: progress.rawLogs.length > 0 ? progress.rawLogs : recentRawLogs,
   });
 }
 
@@ -248,6 +266,19 @@ function appendGenerationLog(message: string, progress: GenerationProgress) {
     ...progress,
     logs: recentFfmpegLogs,
   });
+}
+
+function appendRawGenerationLog(message: string, progress: GenerationProgress) {
+  recentRawLogs = recentRawGenerationLogs(recentRawLogs, message);
+  emitProgress({
+    ...progress,
+    rawLogs: recentRawLogs,
+  });
+}
+
+function shellQuote(value: string) {
+  if (/^[A-Za-z0-9_./:=+,-]+$/.test(value)) return value;
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 async function loadFfmpeg() {
@@ -261,12 +292,14 @@ async function loadFfmpeg() {
         : undefined;
     const ffmpeg = MockFFmpeg ? new MockFFmpeg() : new FFmpeg();
     ffmpeg.on("log", ({ message }) => {
+      recentRawLogs = recentRawGenerationLogs(recentRawLogs, message);
       recentFfmpegLogs = recentGenerationLogs(recentFfmpegLogs, `ffmpeg: ${message}`);
       addDebugEvent("ffmpeg-log", "generation", { message });
       emitProgress(
         generationProgress("rendering", activeRenderValue, {
           label: renderingLabelFor(activeRenderValue),
           logs: recentFfmpegLogs,
+          rawLogs: recentRawLogs,
         }),
       );
     });
@@ -279,6 +312,7 @@ async function loadFfmpeg() {
       });
       if (progressBucket > activeFfmpegProgressBucket || progressPercent === 100) {
         activeFfmpegProgressBucket = progressBucket;
+        appendRawGenerationLog(`progress=${progressPercent}%`, renderProgress);
         appendGenerationLog(`ffmpeg: mux/audio progress ${progressPercent}%`, renderProgress);
         return;
       }
@@ -287,8 +321,10 @@ async function loadFfmpeg() {
     });
 
     appendGenerationLog("Loading FFmpeg core", generationProgress("loading", 8));
+    appendRawGenerationLog("$ ffmpeg.wasm load", generationProgress("loading", 8));
     if (MockFFmpeg) {
       await ffmpeg.load();
+      appendRawGenerationLog("ffmpeg.wasm load complete", generationProgress("loading", 10));
       appendGenerationLog("FFmpeg core ready", generationProgress("loading", 10));
       addDebugEvent("ffmpeg-loaded", "generation", { mocked: true });
       return ffmpeg;
@@ -298,10 +334,15 @@ async function loadFfmpeg() {
       typeof window === "undefined"
         ? "/ffmpeg"
         : new URL("/ffmpeg", window.location.href).href;
+    appendRawGenerationLog(
+      `$ ffmpeg.wasm load coreURL=${baseURL}/ffmpeg-core.js wasmURL=${baseURL}/ffmpeg-core.wasm`,
+      generationProgress("loading", 8),
+    );
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
       wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
     });
+    appendRawGenerationLog("ffmpeg.wasm load complete", generationProgress("loading", 10));
     appendGenerationLog("FFmpeg core ready", generationProgress("loading", 10));
     addDebugEvent("ffmpeg-loaded", "generation");
     return ffmpeg;
@@ -445,7 +486,9 @@ export async function generateVlog(
       }),
     );
     const readinessStartedAt = performance.now();
-    await verifyTinyMusicianReadiness();
+    await verifyTinyMusicianReadiness(fetch, (message) =>
+      appendRawGenerationLog(message, generationProgress("writing", 14)),
+    );
     markTiming("tinyMusicianReadinessMs", readinessStartedAt);
     appendGenerationLog(
       "TinyMusician readiness passed",
@@ -469,6 +512,7 @@ export async function generateVlog(
       clips,
       totalDurationMs,
       musicSeed,
+      (message) => appendRawGenerationLog(message, generationProgress("writing", 18)),
     );
     markTiming("musicGenerationMs", musicStartedAt);
     appendGenerationLog(
@@ -503,6 +547,10 @@ export async function generateVlog(
 
     appendGenerationLog(
       "Running FFmpeg stream-copy mux with AAC audio mix",
+      generationProgress("rendering", 24),
+    );
+    appendRawGenerationLog(
+      `$ ffmpeg ${buildFfmpegArgs(totalDurationMs).map(shellQuote).join(" ")}`,
       generationProgress("rendering", 24),
     );
     const muxStartedAt = performance.now();

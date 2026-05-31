@@ -147,6 +147,7 @@ describe("TinyMusician generation", () => {
     expect(result.musicWav.slice(0, 4)).toEqual(new Uint8Array([82, 73, 70, 70]));
     expect(transformerMocks.tokenizerFromPretrained).toHaveBeenCalledWith("itsmax/TinyMusician", {
       local_files_only: true,
+      progress_callback: expect.any(Function),
     });
     expect(transformerMocks.modelFromPretrained).toHaveBeenCalledWith(
       "itsmax/TinyMusician",
@@ -154,6 +155,7 @@ describe("TinyMusician generation", () => {
         device: "webgpu",
         dtype: "fp32",
         local_files_only: true,
+        progress_callback: expect.any(Function),
       },
     );
     expect(transformerMocks.tokenizer).toHaveBeenCalledWith(

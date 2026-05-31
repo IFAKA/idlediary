@@ -9,6 +9,7 @@ import {
   generationProgress,
   isFastConcatCompatibleClip,
   recentGenerationLogs,
+  recentRawGenerationLogs,
   resetGenerationForTests,
   warmGenerationPipeline,
   type GenerationProgress,
@@ -232,6 +233,7 @@ describe("generation export profile", () => {
       plan: expect.objectContaining({ seed: "seed-1", bpm: 74 }),
       descriptions: expect.any(Array),
       durationSeconds: 8,
+      onRawLog: expect.any(Function),
     });
     expect(thumbnailMocks.generateVideoThumbnail).not.toHaveBeenCalled();
     expect(vlog.thumbnailBlob).toBe(sourceClip.thumbnailBlob);
@@ -251,6 +253,17 @@ describe("generation export profile", () => {
     );
     expect(progress.some((entry) => entry.technical.includes("generated music mix"))).toBe(true);
     expect(progress.at(-1)?.logs).toHaveLength(8);
+    expect(progress.at(-1)?.rawLogs).toEqual(
+      expect.arrayContaining([
+        "$ ffmpeg.wasm load",
+        "ffmpeg.wasm load complete",
+        expect.stringContaining("$ ffmpeg -fflags +genpts"),
+        "concat demuxer stream copy",
+        "progress=62%",
+        "audio mix complete",
+        "progress=96%",
+      ]),
+    );
     expect(progress.some((entry) => entry.logs.includes("Generating clean lo-fi soundtrack"))).toBe(true);
     expect(progress.some((entry) => entry.logs.includes("Writing clip-0.mp4 (0.0 KB)"))).toBe(true);
     expect(progress.at(-1)?.logs).toEqual(
@@ -449,6 +462,17 @@ describe("generation export profile", () => {
     expect(logs).toHaveLength(8);
     expect(logs[0]).toBe("line-4");
     expect(generationProgress("rendering", 24, { logs }).logs).toEqual(logs);
+  });
+
+  it("keeps recent raw generation logs bounded separately from friendly logs", () => {
+    const rawLogs = Array.from({ length: 125 }, (_, index) => `raw-${index}`).reduce(
+      recentRawGenerationLogs,
+      [],
+    );
+
+    expect(rawLogs).toHaveLength(120);
+    expect(rawLogs[0]).toBe("raw-5");
+    expect(generationProgress("rendering", 24, { rawLogs }).rawLogs).toEqual(rawLogs);
   });
 
   it("builds stable fingerprints from ordered clips and export settings", () => {
