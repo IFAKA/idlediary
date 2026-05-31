@@ -1255,6 +1255,11 @@ test("back and forward navigate between capture and review", async ({ page }) =>
       ),
     )
     .toBeGreaterThanOrEqual(2);
+
+  await page.keyboard.press("Escape");
+
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "No pressure" })).toBeVisible();
 });
 
 test("gallery reorders clips and generation receives UI order", async ({ page }) => {

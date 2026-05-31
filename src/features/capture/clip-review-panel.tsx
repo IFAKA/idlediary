@@ -700,7 +700,6 @@ function FullscreenPreview({
   const [hasError, setHasError] = useState(false);
 
   useBodyScrollLock();
-  useEscapeClose(onClose);
 
   return (
     <motion.div
@@ -743,18 +742,6 @@ function FullscreenPreview({
       </motion.div>
     </motion.div>
   );
-}
-
-function useEscapeClose(onClose: () => void) {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      onClose();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
 }
 
 function useBodyScrollLock() {

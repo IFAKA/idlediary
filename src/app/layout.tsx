@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppHeaderProvider } from "@/components/app-header-shell";
+import { EscapeBackHandler } from "@/components/escape-back-handler";
 import { PwaRegister } from "./pwa-register";
 import "./globals.css";
 
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body>
         <AppHeaderProvider>
           {children}
+          <EscapeBackHandler />
           <PwaRegister />
         </AppHeaderProvider>
       </body>

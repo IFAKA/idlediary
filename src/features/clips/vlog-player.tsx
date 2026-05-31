@@ -96,7 +96,6 @@ function FullscreenVlogPlayer({
   onClose: () => void;
 }) {
   useBodyScrollLock();
-  useEscapeClose(onClose);
 
   return (
     <motion.div
@@ -132,18 +131,6 @@ function FullscreenVlogPlayer({
       </motion.div>
     </motion.div>
   );
-}
-
-function useEscapeClose(onClose: () => void) {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      onClose();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
 }
 
 function useBodyScrollLock() {
