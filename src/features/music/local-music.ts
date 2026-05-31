@@ -10,6 +10,8 @@ const fadeOutSeconds = 2.4;
 const targetSampleRate = 48_000;
 const soundFontPath = "/soundfonts/lofi-diary.sf2";
 const spessaWorkletPath = "/spessasynth/spessasynth_processor.min.js";
+let spessaSynthModulesPromise: Promise<typeof import("spessasynth_lib") & typeof import("spessasynth_core")> | null = null;
+let soundFontPromise: Promise<ArrayBuffer> | null = null;
 
 type MidiEvent = {
   tick: number;
@@ -205,10 +207,8 @@ async function renderMidiWithSpessaSynth(
       return null;
     }
 
-    const [{ WorkletSynthesizer, audioBufferToWav }, { BasicMIDI, SoundBankLoader }] = await Promise.all([
-      import("spessasynth_lib"),
-      import("spessasynth_core"),
-    ]);
+    const { WorkletSynthesizer, audioBufferToWav, BasicMIDI, SoundBankLoader } =
+      await loadSpessaSynthModules();
     const context = new OfflineAudioContext(2, Math.ceil(durationSeconds * targetSampleRate), targetSampleRate);
     await context.audioWorklet.addModule(spessaWorkletPath);
     const synth = new WorkletSynthesizer(context);
@@ -235,9 +235,20 @@ async function renderMidiWithSpessaSynth(
 }
 
 async function fetchSoundFont() {
-  const response = await fetch(soundFontPath, { cache: "force-cache" });
-  if (!response.ok) throw new Error(`SoundFont missing: ${response.status}`);
-  return response.arrayBuffer();
+  soundFontPromise ??= (async () => {
+    const response = await fetch(soundFontPath, { cache: "force-cache" });
+    if (!response.ok) throw new Error(`SoundFont missing: ${response.status}`);
+    return response.arrayBuffer();
+  })();
+  return (await soundFontPromise).slice(0);
+}
+
+async function loadSpessaSynthModules() {
+  spessaSynthModulesPromise ??= Promise.all([
+    import("spessasynth_lib"),
+    import("spessasynth_core"),
+  ]).then(([lib, core]) => ({ ...lib, ...core }));
+  return spessaSynthModulesPromise;
 }
 
 function copyArrayBuffer(bytes: Uint8Array) {

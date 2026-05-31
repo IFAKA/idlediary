@@ -12,6 +12,8 @@ const neutralVisualMetrics: VisualMetrics = {
   warmth: 0.5,
 };
 
+const thumbnailMetricsCache = new WeakMap<Blob, VisualMetrics>();
+
 export async function buildVisualMusicProfile(clips: ClipRecord[]): Promise<VisualMusicProfile> {
   const durationSeconds = clips.reduce((total, clip) => total + clip.durationMs / 1000, 0);
   const clipPacing = clamp(clips.length / Math.max(durationSeconds / 60, 0.05), 0, 36) / 36;
@@ -53,26 +55,28 @@ async function visualMetricsForClip(clip: ClipRecord): Promise<VisualMetrics> {
 
 async function readThumbnailMetrics(thumbnail: Blob | undefined): Promise<VisualMetrics | null> {
   if (!thumbnail || typeof createImageBitmap === "undefined" || typeof document === "undefined") return null;
+  const cached = thumbnailMetricsCache.get(thumbnail);
+  if (cached) return cached;
 
+  let bitmap: ImageBitmap | null = null;
   try {
-    const bitmap = await createImageBitmap(thumbnail);
+    bitmap = await createImageBitmap(thumbnail);
     const sampleSize = 32;
     const canvas = document.createElement("canvas");
     canvas.width = sampleSize;
     canvas.height = sampleSize;
     const context = canvas.getContext("2d", { willReadFrequently: true });
     if (!context) {
-      bitmap.close();
       return null;
     }
 
     context.drawImage(bitmap, 0, 0, sampleSize, sampleSize);
-    bitmap.close();
     const pixels = context.getImageData(0, 0, sampleSize, sampleSize).data;
     let brightness = 0;
     let saturation = 0;
     let warmth = 0;
-    const luminanceValues: number[] = [];
+    let luminanceSquared = 0;
+    let count = 0;
 
     for (let index = 0; index < pixels.length; index += 4) {
       const red = pixels[index] / 255;
@@ -82,24 +86,28 @@ async function readThumbnailMetrics(thumbnail: Blob | undefined): Promise<Visual
       const min = Math.min(red, green, blue);
       const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
       brightness += luminance;
+      luminanceSquared += luminance * luminance;
       saturation += max === 0 ? 0 : (max - min) / max;
       warmth += clamp((red - blue + 1) / 2, 0, 1);
-      luminanceValues.push(luminance);
+      count += 1;
     }
 
-    const count = luminanceValues.length || 1;
-    const mean = brightness / count;
-    const variance =
-      luminanceValues.reduce((total, luminance) => total + (luminance - mean) ** 2, 0) / count;
+    const safeCount = count || 1;
+    const mean = brightness / safeCount;
+    const variance = Math.max(0, luminanceSquared / safeCount - mean * mean);
 
-    return {
+    const metrics = {
       brightness: mean,
-      saturation: saturation / count,
+      saturation: saturation / safeCount,
       contrast: clamp(Math.sqrt(variance) * 2.2, 0, 1),
-      warmth: warmth / count,
+      warmth: warmth / safeCount,
     };
+    thumbnailMetricsCache.set(thumbnail, metrics);
+    return metrics;
   } catch {
     return null;
+  } finally {
+    bitmap?.close();
   }
 }
 

@@ -489,10 +489,13 @@ export async function generateVlog(
       return cachedVlog;
     }
 
+    const totalDurationMs = clips.reduce((total, clip) => total + clip.durationMs, 0);
     const ffmpegLoadStartedAt = performance.now();
     appendGenerationLog("Preparing FFmpeg workspace", generationProgress("loading", 8));
-    const ffmpeg = await loadFfmpeg();
-    markTiming("ffmpegLoadMs", ffmpegLoadStartedAt);
+    const ffmpegPromise = loadFfmpeg().then((ffmpeg) => {
+      markTiming("ffmpegLoadMs", ffmpegLoadStartedAt);
+      return ffmpeg;
+    });
     appendGenerationLog(
       "Creating original lo-fi music",
       generationProgress("writing", 18, {
@@ -501,15 +504,28 @@ export async function generateVlog(
       }),
     );
 
-    const totalDurationMs = clips.reduce((total, clip) => total + clip.durationMs, 0);
     const musicStartedAt = performance.now();
-    const { musicWav, debug: musicDebug } = await createGeneratedMusicWav(
+    const generatedMusicPromise = createGeneratedMusicWav(
       clips,
       totalDurationMs,
       musicSeed,
       (message) => appendRawGenerationLog(message, generationProgress("writing", 18)),
+    ).then((generatedMusic) => {
+      markTiming("musicGenerationMs", musicStartedAt);
+      return generatedMusic;
+    });
+    const clipFilesPromise = Promise.all(
+      clips.map(async (clip, index) => ({
+        clip,
+        input: `clip-${index}.mp4`,
+        data: await fetchFile(clip.blob),
+      })),
     );
-    markTiming("musicGenerationMs", musicStartedAt);
+    const [ffmpeg, { musicWav, debug: musicDebug }, clipFiles] = await Promise.all([
+      ffmpegPromise,
+      generatedMusicPromise,
+      clipFilesPromise,
+    ]);
     appendGenerationLog(
       `Soundtrack ready (${musicWav.byteLength.toLocaleString()} bytes)`,
       generationProgress("writing", 20, {
@@ -522,13 +538,12 @@ export async function generateVlog(
     await ffmpeg.writeFile("music.wav", musicWav);
 
     const listLines: string[] = [];
-    for (const [index, clip] of clips.entries()) {
-      const input = `clip-${index}.mp4`;
+    for (const { clip, input, data } of clipFiles) {
       appendGenerationLog(
         `Writing ${input} (${(clip.size / 1024).toFixed(1)} KB)`,
         generationProgress("writing", 20),
       );
-      await ffmpeg.writeFile(input, await fetchFile(clip.blob));
+      await ffmpeg.writeFile(input, data);
       listLines.push(`file '${input}'`);
     }
     await ffmpeg.writeFile("inputs.txt", listLines.join("\n"));
