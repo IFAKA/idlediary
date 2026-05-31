@@ -8,12 +8,17 @@ type RawAudioLike = {
   samplingRate?: number;
 };
 
-type TextToAudioPipeline = (
+type TensorLike = {
+  data: Iterable<number> | Float32Array;
+};
+
+type TinyMusicianGenerator = (
   prompt: string,
   options?: {
     max_new_tokens?: number;
     guidance_scale?: number;
     temperature?: number;
+    do_sample?: boolean;
   },
 ) => Promise<RawAudioLike | RawAudioLike[]>;
 
@@ -24,7 +29,7 @@ const installCommand = "npm run music:model:install";
 const fadeOutSeconds = 2.4;
 const targetSampleRate = 48_000;
 
-let tinyMusicianPipelinePromise: Promise<TextToAudioPipeline> | null = null;
+let tinyMusicianGeneratorPromise: Promise<TinyMusicianGenerator> | null = null;
 
 export type TinyMusicianGenerationInput = {
   plan: MusicPlan;
@@ -88,15 +93,16 @@ export async function generateTinyMusicianWav({
 }
 
 export function resetTinyMusicianForTests() {
-  tinyMusicianPipelinePromise = null;
+  tinyMusicianGeneratorPromise = null;
 }
 
 async function generateWithLocalTinyMusician(prompt: string, durationSeconds: number) {
   try {
-    const pipeline = await loadTinyMusicianPipeline();
+    const generate = await loadTinyMusicianGenerator();
     const maxNewTokens = Math.max(64, Math.round(durationSeconds * 50));
-    return await pipeline(prompt, {
+    return await generate(prompt, {
       max_new_tokens: maxNewTokens,
+      do_sample: true,
       guidance_scale: 3,
       temperature: 0.9,
     });
@@ -105,10 +111,10 @@ async function generateWithLocalTinyMusician(prompt: string, durationSeconds: nu
   }
 }
 
-async function loadTinyMusicianPipeline() {
-  if (tinyMusicianPipelinePromise) return tinyMusicianPipelinePromise;
+async function loadTinyMusicianGenerator() {
+  if (tinyMusicianGeneratorPromise) return tinyMusicianGeneratorPromise;
 
-  tinyMusicianPipelinePromise = (async () => {
+  tinyMusicianGeneratorPromise = (async () => {
     if (typeof window === "undefined" || typeof navigator === "undefined") {
       throw new Error("TinyMusician requires browser execution");
     }
@@ -126,14 +132,43 @@ async function loadTinyMusicianPipeline() {
     onnxBackend.wasm ??= {};
     onnxBackend.wasm.wasmPaths = wasmPath;
 
-    return (await transformers.pipeline("text-to-audio", tinyMusicianModel, {
-      device: "webgpu",
-      dtype: "fp32",
-      local_files_only: true,
-    })) as TextToAudioPipeline;
+    const [tokenizer, model] = await Promise.all([
+      transformers.AutoTokenizer.from_pretrained(tinyMusicianModel, {
+        local_files_only: true,
+      }),
+      transformers.MusicgenForConditionalGeneration.from_pretrained(tinyMusicianModel, {
+        device: "webgpu",
+        dtype: "fp32",
+        local_files_only: true,
+      }),
+    ]);
+    const samplingRate = (model as { config?: { audio_encoder?: { sampling_rate?: number } } })
+      .config?.audio_encoder?.sampling_rate;
+
+    return async (prompt, options = {}) => {
+      const inputs = tokenizer(prompt, {
+        padding: true,
+        truncation: true,
+      });
+      const audioValues = (await model.generate({
+        ...inputs,
+        ...options,
+      })) as TensorLike;
+
+      return {
+        audio: tensorDataToFloat32Array(audioValues),
+        sampling_rate: samplingRate,
+      };
+    };
   })();
 
-  return tinyMusicianPipelinePromise;
+  return tinyMusicianGeneratorPromise;
+}
+
+function tensorDataToFloat32Array(tensor: TensorLike) {
+  return tensor.data instanceof Float32Array
+    ? tensor.data
+    : new Float32Array([...tensor.data]);
 }
 
 function tinyMusicianMock() {
