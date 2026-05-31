@@ -1,6 +1,7 @@
 import type { ClipMoodDescription, MusicPlan } from "./types";
+import { musicSafeMood, musicSafeTags } from "./music-vocab";
 
-export const musicProfileVersion = 7;
+export const musicProfileVersion = 8;
 
 const keys = ["C", "D", "E", "F", "G", "A", "Bb"] as const;
 const scales = ["minor pentatonic", "major pentatonic", "dorian"] as const;
@@ -18,10 +19,19 @@ export function buildMusicPlan(
   durationMs: number,
   seed: string,
 ): MusicPlan {
-  const mood = mostCommon(descriptions.map((description) => description.mood)) ?? "daily";
+  const mood =
+    mostCommon(
+      descriptions.map((description) =>
+        musicSafeMood(description.mood, description.tags),
+      ),
+    ) ?? "daily";
   const mediumEnergyCount = descriptions.filter((description) => description.energy === "medium").length;
   const energy = mediumEnergyCount > descriptions.length / 2 ? "medium" : "low";
-  const profileSeed = [seed, mood, ...descriptions.flatMap((description) => description.tags)].join("|");
+  const profileSeed = [
+    seed,
+    mood,
+    ...descriptions.flatMap((description) => musicSafeTags(description.tags)),
+  ].join("|");
   const pick = picker(profileSeed);
   const baseBpm = energy === "medium" ? 76 + pick(11) : 70 + pick(9);
 

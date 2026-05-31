@@ -1,4 +1,5 @@
 import { AppError } from "@/features/errors/app-error";
+import { musicSafeMood, musicSafeTags } from "./music-vocab";
 import { encodeMonoWav } from "./render";
 import type { ClipMoodDescription, MusicPlan } from "./types";
 
@@ -59,8 +60,10 @@ export function buildTinyMusicianPrompt(
   plan: MusicPlan,
   descriptions: ClipMoodDescription[],
 ) {
-  const tags = uniqueWords(descriptions.flatMap((description) => description.tags)).slice(0, 8);
-  const moodWords = uniqueWords([plan.mood, ...tags]);
+  const tags = uniqueWords(
+    descriptions.flatMap((description) => musicSafeTags(description.tags)),
+  ).slice(0, 8);
+  const moodWords = uniqueWords([musicSafeMood(plan.mood, tags), ...tags]);
   const moodPhrase = moodWords.length > 0 ? `${moodWords.join(" ")} mood` : "daily mood";
 
   return [

@@ -58,6 +58,25 @@ describe("descriptionFromCaptions", () => {
       brightness: "dim",
     });
   });
+
+  it("falls back to a neutral music mood for noisy object labels", () => {
+    expect(
+      descriptionFromCaptions("clip-1", [
+        "shower curtain",
+        "oxygen mask",
+        "mask",
+        "sunglass",
+        "safety pin",
+      ]),
+    ).toEqual({
+      clipId: "clip-1",
+      description: "shower curtain / oxygen mask / mask / sunglass / safety pin",
+      tags: [],
+      mood: "daily",
+      energy: "low",
+      brightness: "normal",
+    });
+  });
 });
 
 describe("analyzeClipMoodDescriptions", () => {

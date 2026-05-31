@@ -1,4 +1,5 @@
 import { AppError } from "@/features/errors/app-error";
+import { musicSafeMood, musicSafeTags } from "./music-vocab";
 import type { ClipKeyframe, ClipMoodDescription } from "./types";
 
 type LocalVisionClassifier = {
@@ -119,10 +120,11 @@ export function descriptionFromLabels(
   labels: string[],
 ): ClipMoodDescription {
   const text = labels.join(" ").toLowerCase();
-  const tags = extractCaptionTags(text);
-  const brightness = /night|dark|dim|black|shadow|rain|cloud/.test(text)
+  const tags = musicSafeTags(extractCaptionTags(text));
+  const safeText = tags.join(" ");
+  const brightness = /night|dark|dim|black|shadow|rain|cloud/.test(safeText)
     ? "dim"
-    : /sun|bright|white|day|sky|beach|light/.test(text)
+    : /sun|bright|white|day|sky|beach|light/.test(safeText)
       ? "bright"
       : "normal";
 
@@ -130,7 +132,7 @@ export function descriptionFromLabels(
     clipId,
     description: labels.join(" / "),
     tags,
-    mood: tags[0] ?? "daily",
+    mood: musicSafeMood(tags[0], tags),
     energy: tags.length >= 5 ? "medium" : "low",
     brightness,
   };

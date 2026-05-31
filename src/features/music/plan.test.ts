@@ -40,11 +40,28 @@ describe("buildMusicPlan", () => {
     const low = buildMusicPlan([cozyDescription], 6_000, "seed-1");
     const medium = buildMusicPlan([{ ...cozyDescription, energy: "medium" }], 6_000, "seed-1");
 
-    expect(musicProfileVersion).toBe(7);
+    expect(musicProfileVersion).toBe(8);
     expect(low.bpm).toBeGreaterThanOrEqual(70);
     expect(low.bpm).toBeLessThanOrEqual(78);
     expect(medium.bpm).toBeGreaterThanOrEqual(76);
     expect(medium.bpm).toBeLessThanOrEqual(86);
+  });
+
+  it("does not let noisy image classifier words become the music mood", () => {
+    const noisy: ClipMoodDescription = {
+      ...cozyDescription,
+      description: "oxygen mask / shower curtain",
+      tags: ["oxygen", "mask", "shower", "curtain"],
+      mood: "oxygen",
+      energy: "low",
+    };
+
+    expect(buildMusicPlan([noisy], 6_000, "seed-1")).toEqual(
+      expect.objectContaining({
+        mood: "daily",
+        energy: "low",
+      }),
+    );
   });
 
   it("lets seed and AI caption words change the generated profile", () => {

@@ -87,6 +87,22 @@ describe("TinyMusician generation", () => {
     );
   });
 
+  it("filters noisy vision labels out of the lo-fi prompt", () => {
+    expect(
+      buildTinyMusicianPrompt(
+        { ...plan, mood: "oxygen" },
+        [
+          {
+            ...description,
+            description: "oxygen mask / shower curtain",
+            tags: ["oxygen", "mask", "shower", "curtain"],
+            mood: "oxygen",
+          },
+        ],
+      ),
+    ).toContain("daily mood background feel");
+  });
+
   it("bounds music duration around the final video length", () => {
     expect(musicDurationSecondsForVideo(1_000)).toBe(8);
     expect(musicDurationSecondsForVideo(12_000)).toBe(14.4);

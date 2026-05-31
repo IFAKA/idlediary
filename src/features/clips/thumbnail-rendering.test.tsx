@@ -280,13 +280,13 @@ describe("thumbnail rendering", () => {
     expect(makeVideoButton()).toBeEnabled();
   });
 
-  it("shows local model output on draft clip hover cards", () => {
+  it("shows local music guidance on draft clip hover cards", () => {
     const readyClip = clip({
       analysis: {
         version: clipAnalysisVersion,
-        description: "coffee cup / table",
-        tags: ["coffee", "table"],
-        mood: "coffee",
+        description: "oxygen mask / coffee cup / table",
+        tags: ["oxygen", "mask", "coffee", "table"],
+        mood: "mask",
         energy: "low",
         brightness: "normal",
         analyzedAt: "2026-05-27T10:01:00.000Z",
@@ -309,16 +309,13 @@ describe("thumbnail rendering", () => {
     });
 
     expect(container.querySelectorAll('[data-testid="clip-analysis-guide"]')).toHaveLength(2);
-    expect(container).toHaveTextContent("Raw vision labels");
-    expect(container).toHaveTextContent("coffee cup");
-    expect(container).toHaveTextContent("table");
-    expect(container).toHaveTextContent("coffee");
+    expect(container).toHaveTextContent("Local music guide");
+    expect(container).toHaveTextContent("mood coffee");
     expect(container).toHaveTextContent("low");
     expect(container).toHaveTextContent("normal");
-    expect(container).toHaveTextContent("Music tags: #coffee #table");
-    expect(container).toHaveTextContent(
-      "Analyzing local frames. The generated description will appear here.",
-    );
+    expect(container).toHaveTextContent("Music cues: #coffee #table");
+    expect(container).not.toHaveTextContent("oxygen mask");
+    expect(container).toHaveTextContent("Analyzing local frames for the music guide.");
   });
 
   it("saved video cards prefer image thumbnails and fall back to video", async () => {

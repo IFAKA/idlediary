@@ -50,6 +50,7 @@ import {
 } from "@/features/clips/media-cache";
 import type { ClipRecord } from "@/features/clips/types";
 import { clipMoodDescriptionFromAnalysis } from "@/features/music/clip-analysis";
+import { musicSafeMood, musicSafeTags } from "@/features/music/music-vocab";
 import { useHistoryOverlay } from "@/hooks/use-history-overlay";
 import { spring } from "@/lib/motion";
 
@@ -592,7 +593,8 @@ function ClipPreview({
 function ClipAnalysisGuide({ clip, index }: { clip: ClipRecord; index: number }) {
   const analysis = clip.analysis;
   const hasAnalysis = Boolean(analysis);
-  const labels = analysis ? analysis.description.split(/\s*\/\s*/).filter(Boolean).slice(0, 6) : [];
+  const musicTags = analysis ? musicSafeTags(analysis.tags) : [];
+  const mood = analysis ? musicSafeMood(analysis.mood, analysis.tags) : "daily";
   const alignClass =
     index % 3 === 0
       ? "left-0"
@@ -619,35 +621,28 @@ function ClipAnalysisGuide({ clip, index }: { clip: ClipRecord; index: number })
       />
       <div className="relative">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-memory">
-          Raw vision labels
+          Local music guide
         </p>
         {hasAnalysis && analysis ? (
           <>
-            <div className="mt-2 grid gap-1.5">
-              {labels.map((label) => (
-                <p
-                  key={label}
-                  className="truncate rounded-md border border-white/12 bg-white/7 px-2 py-1 font-mono text-[11px] leading-4 text-white/82"
-                  title={label}
-                >
-                  {label}
-                </p>
-              ))}
-            </div>
             <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
-              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">mood {analysis.mood}</span>
+              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">mood {mood}</span>
               <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">{analysis.energy}</span>
               <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">{analysis.brightness}</span>
             </div>
-            {analysis.tags.length > 0 ? (
+            {musicTags.length > 0 ? (
               <p className="mt-2 max-h-10 overflow-hidden text-xs leading-5 text-white/60">
-                Music tags: {analysis.tags.slice(0, 6).map((tag) => `#${tag}`).join(" ")}
+                Music cues: {musicTags.slice(0, 6).map((tag) => `#${tag}`).join(" ")}
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-2 text-xs leading-5 text-white/60">
+                No reliable visual cues. Using the default calm lo-fi profile.
+              </p>
+            )}
           </>
         ) : (
           <p className="mt-1 text-xs leading-5 text-white/74">
-            Analyzing local frames. The generated description will appear here.
+            Analyzing local frames for the music guide.
           </p>
         )}
       </div>
