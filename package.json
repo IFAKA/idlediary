@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/install-music-model.mjs --include-tinymusician && next dev",
     "postinstall": "node scripts/install-music-model.mjs",
-    "build": "next build && node scripts/generate-offline-assets.mjs",
+    "build": "node scripts/install-music-model.mjs --include-tinymusician && next build && node scripts/generate-offline-assets.mjs",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",

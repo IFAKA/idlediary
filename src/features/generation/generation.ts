@@ -10,7 +10,11 @@ import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
 import { getQueuedClipMoodDescriptions } from "@/features/music/clip-analysis-queue";
 import { buildMusicPlan, musicProfileVersion } from "@/features/music/plan";
-import { generateTinyMusicianWav, musicDurationSecondsForVideo } from "@/features/music/tinymusician";
+import {
+  generateTinyMusicianWav,
+  musicDurationSecondsForVideo,
+  verifyTinyMusicianReadiness,
+} from "@/features/music/tinymusician";
 export { exportProfile } from "@/features/video/export-profile";
 
 export type GenerationProgress = {
@@ -406,8 +410,16 @@ export async function generateVlog(
     const ffmpeg = await loadFfmpeg();
     emitProgress(
       generationProgress("writing", 14, {
-        label: "Composing music",
-        detail: "Looking at keyframes and making a quiet backing track",
+        label: "Checking AI music model",
+        detail: "Verifying TinyMusician files and WebGPU",
+      }),
+    );
+    await verifyTinyMusicianReadiness();
+
+    emitProgress(
+      generationProgress("writing", 18, {
+        label: "Loading AI music model",
+        detail: "Downloading or reading cached TinyMusician files",
       }),
     );
 

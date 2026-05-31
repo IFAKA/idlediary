@@ -28,6 +28,14 @@ const wasmPath = "/transformers/";
 const installCommand = "npm run music:model:install";
 const fadeOutSeconds = 2.4;
 const targetSampleRate = 48_000;
+const requiredTinyMusicianFiles = [
+  "config.json",
+  "tokenizer.json",
+  "generation_config.json",
+  "onnx/text_encoder.onnx",
+  "onnx/decoder_model_merged.onnx",
+  "onnx/encodec_decode.onnx",
+];
 
 let tinyMusicianGeneratorPromise: Promise<TinyMusicianGenerator> | null = null;
 
@@ -94,6 +102,33 @@ export async function generateTinyMusicianWav({
 
 export function resetTinyMusicianForTests() {
   tinyMusicianGeneratorPromise = null;
+}
+
+export async function verifyTinyMusicianReadiness(
+  fetcher: typeof fetch = fetch,
+): Promise<void> {
+  try {
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      throw new Error("TinyMusician requires browser execution");
+    }
+    if (!("gpu" in navigator)) {
+      throw new Error("TinyMusician requires WebGPU support");
+    }
+
+    await Promise.all(
+      requiredTinyMusicianFiles.map(async (file) => {
+        const response = await fetcher(tinyMusicianAssetUrl(file), {
+          cache: "force-cache",
+          method: "HEAD",
+        });
+        if (!response.ok) {
+          throw new Error(`TinyMusician file missing: ${file} (${response.status})`);
+        }
+      }),
+    );
+  } catch (cause) {
+    throw tinyMusicianUnavailable(cause);
+  }
 }
 
 async function generateWithLocalTinyMusician(prompt: string, durationSeconds: number) {
@@ -252,6 +287,11 @@ function uniqueWords(words: string[]) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function tinyMusicianAssetUrl(relativePath: string) {
+  const path = `${modelPath}${tinyMusicianModel}/${relativePath}`;
+  return typeof window === "undefined" ? path : new URL(path, window.location.href).href;
 }
 
 function tinyMusicianUnavailable(cause: unknown) {

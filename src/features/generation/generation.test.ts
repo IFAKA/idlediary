@@ -24,6 +24,7 @@ const musicMocks = vi.hoisted(() => ({
   getQueuedClipMoodDescriptions: vi.fn(),
   buildMusicPlan: vi.fn(),
   generateTinyMusicianWav: vi.fn(),
+  verifyTinyMusicianReadiness: vi.fn(),
 }));
 
 vi.mock("@/features/clips/storage", () => ({
@@ -45,6 +46,7 @@ vi.mock("@/features/music/plan", async (importOriginal) => ({
 vi.mock("@/features/music/tinymusician", async (importOriginal) => ({
   ...((await importOriginal()) as object),
   generateTinyMusicianWav: musicMocks.generateTinyMusicianWav,
+  verifyTinyMusicianReadiness: musicMocks.verifyTinyMusicianReadiness,
 }));
 
 function clip(id: string): ClipRecord {
@@ -67,6 +69,7 @@ describe("generation export profile", () => {
     musicMocks.getQueuedClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
     musicMocks.generateTinyMusicianWav.mockReset();
+    musicMocks.verifyTinyMusicianReadiness.mockReset();
     musicMocks.getQueuedClipMoodDescriptions.mockResolvedValue([
       {
         clipId: "clip-1",
@@ -93,6 +96,7 @@ describe("generation export profile", () => {
       musicPrompt: "Instrumental classic lo-fi hip-hop loop, 74 BPM, no vocals.",
       musicDurationSeconds: 8,
     });
+    musicMocks.verifyTinyMusicianReadiness.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -102,6 +106,7 @@ describe("generation export profile", () => {
     musicMocks.getQueuedClipMoodDescriptions.mockReset();
     musicMocks.buildMusicPlan.mockReset();
     musicMocks.generateTinyMusicianWav.mockReset();
+    musicMocks.verifyTinyMusicianReadiness.mockReset();
     delete (window as typeof window & { __idleDiaryMockFFmpeg?: unknown }).__idleDiaryMockFFmpeg;
   });
 
@@ -217,6 +222,7 @@ describe("generation export profile", () => {
     expect(musicMocks.getQueuedClipMoodDescriptions).toHaveBeenCalledWith([
       expect.objectContaining({ id: "clip-1" }),
     ]);
+    expect(musicMocks.verifyTinyMusicianReadiness).toHaveBeenCalledOnce();
     expect(musicMocks.buildMusicPlan).toHaveBeenCalledWith(expect.any(Array), 8_000, "seed-1");
     expect(musicMocks.generateTinyMusicianWav).toHaveBeenCalledWith({
       plan: expect.objectContaining({ seed: "seed-1", bpm: 74 }),
@@ -229,7 +235,8 @@ describe("generation export profile", () => {
     expect(progress.map((entry) => entry.label)).toEqual(
       expect.arrayContaining([
         "Opening your diary",
-        "Composing music",
+        "Checking AI music model",
+        "Loading AI music model",
         "Assembling MP4",
         "Making playback ready",
         "Saving privately",

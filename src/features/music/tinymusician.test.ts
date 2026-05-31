@@ -4,6 +4,7 @@ import {
   generateTinyMusicianWav,
   musicDurationSecondsForVideo,
   resetTinyMusicianForTests,
+  verifyTinyMusicianReadiness,
 } from "./tinymusician";
 import type { ClipMoodDescription, MusicPlan } from "./types";
 
@@ -155,6 +156,43 @@ describe("TinyMusician generation", () => {
         temperature: 0.9,
       }),
     );
+  });
+
+  it("verifies WebGPU and required local model files before generation", async () => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: {},
+    });
+    const fetcher = vi.fn().mockResolvedValue({ ok: true });
+
+    await expect(verifyTinyMusicianReadiness(fetcher)).resolves.toBeUndefined();
+
+    expect(fetcher).toHaveBeenCalledTimes(6);
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining("/models/itsmax/TinyMusician/config.json"),
+      expect.objectContaining({ method: "HEAD" }),
+    );
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining("/models/itsmax/TinyMusician/onnx/text_encoder.onnx"),
+      expect.objectContaining({ method: "HEAD" }),
+    );
+  });
+
+  it("throws a clear readiness error when a local model file is missing", async () => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: {},
+    });
+    const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+
+    await expect(verifyTinyMusicianReadiness(fetcher)).rejects.toMatchObject({
+      code: "generation-unavailable",
+      context: expect.objectContaining({
+        musicEngine: "tinymusician",
+        installCommand: "npm run music:model:install",
+        causeMessage: expect.stringContaining("TinyMusician file missing"),
+      }),
+    });
   });
 
   it("throws a clear local-model error when TinyMusician cannot load", async () => {
