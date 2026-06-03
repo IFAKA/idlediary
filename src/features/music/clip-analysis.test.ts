@@ -26,6 +26,10 @@ vi.mock("./keyframes", () => ({
 }));
 vi.mock("./analyze", () => ({
   analyzeClipMoodDescriptions: analysisMocks.analyzeClipMoodDescriptions,
+  moodCuesFromText: (text: string) =>
+    text
+      .split(/\W+/)
+      .filter((word) => word.length > 0),
 }));
 
 function clip(id: string, overrides: Partial<ClipRecord> = {}): ClipRecord {
@@ -63,7 +67,7 @@ describe("clip analysis cache", () => {
       {
         clipId: "clip-1",
         description: "coffee cup / table",
-        tags: ["coffee", "table"],
+        moodCues: ["coffee", "table"],
         mood: "coffee",
         energy: "low",
         brightness: "normal",
@@ -77,7 +81,6 @@ describe("clip analysis cache", () => {
         analysis: {
           version: clipAnalysisVersion,
           description: "coffee cup / table",
-          tags: ["coffee", "table"],
           mood: "coffee",
           energy: "low",
           brightness: "normal",

@@ -52,7 +52,7 @@ describe("descriptionFromCaptions", () => {
     expect(descriptionFromCaptions("clip-1", ["a rainy night street through a window"])).toEqual({
       clipId: "clip-1",
       description: "a rainy night street through a window",
-      tags: ["rainy", "night", "street", "window"],
+      moodCues: ["rainy", "night", "street", "window"],
       mood: "rainy",
       energy: "low",
       brightness: "dim",
@@ -71,7 +71,7 @@ describe("descriptionFromCaptions", () => {
     ).toEqual({
       clipId: "clip-1",
       description: "shower curtain / oxygen mask / mask / sunglass / safety pin",
-      tags: [],
+      moodCues: [],
       mood: "daily",
       energy: "low",
       brightness: "normal",
@@ -100,7 +100,7 @@ describe("analyzeClipMoodDescriptions", () => {
       {
         clipId: "clip-1",
         description: "rainy window / coffee cup / bright beach",
-        tags: ["rainy", "window", "coffee", "bright", "beach"],
+        moodCues: ["rainy", "window", "coffee", "bright", "beach"],
         mood: "rainy",
         energy: "medium",
         brightness: "dim",

@@ -2,7 +2,7 @@ import type { ClipAnalysisRecord, ClipRecord } from "@/features/clips/types";
 import { saveClipAnalysis } from "@/features/clips/storage";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import type { ClipMoodDescription } from "./types";
-import { analyzeClipMoodDescriptions } from "./analyze";
+import { analyzeClipMoodDescriptions, moodCuesFromText } from "./analyze";
 import { extractClipKeyframes } from "./keyframes";
 
 export const clipAnalysisVersion = "mobilevit-small-q8-v1";
@@ -21,7 +21,7 @@ export function clipMoodDescriptionFromAnalysis(
   return {
     clipId: clip.id,
     description: clip.analysis.description,
-    tags: clip.analysis.tags,
+    moodCues: moodCuesFromText(clip.analysis.description),
     mood: clip.analysis.mood,
     energy: clip.analysis.energy,
     brightness: clip.analysis.brightness,
@@ -36,7 +36,6 @@ export function analysisFromDescription(description: ClipMoodDescription): ClipA
   return {
     version: clipAnalysisVersion,
     description: description.description,
-    tags: description.tags,
     mood: description.mood,
     energy: description.energy,
     brightness: description.brightness,
@@ -62,7 +61,6 @@ export async function analyzeAndPersistClipMoodDescription(clip: ClipRecord) {
   addDebugEvent("clip-analysis-completed", "generation", {
     clipId: clip.id,
     analysisVersion: clipAnalysisVersion,
-    tags: description.tags,
   });
   return description;
 }

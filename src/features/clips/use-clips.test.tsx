@@ -127,7 +127,7 @@ describe("useClips", () => {
     mocks.enqueueClipMoodAnalysis.mockResolvedValue({
       clipId: "clip-new",
       description: "daily clip",
-      tags: ["daily"],
+      moodCues: ["daily"],
       mood: "daily",
       energy: "low",
       brightness: "normal",

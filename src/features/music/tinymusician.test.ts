@@ -45,7 +45,7 @@ const plan: MusicPlan = {
 const description: ClipMoodDescription = {
   clipId: "clip-1",
   description: "coffee on a table at home",
-  tags: ["coffee", "home"],
+  moodCues: ["coffee", "home"],
   mood: "coffee",
   energy: "low",
   brightness: "normal",
@@ -95,7 +95,7 @@ describe("TinyMusician generation", () => {
           {
             ...description,
             description: "oxygen mask / shower curtain",
-            tags: ["oxygen", "mask", "shower", "curtain"],
+            moodCues: ["oxygen", "mask", "shower", "curtain"],
             mood: "oxygen",
           },
         ],

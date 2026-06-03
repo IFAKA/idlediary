@@ -213,7 +213,6 @@ describe("thumbnail rendering", () => {
       analysis: {
         version: clipAnalysisVersion,
         description: "coffee cup / table",
-        tags: ["coffee", "table"],
         mood: "coffee",
         energy: "low",
         brightness: "normal",
@@ -257,7 +256,6 @@ describe("thumbnail rendering", () => {
               analysis: {
                 version: clipAnalysisVersion,
                 description: "desk lamp / paper",
-                tags: ["desk", "lamp"],
                 mood: "desk",
                 energy: "low",
                 brightness: "normal",
@@ -285,7 +283,6 @@ describe("thumbnail rendering", () => {
       analysis: {
         version: clipAnalysisVersion,
         description: "oxygen mask / coffee cup / table",
-        tags: ["oxygen", "mask", "coffee", "table"],
         mood: "mask",
         energy: "low",
         brightness: "normal",

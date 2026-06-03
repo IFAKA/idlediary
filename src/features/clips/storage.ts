@@ -540,7 +540,6 @@ export async function saveClipAnalysis(id: string, analysis: ClipAnalysisRecord)
     addDebugEvent("clip-analysis-saved", "storage", {
       clipId: id,
       analysisVersion: analysis.version,
-      tags: analysis.tags,
     });
     return updated;
   } catch (cause) {

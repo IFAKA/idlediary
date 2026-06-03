@@ -40,13 +40,12 @@ describe("visual music profile", () => {
     );
   });
 
-  it("uses visual brightness fallback without semantic tags", async () => {
+  it("uses visual brightness fallback without semantic labels", async () => {
     const profile = await buildVisualMusicProfile([
       clip({
         analysis: {
           version: "mobilevit-small-q8-v1",
           description: "oxygen mask / shower curtain",
-          tags: ["oxygen", "mask"],
           mood: "oxygen",
           energy: "low",
           brightness: "dim",

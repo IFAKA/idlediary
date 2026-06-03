@@ -1,5 +1,5 @@
 import { AppError } from "@/features/errors/app-error";
-import { musicSafeMood, musicSafeTags } from "./music-vocab";
+import { musicSafeMood, musicSafeMoodCues } from "./music-vocab";
 import type { ClipKeyframe, ClipMoodDescription } from "./types";
 
 type LocalVisionClassifier = {
@@ -120,8 +120,8 @@ export function descriptionFromLabels(
   labels: string[],
 ): ClipMoodDescription {
   const text = labels.join(" ").toLowerCase();
-  const tags = musicSafeTags(extractCaptionTags(text));
-  const safeText = tags.join(" ");
+  const moodCues = moodCuesFromText(text);
+  const safeText = moodCues.join(" ");
   const brightness = /night|dark|dim|black|shadow|rain|cloud/.test(safeText)
     ? "dim"
     : /sun|bright|white|day|sky|beach|light/.test(safeText)
@@ -131,14 +131,18 @@ export function descriptionFromLabels(
   return {
     clipId,
     description: labels.join(" / "),
-    tags,
-    mood: musicSafeMood(tags[0], tags),
-    energy: tags.length >= 5 ? "medium" : "low",
+    moodCues,
+    mood: musicSafeMood(moodCues[0], moodCues),
+    energy: moodCues.length >= 5 ? "medium" : "low",
     brightness,
   };
 }
 
-function extractCaptionTags(text: string) {
+export function moodCuesFromText(text: string) {
+  return musicSafeMoodCues(extractCaptionCues(text.toLowerCase()));
+}
+
+function extractCaptionCues(text: string) {
   const stopWords = new Set([
     "with",
     "from",

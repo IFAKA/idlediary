@@ -1,7 +1,7 @@
 export type ClipMoodDescription = {
   clipId: string;
   description: string;
-  tags: string[];
+  moodCues: string[];
   mood: string;
   energy: "low" | "medium";
   brightness: "dim" | "normal" | "bright";

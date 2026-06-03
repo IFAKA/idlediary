@@ -10,7 +10,6 @@ export type ThumbnailMetadataFields = Omit<ThumbnailFields, "thumbnailBlob">;
 export type ClipAnalysisRecord = {
   version: string;
   description: string;
-  tags: string[];
   mood: string;
   energy: "low" | "medium";
   brightness: "dim" | "normal" | "bright";

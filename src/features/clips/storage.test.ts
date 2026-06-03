@@ -225,7 +225,6 @@ describe("storage media split", () => {
     const updated = await saveClipAnalysis(savedClip.id, {
       version: "mobilevit-small-q8-v1",
       description: "coffee cup / table",
-      tags: ["coffee", "table"],
       mood: "coffee",
       energy: "low",
       brightness: "normal",
@@ -236,7 +235,7 @@ describe("storage media split", () => {
     const currentMedia = await getRawStoreRecord<{ blob: Blob }>("clip-media", savedClip.id);
     const listed = await listClips(savedClip.sessionId);
 
-    expect(updated?.analysis?.tags).toEqual(["coffee", "table"]);
+    expect(updated?.analysis).not.toHaveProperty("tags");
     expect(rawMetadata?.blob).toBeUndefined();
     expect(rawMetadata?.analysis).toMatchObject({ mood: "coffee" });
     expect(originalMedia?.blob).toBeDefined();

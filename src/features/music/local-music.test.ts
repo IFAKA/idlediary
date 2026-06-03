@@ -24,7 +24,7 @@ const descriptions: ClipMoodDescription[] = [
   {
     clipId: "clip-1",
     description: "coffee on a table at home",
-    tags: ["coffee", "home"],
+    moodCues: ["coffee", "home"],
     mood: "cozy",
     energy: "low",
     brightness: "normal",

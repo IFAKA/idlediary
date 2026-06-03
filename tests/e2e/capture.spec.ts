@@ -228,7 +228,6 @@ async function seedDemoClipIntoTodayDraft(page: Page, options: { withAnalysis?: 
                 analysis: {
                   version: "mobilevit-small-q8-v1",
                   description: "coffee on a table at home",
-                  tags: ["coffee", "home"],
                   mood: "cozy",
                   energy: "low",
                   brightness: "normal",

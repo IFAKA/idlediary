@@ -45,18 +45,17 @@ const lofiMoodWords = new Set([
   "window",
 ]);
 
-export function musicSafeTags(tags: string[]) {
-  const safeTags = tags
-    .map((tag) => tag.toLowerCase().trim())
-    .filter((tag) => tag.length > 0)
-    .filter((tag) => !tag.split(/[\s-]+/).some((word) => blockedVisionWords.has(word)))
-    .filter((tag) => lofiMoodWords.has(tag));
+export function musicSafeMoodCues(cues: string[]) {
+  const safeCues = cues
+    .map((cue) => cue.toLowerCase().trim())
+    .filter((cue) => cue.length > 0)
+    .filter((cue) => !cue.split(/[\s-]+/).some((word) => blockedVisionWords.has(word)))
+    .filter((cue) => lofiMoodWords.has(cue));
 
-  return [...new Set(safeTags)].slice(0, 8);
+  return [...new Set(safeCues)].slice(0, 8);
 }
 
-export function musicSafeMood(mood: string | undefined, tags: string[]) {
-  const [tagMood] = musicSafeTags([mood ?? "", ...tags]);
-  return tagMood ?? "daily";
+export function musicSafeMood(mood: string | undefined, cues: string[]) {
+  const [cueMood] = musicSafeMoodCues([mood ?? "", ...cues]);
+  return cueMood ?? "daily";
 }
-
