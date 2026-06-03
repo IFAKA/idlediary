@@ -80,6 +80,9 @@ describe("GenerationPanel", () => {
     expect(view.textContent).not.toContain("Rendering video");
     expect(view.textContent).toContain("Your clips and video stay private on this device.");
     expect(view.querySelector('[role="progressbar"]')).not.toBeNull();
+    expect(view.querySelector("[data-generation-panel-content]")?.parentElement?.className).toContain(
+      "items-center",
+    );
     expect(view.querySelector(".generation-spinner")).toBeNull();
     expect(view.querySelector(".generation-step-shimmer")).not.toBeNull();
     expect(view.querySelector(".generation-step-shimmer")?.className).toContain("motion-reduce:hidden");

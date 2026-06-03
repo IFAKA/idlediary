@@ -81,8 +81,11 @@ export function GenerationPanel({ progress }: GenerationPanelProps) {
         className="absolute inset-x-5 bottom-28 h-px bg-gradient-to-r from-transparent via-memory/28 to-transparent"
       />
 
-      <div className="relative flex min-h-0 flex-1 flex-col justify-center pb-6">
-        <div className="relative w-full max-w-sm contain-layout contain-paint">
+      <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-5 pb-6">
+        <div
+          className="relative w-full max-w-sm contain-layout contain-paint"
+          data-generation-panel-content=""
+        >
           <ol className="relative mb-5 grid gap-2 contain-layout contain-paint">
             {stages.map((stage) => {
               const isActive = stage.id === activeStage;
