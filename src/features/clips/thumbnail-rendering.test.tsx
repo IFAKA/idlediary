@@ -278,42 +278,6 @@ describe("thumbnail rendering", () => {
     expect(makeVideoButton()).toBeEnabled();
   });
 
-  it("shows local music guidance on draft clip hover cards", () => {
-    const readyClip = clip({
-      analysis: {
-        version: clipAnalysisVersion,
-        description: "oxygen mask / coffee cup / table",
-        mood: "mask",
-        energy: "low",
-        brightness: "normal",
-        analyzedAt: "2026-05-27T10:01:00.000Z",
-      },
-    });
-    const processingClip = clip({ id: "clip-2", order: 1 });
-
-    act(() => {
-      root.render(
-        <ClipReviewPanel
-          clips={[readyClip, processingClip]}
-          isFinishing={false}
-          onBack={() => undefined}
-          onClearDraft={async () => true}
-          onDeleteClip={async () => true}
-          onMakeVideo={() => undefined}
-          onReorderClips={async () => true}
-        />,
-      );
-    });
-
-    expect(container.querySelectorAll('[data-testid="clip-analysis-guide"]')).toHaveLength(2);
-    expect(container).toHaveTextContent("Local visual profile");
-    expect(container).toHaveTextContent("low");
-    expect(container).toHaveTextContent("normal");
-    expect(container).toHaveTextContent("Visual brightness and pacing help shape the private lo-fi profile.");
-    expect(container).not.toHaveTextContent("oxygen mask");
-    expect(container).toHaveTextContent("Reading local frames for the visual profile.");
-  });
-
   it("saved video cards prefer image thumbnails and fall back to video", async () => {
     const withThumbnail = vlog({
       thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),

@@ -584,59 +584,7 @@ function ClipPreview({
           </span>
         </span>
       ) : null}
-      {!isOverlay ? <ClipAnalysisGuide clip={clip} index={index} /> : null}
     </motion.div>
-  );
-}
-
-function ClipAnalysisGuide({ clip, index }: { clip: ClipRecord; index: number }) {
-  const analysis = clip.analysis;
-  const hasAnalysis = Boolean(analysis);
-  const alignClass =
-    index % 3 === 0
-      ? "left-0"
-      : index % 3 === 2
-        ? "right-0"
-        : "left-1/2 -translate-x-1/2";
-  const arrowClass =
-    index % 3 === 0
-      ? "left-8"
-      : index % 3 === 2
-        ? "right-8"
-        : "left-1/2 -translate-x-1/2";
-
-  return (
-    <div
-      aria-label={`Clip ${index + 1} model output`}
-      className={`pointer-events-none absolute top-[calc(100%+0.5rem)] z-40 w-[min(16rem,calc(100vw_-_2rem))] rounded-lg border border-white/22 bg-black/82 p-3 text-left text-white opacity-0 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-md transition duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${alignClass}`}
-      data-testid="clip-analysis-guide"
-      role="status"
-    >
-      <span
-        aria-hidden="true"
-        className={`absolute -top-1.5 size-3 rotate-45 border-l border-t border-white/22 bg-black/82 ${arrowClass}`}
-      />
-      <div className="relative">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-memory">
-          Local visual profile
-        </p>
-        {hasAnalysis && analysis ? (
-          <>
-            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
-              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">{analysis.energy}</span>
-              <span className="rounded-md border border-white/14 bg-white/8 px-2 py-1">{analysis.brightness}</span>
-            </div>
-            <p className="mt-2 text-xs leading-5 text-white/60">
-              Visual brightness and pacing help shape the private lo-fi profile.
-            </p>
-          </>
-        ) : (
-          <p className="mt-1 text-xs leading-5 text-white/74">
-            Reading local frames for the visual profile.
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
 
