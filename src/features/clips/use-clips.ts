@@ -44,6 +44,15 @@ const initialState: ClipState = {
   loading: true,
 };
 
+function scheduleIdleTask(task: () => void) {
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    window.requestIdleCallback(task, { timeout: 1000 });
+    return;
+  }
+
+  setTimeout(task, 150);
+}
+
 function clipReducer(state: ClipState, action: ClipAction): ClipState {
   if (action.type === "loaded") {
     return {
@@ -202,26 +211,22 @@ export function useClips({ sessionId }: { sessionId?: string } = {}) {
       size: blob.size,
     };
 
-    try {
-      Object.assign(clip, await generateVideoThumbnail(blob, thumbnailSizes.clip));
-    } catch (error) {
-      reportError(error, { clipId: clip.id, phase: "initial-thumbnail" });
-    }
-
     await saveClip(clip);
     ++requestVersionRef.current;
     dispatch({ type: "add", clip });
-    void enqueueClipMoodAnalysis(clip)
-      .then((description) => {
-        dispatch({
-          type: "update",
-          clip: {
-            ...clip,
-            analysis: analysisFromDescription(description),
-          },
-        });
-      })
-      .catch((error) => reportError(error));
+    scheduleIdleTask(() => {
+      void enqueueClipMoodAnalysis(clip)
+        .then((description) => {
+          dispatch({
+            type: "update",
+            clip: {
+              ...clip,
+              analysis: analysisFromDescription(description),
+            },
+          });
+        })
+        .catch((error) => reportError(error));
+    });
     return clip;
   }, [sessionId]);
 

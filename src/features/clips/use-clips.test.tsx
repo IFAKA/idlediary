@@ -105,14 +105,25 @@ async function waitFor(assertion: () => void) {
 
 describe("useClips", () => {
   let container: HTMLDivElement;
+  let idleCallbacks: Array<() => void>;
   let root: Root | null;
   let latest: UseClipsValue | null;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    idleCallbacks = [];
     vi.stubGlobal("crypto", {
       randomUUID: vi.fn(() => "clip-new"),
     });
+    vi.stubGlobal(
+      "requestIdleCallback",
+      vi.fn((callback: IdleRequestCallback) => {
+        idleCallbacks.push(() => {
+          callback({ didTimeout: false, timeRemaining: () => 50 });
+        });
+        return idleCallbacks.length;
+      }),
+    );
     mocks.getOrCreateTodaySession.mockResolvedValue(session);
     mocks.listClips.mockResolvedValue([]);
     mocks.saveClip.mockResolvedValue(undefined);
@@ -180,7 +191,13 @@ describe("useClips", () => {
   });
 
   it("updates local state after successful add, reorder, and clear mutations", async () => {
-    const first = makeClip("clip-1", 0);
+    const first = {
+      ...makeClip("clip-1", 0),
+      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 256,
+      thumbnailHeight: 256,
+    };
     const secondBlob = new Blob(["second"], { type: "video/webm" });
     mocks.listClips.mockResolvedValueOnce([first]);
 
@@ -194,12 +211,23 @@ describe("useClips", () => {
     expect(mocks.saveClip).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "clip-new",
-        thumbnailMimeType: "image/webp",
-        thumbnailWidth: 256,
-        thumbnailHeight: 256,
       }),
     );
+    expect(mocks.saveClip).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        thumbnailBlob: expect.any(Blob),
+        thumbnailMimeType: "image/webp",
+      }),
+    );
+    expect(mocks.generateVideoThumbnail.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mocks.saveClip.mock.invocationCallOrder[0],
+    );
     expect(mocks.listClips).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueClipMoodAnalysis).not.toHaveBeenCalled();
+
+    act(() => {
+      idleCallbacks.forEach((callback) => callback());
+    });
     expect(mocks.enqueueClipMoodAnalysis).toHaveBeenCalledWith(
       expect.objectContaining({ id: "clip-new" }),
     );
@@ -219,9 +247,15 @@ describe("useClips", () => {
     expect(mocks.releaseAllClipObjectUrls).toHaveBeenCalled();
   });
 
-  it("saves and adds a new clip when initial thumbnail generation fails", async () => {
+  it("saves and adds a new clip before thumbnail generation completes", async () => {
     const secondBlob = new Blob(["second"], { type: "video/webm" });
-    mocks.generateVideoThumbnail.mockRejectedValueOnce(new Error("thumbnail failed"));
+    const thumbnail = deferred<{
+      thumbnailBlob: Blob;
+      thumbnailMimeType: string;
+      thumbnailWidth: number;
+      thumbnailHeight: number;
+    }>();
+    mocks.generateVideoThumbnail.mockReturnValueOnce(thumbnail.promise);
 
     renderUseClips();
     await waitFor(() => expect(latest?.loading).toBe(false));
@@ -236,6 +270,34 @@ describe("useClips", () => {
       }),
     );
     expect(latest?.clips.map((clip) => clip.id)).toEqual(["clip-new"]);
+  });
+
+  it("backfills thumbnails for newly added clips that do not have one", async () => {
+    const secondBlob = new Blob(["second"], { type: "video/webm" });
+    const thumbnail = {
+      thumbnailBlob: new Blob(["thumb"], { type: "image/webp" }),
+      thumbnailMimeType: "image/webp",
+      thumbnailWidth: 256,
+      thumbnailHeight: 256,
+    };
+    const updatedClip = {
+      ...makeClip("clip-new", 0),
+      blob: secondBlob,
+      size: secondBlob.size,
+      ...thumbnail,
+    };
+    mocks.generateVideoThumbnail.mockResolvedValueOnce(thumbnail);
+    mocks.saveClipThumbnail.mockResolvedValueOnce(updatedClip);
+
+    renderUseClips();
+    await waitFor(() => expect(latest?.loading).toBe(false));
+
+    await act(async () => {
+      await latest!.addClip(secondBlob, 3000);
+    });
+
+    await waitFor(() => expect(latest?.clips[0]?.thumbnailBlob).toBeDefined());
+    expect(mocks.saveClipThumbnail).toHaveBeenCalledWith("clip-new", thumbnail);
   });
 
   it("backfills thumbnails for loaded clips that do not have one", async () => {
