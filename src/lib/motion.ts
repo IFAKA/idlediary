@@ -11,4 +11,5 @@ export const easeOut = {
 } as const;
 
 export const twoSecondRecordMs = 3000;
+export const longRecordMs = 6000;
 export const recorderSettleMs = 250;

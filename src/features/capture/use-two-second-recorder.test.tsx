@@ -70,6 +70,15 @@ function RecorderHarness() {
       >
         Record
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          pendingRecording = recorder.record({ durationMs: 6000 });
+          void pendingRecording.catch(() => undefined);
+        }}
+      >
+        Record long
+      </button>
       <output aria-label="state">{recorder.state}</output>
       <output aria-label="progress">{Math.round(recorder.progress)}</output>
     </>
@@ -211,6 +220,39 @@ describe("useTwoSecondRecorder", () => {
     expect(container.querySelector('[aria-label="state"]')).toHaveTextContent("idle");
     expect(container.querySelector('[aria-label="progress"]')).toHaveTextContent("0");
     expect(stoppedCanvasTracks.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses a requested longer recording duration before stopping", async () => {
+    await act(async () => {
+      root.render(<RecorderHarness />);
+    });
+
+    await act(async () => {
+      Array.from(container.querySelectorAll("button"))
+        .find((button) => button.textContent === "Record long")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(container.querySelector('[aria-label="state"]')).toHaveTextContent("recording");
+    expect(recorderInstances[0]?.requestData).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(container.querySelector('[aria-label="progress"]')).toHaveTextContent("100");
+    expect(recorderInstances[0]?.requestData).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(recorderInstances[0]?.requestData).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[aria-label="state"]')).toHaveTextContent("success");
   });
 
   it("cleans up the composed stream after recorder errors", async () => {

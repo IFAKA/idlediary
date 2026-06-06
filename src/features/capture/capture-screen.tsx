@@ -40,6 +40,7 @@ import {
 } from "@/features/clips/storage";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 import { shareVlog } from "@/features/share/share";
+import { longRecordMs, twoSecondRecordMs } from "@/lib/motion";
 import { CameraPreview } from "./camera-preview";
 import { ClipReviewPanel } from "./clip-review-panel";
 import { GenerationPanel } from "./generation-panel";
@@ -568,7 +569,9 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     }
   };
 
-  const captureClip = useCallback(async () => {
+  const longHoldUnlocked = clips.clips.length > 0;
+
+  const captureClip = useCallback(async (durationMs = twoSecondRecordMs) => {
     if (captureInFlightRef.current) {
       return;
     }
@@ -583,13 +586,13 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
       const blob = demo
         ? await recordDemoClip(
             demo.captureClipSrc,
-            demo.captureClipDurationMs ?? 3000,
+            demo.captureClipDurationMs ?? durationMs,
             setDemoRecordingState,
             setDemoRecordingProgress,
           )
-        : await recorder.record();
+        : await recorder.record({ durationMs });
       if (blob !== null) {
-        await clips.addClip(blob, demo?.captureClipDurationMs ?? 3000);
+        await clips.addClip(blob, demo?.captureClipDurationMs ?? durationMs);
         if (
           demo?.seedRemainingClipsAfterFirstCapture &&
           !demoSeededAfterCapture.current
@@ -615,6 +618,12 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     }
 
     void captureClip();
+  };
+
+  const handleRecordButtonHoldStart = () => {
+    if (!longHoldUnlocked || recorderState !== "idle") return;
+
+    void captureClip(longRecordMs);
   };
 
   useEffect(() => {
@@ -1174,6 +1183,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
                   progress={recorderProgress}
                   state={recorderState}
                   onClick={handleRecordButtonClick}
+                  onHoldStart={longHoldUnlocked ? handleRecordButtonHoldStart : undefined}
                 />
 
                 <LatestDraftButton

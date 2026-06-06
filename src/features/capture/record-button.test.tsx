@@ -23,9 +23,9 @@ describe("RecordButton", () => {
     vi.useRealTimers();
   });
 
-  function renderButton(state: RecordingState, progress = 0) {
+  function renderButton(state: RecordingState, progress = 0, onHoldStart?: () => void, onClick = () => undefined) {
     act(() => {
-      root.render(<RecordButton state={state} progress={progress} onClick={() => undefined} />);
+      root.render(<RecordButton state={state} progress={progress} onClick={onClick} onHoldStart={onHoldStart} />);
     });
   }
 
@@ -156,5 +156,24 @@ describe("RecordButton", () => {
     });
     expect(activeMarker()).toBeNull();
     expect(activeSegmentPulse()).toBeNull();
+  });
+
+  it("starts the hold capture without also firing the tap action", () => {
+    const onClick = vi.fn();
+    const onHoldStart = vi.fn();
+    renderButton("idle", 0, onHoldStart, onClick);
+
+    const button = container.querySelector("button");
+    expect(button).not.toBeNull();
+
+    act(() => {
+      button!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      vi.advanceTimersByTime(520);
+      button!.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+      button!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onHoldStart).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

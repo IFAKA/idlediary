@@ -17,6 +17,10 @@ type ActiveRecordingSession = {
   resolve: (blob: Blob | null) => void;
 };
 
+type RecordOptions = {
+  durationMs?: number;
+};
+
 export function useTwoSecondRecorder(stream: MediaStream | null) {
   const [state, setState] = useState<RecordingState>("idle");
   const [progress, setProgress] = useState(0);
@@ -53,7 +57,7 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
     session.resolve(null);
   }, [cleanup]);
 
-  const record = useCallback(async () => {
+  const record = useCallback(async (options: RecordOptions = {}) => {
     if (!stream) {
       throw reportError(
         new AppError({
@@ -73,7 +77,8 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
     return new Promise<Blob | null>((resolve, reject) => {
       const chunks: BlobPart[] = [];
       const startedAt = performance.now();
-      const stopAfterMs = twoSecondRecordMs + recorderSettleMs;
+      const durationMs = options.durationMs ?? twoSecondRecordMs;
+      const stopAfterMs = durationMs + recorderSettleMs;
       let recorder: MediaRecorder;
       let composition: ComposedRecordingStream | null = null;
       let session: ActiveRecordingSession | null = null;
@@ -155,7 +160,7 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
         progressTimerRef.current = window.setTimeout(() => {
           setProgress(100);
           progressTimerRef.current = null;
-        }, twoSecondRecordMs);
+        }, durationMs);
         timerRef.current = window.setTimeout(() => {
           if (recorder.state === "recording") {
             recorder.requestData();

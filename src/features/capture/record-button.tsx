@@ -13,6 +13,7 @@ type RecordButtonProps = {
   progress: number;
   disabled?: boolean;
   onClick: () => void;
+  onHoldStart?: () => void;
 };
 
 const recordingMarkerSeconds = [1, 2, 3] as const;
@@ -24,6 +25,7 @@ const segmentLength = segmentStep - segmentGap;
 const segmentDashPattern = `${segmentLength} ${ringCircumference - segmentLength}`;
 const markerRadius = 45;
 const progressSegmentDurationMs = twoSecondRecordMs / recordingMarkerSeconds.length;
+const holdStartMs = 520;
 const poofParticles = [
   { dx: 0, dy: -15, r: 3.8, delay: 0, rotate: -8, opacity: 0.42 },
   { dx: 10, dy: -12, r: 3.1, delay: 36, rotate: 14, opacity: 0.34 },
@@ -59,9 +61,11 @@ function pointOnRing(second: number) {
   };
 }
 
-export function RecordButton({ state, progress, disabled, onClick }: RecordButtonProps) {
+export function RecordButton({ state, progress, disabled, onClick, onHoldStart }: RecordButtonProps) {
   const [activePulseSeconds, setActivePulseSeconds] = useState<number[]>([]);
   const pulseTimersRef = useRef<number[]>([]);
+  const holdTimerRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
   const isRecording = state === "recording";
   const isSaving = state === "saving";
   const isSuccess = state === "success";
@@ -73,6 +77,13 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
       window.clearTimeout(timer);
     }
     pulseTimersRef.current = [];
+  }, []);
+
+  const clearHoldTimer = useCallback(() => {
+    if (holdTimerRef.current === null) return;
+
+    window.clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -110,6 +121,34 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
     return clearPulseTimers;
   }, [clearPulseTimers, isRecording]);
 
+  useEffect(() => clearHoldTimer, [clearHoldTimer]);
+
+  const handlePointerDown = () => {
+    if (disabled || isRecording || !onHoldStart) return;
+
+    clearHoldTimer();
+    suppressClickRef.current = false;
+    holdTimerRef.current = window.setTimeout(() => {
+      holdTimerRef.current = null;
+      suppressClickRef.current = true;
+      onHoldStart();
+    }, holdStartMs);
+  };
+
+  const handlePointerEnd = () => {
+    clearHoldTimer();
+  };
+
+  const handleClick = () => {
+    clearHoldTimer();
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+
+    onClick();
+  };
+
   function progressSegmentLength(index: number) {
     const segmentProgress = clamp((progress / 100) * recordingMarkerSeconds.length - index, 0, 1);
 
@@ -128,7 +167,11 @@ export function RecordButton({ state, progress, disabled, onClick }: RecordButto
       type="button"
       whileTap={{ scale: disabled ? 1 : 0.96 }}
       transition={spring}
-      onClick={onClick}
+      onClick={handleClick}
+      onPointerCancel={handlePointerEnd}
+      onPointerDown={handlePointerDown}
+      onPointerLeave={handlePointerEnd}
+      onPointerUp={handlePointerEnd}
     >
       <motion.svg
         className="pointer-events-none absolute left-1/2 top-1/2 size-24 -translate-x-1/2 -translate-y-1/2 -rotate-90 overflow-visible"
