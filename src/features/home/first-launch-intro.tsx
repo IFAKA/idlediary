@@ -29,7 +29,7 @@ type IntroStep = {
 const steps: IntroStep[] = [
   {
     icon: CircleDot,
-    title: "Capture 3 seconds",
+    title: "Hold to capture",
     detail: "Save one tiny moment.",
     iconClassName: "bg-accent/15 text-accent",
     cardClassName: "border-accent/20 bg-accent/6",
@@ -37,7 +37,7 @@ const steps: IntroStep[] = [
   {
     icon: LockKeyhole,
     title: "Keep it local",
-    detail: "Nothing starts until you tap record.",
+    detail: "Nothing starts until you hold record.",
     iconClassName: "bg-primary/15 text-primary",
     cardClassName: "border-primary/20 bg-primary/6",
   },
@@ -50,7 +50,7 @@ const steps: IntroStep[] = [
   },
 ];
 
-const heroDescription = "A quiet three-second video diary for days worth remembering.";
+const heroDescription = "A quiet video diary for days worth remembering.";
 const mountDuration = 0.42;
 const cardMountDuration = 0.38;
 const buttonMountDelay = mountDuration + steps.length * 0.08;

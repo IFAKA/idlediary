@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Clapperboard, Layers2, RotateCcw, SwitchCamera } from "lucide-react";
+import { ArrowLeft, Clapperboard, Layers2, Lightbulb, RotateCcw, SwitchCamera } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   useCallback,
@@ -34,20 +34,21 @@ import {
 import {
   clearGeneratedVlogForSession,
   getLatestVlogForSession,
+  hasAnySavedVlog as checkHasAnySavedVlog,
   hasNeedsActionVlog as checkHasNeedsActionVlog,
   markVlogHandled,
   saveVlogAndClearSessionDraft,
 } from "@/features/clips/storage";
 import type { ClipRecord, VlogRecord } from "@/features/clips/types";
 import { shareVlog } from "@/features/share/share";
-import { longRecordMs, twoSecondRecordMs } from "@/lib/motion";
+import { maxRecordDurationMs, minRecordDurationMs } from "@/lib/motion";
 import { CameraPreview } from "./camera-preview";
 import { ClipReviewPanel } from "./clip-review-panel";
 import { GenerationPanel } from "./generation-panel";
 import { RecordButton } from "./record-button";
 import { ResultPanel } from "./result-panel";
 import { useCamera } from "./use-camera";
-import { useTwoSecondRecorder } from "./use-two-second-recorder";
+import { useTwoSecondRecorder, type RecordingResult } from "./use-two-second-recorder";
 
 type ScreenMode = "capture" | "review" | "generating" | "result";
 type DurableView = Exclude<ScreenMode, "generating">;
@@ -66,33 +67,6 @@ type CaptureScreenDemoConfig = {
 const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 const wait = (durationMs: number) =>
   new Promise<void>((resolve) => window.setTimeout(resolve, durationMs));
-
-async function recordDemoClip(
-  src: string,
-  durationMs: number,
-  setState: (state: "idle" | "recording" | "saving" | "success") => void,
-  setProgress: (progress: number) => void,
-) {
-  setState("recording");
-  setProgress(0);
-  const startedAt = performance.now();
-  const progressTimer = window.setInterval(() => {
-    setProgress(Math.min(100, Math.round(((performance.now() - startedAt) / durationMs) * 100)));
-  }, 80);
-  await wait(durationMs);
-  window.clearInterval(progressTimer);
-  setProgress(100);
-  setState("saving");
-  const response = await fetch(src);
-  if (!response.ok) throw new Error(`Demo clip could not be loaded: ${src}`);
-  const blob = await response.blob();
-  setState("success");
-  window.setTimeout(() => {
-    setProgress(0);
-    setState("idle");
-  }, 650);
-  return blob;
-}
 
 async function createDemoVlog(
   sessionId: string,
@@ -133,6 +107,13 @@ const cameraSwipeAxisRatio = 1.2;
 const oneTimeGuideAutoDismissMs = 4000;
 export const FIRST_RECORD_GUIDE_SEEN_KEY = "idlediary:first-record-guide-seen";
 export const SAVED_VIDEO_GUIDE_SEEN_KEY = "idlediary:saved-video-guide-seen";
+const captureIdeaPrompts = [
+  "What happened today?",
+  "What do you want to remember?",
+  "What changed since yesterday?",
+  "How are you feeling right now?",
+  "Show one detail around you.",
+] as const;
 const introGenerationProgress = [
   makeGenerationProgress("loading", 8),
   makeGenerationProgress("writing", 14),
@@ -287,10 +268,11 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   const [vlog, setVlog] = useState<VlogRecord | null>(null);
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [resultExitDirection, setResultExitDirection] = useState<"up" | "bottom">("up");
+  const [hasAnySavedVlog, setHasAnySavedVlog] = useState(false);
   const [hasNeedsActionVlog, setHasNeedsActionVlog] = useState(false);
   const [showFirstRecordGuide, setShowFirstRecordGuide] = useState(false);
   const [showSavedVideoGuide, setShowSavedVideoGuide] = useState(false);
-  const [autoShotsEnabled, setAutoShotsEnabled] = useState(false);
+  const [ideaPromptIndex, setIdeaPromptIndex] = useState<number | null>(null);
   const shouldReduceMotion = useReducedMotion() === true;
   const initialViewResolved = useRef(false);
   const cameraStartAttempted = useRef(false);
@@ -298,7 +280,14 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   const cameraSwipeStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const previousClipCountRef = useRef<number | null>(null);
   const captureInFlightRef = useRef(false);
-  const autoCaptureTimerRef = useRef<number | null>(null);
+  const activeCapturePromiseRef = useRef<Promise<RecordingResult | null> | null>(null);
+  const demoRecordingRef = useRef<{
+    maxTimer: number;
+    progressTimer: number;
+    resolve: (clip: RecordingResult | null) => void;
+    settled: boolean;
+    startedAt: number;
+  } | null>(null);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
     ...makeGenerationProgress("idle", 0),
   });
@@ -324,6 +313,13 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   const clipLimitReached = clips.clips.length >= 20;
   const latestClip = clips.clips.length > 0 ? clips.clips[clips.clips.length - 1] : null;
   const draftClipCount = clips.loading ? null : clips.clips.length;
+  const showIdeaPromptButton =
+    mode === "capture" &&
+    hasAnySavedVlog &&
+    !showFirstRecordGuide &&
+    !showSavedVideoGuide;
+  const activeIdeaPrompt =
+    ideaPromptIndex === null ? null : captureIdeaPrompts[ideaPromptIndex];
 
   const startCamera = useCallback(async () => {
     try {
@@ -336,6 +332,14 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
   const refreshNeedsActionBadge = useCallback(async () => {
     try {
       setHasNeedsActionVlog(await checkHasNeedsActionVlog());
+    } catch (error) {
+      reportError(error);
+    }
+  }, []);
+
+  const refreshSavedVlogPresence = useCallback(async () => {
+    try {
+      setHasAnySavedVlog(await checkHasAnySavedVlog());
     } catch (error) {
       reportError(error);
     }
@@ -422,10 +426,11 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     if (!initialViewReady || mode !== "capture") return;
     let mounted = true;
 
-    checkHasNeedsActionVlog()
-      .then((hasNeedsAction) => {
+    Promise.all([checkHasNeedsActionVlog(), checkHasAnySavedVlog()])
+      .then(([hasNeedsAction, hasAnyVlog]) => {
         if (mounted) {
           setHasNeedsActionVlog(hasNeedsAction);
+          setHasAnySavedVlog(hasAnyVlog);
         }
       })
       .catch((error) => {
@@ -569,117 +574,156 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
     }
   };
 
-  const longHoldUnlocked = clips.clips.length > 0;
+  const stopDemoRecording = useCallback(async () => {
+    const session = demoRecordingRef.current;
+    if (!session || session.settled) return;
 
-  const captureClip = useCallback(async (durationMs = twoSecondRecordMs) => {
+    session.settled = true;
+    window.clearInterval(session.progressTimer);
+    window.clearTimeout(session.maxTimer);
+    demoRecordingRef.current = null;
+
+    const durationMs = Math.round(performance.now() - session.startedAt);
+    if (durationMs < minRecordDurationMs) {
+      setDemoRecordingProgress(0);
+      setDemoRecordingState("idle");
+      session.resolve(null);
+      return;
+    }
+
+    setDemoRecordingProgress(100);
+    setDemoRecordingState("saving");
+    try {
+      const response = await fetch(demo?.captureClipSrc ?? "");
+      if (!response.ok) throw new Error(`Demo clip could not be loaded: ${demo?.captureClipSrc}`);
+      const blob = await response.blob();
+      setDemoRecordingState("success");
+      window.setTimeout(() => {
+        setDemoRecordingProgress(0);
+        setDemoRecordingState("idle");
+      }, 650);
+      session.resolve({ blob, durationMs });
+    } catch (error) {
+      setDemoRecordingState("idle");
+      setDemoRecordingProgress(0);
+      session.resolve(null);
+      reportError(error);
+    }
+  }, [demo]);
+
+  const startDemoRecording = useCallback(() => {
+    if (!demo || demoRecordingRef.current) {
+      return null;
+    }
+
+    setDemoRecordingState("recording");
+    setDemoRecordingProgress(0);
+    const startedAt = performance.now();
+
+    return new Promise<RecordingResult | null>((resolve) => {
+      const progressTimer = window.setInterval(() => {
+        setDemoRecordingProgress(Math.min(100, ((performance.now() - startedAt) / maxRecordDurationMs) * 100));
+      }, 80);
+      const maxTimer = window.setTimeout(() => {
+        void stopDemoRecording();
+      }, maxRecordDurationMs);
+
+      demoRecordingRef.current = {
+        maxTimer,
+        progressTimer,
+        resolve,
+        settled: false,
+        startedAt,
+      };
+    });
+  }, [demo, stopDemoRecording]);
+
+  const saveCaptureResult = useCallback(async (result: RecordingResult | null) => {
+    if (result === null) return;
+
+    await clips.addClip(result.blob, demo?.captureClipDurationMs ?? result.durationMs);
+    if (
+      demo?.seedRemainingClipsAfterFirstCapture &&
+      !demoSeededAfterCapture.current
+    ) {
+      demoSeededAfterCapture.current = true;
+      await demo.seedRemainingClipsAfterFirstCapture();
+      await clips.refresh(demo.sessionId);
+    }
+  }, [clips, demo]);
+
+  const startCapture = useCallback(() => {
     if (captureInFlightRef.current) {
       return;
     }
 
-    if (clipLimitReached) {
-      setAutoShotsEnabled(false);
+    if (clipLimitReached || clips.loading || isFinishing || needsPermission || recorderState !== "idle") {
       return;
     }
 
     captureInFlightRef.current = true;
-    try {
-      const blob = demo
-        ? await recordDemoClip(
-            demo.captureClipSrc,
-            demo.captureClipDurationMs ?? durationMs,
-            setDemoRecordingState,
-            setDemoRecordingProgress,
-          )
-        : await recorder.record({ durationMs });
-      if (blob !== null) {
-        await clips.addClip(blob, demo?.captureClipDurationMs ?? durationMs);
-        if (
-          demo?.seedRemainingClipsAfterFirstCapture &&
-          !demoSeededAfterCapture.current
-        ) {
-          demoSeededAfterCapture.current = true;
-          await demo.seedRemainingClipsAfterFirstCapture();
-          await clips.refresh(demo.sessionId);
-        }
-      }
-    } catch (error) {
-      reportError(error);
-    } finally {
+    const capturePromise = demo ? startDemoRecording() : recorder.start();
+    if (!capturePromise) {
       captureInFlightRef.current = false;
-    }
-  }, [clipLimitReached, clips, demo, recorder]);
-
-  const handleRecordButtonClick = () => {
-    if (recorderState === "recording") {
-      setAutoShotsEnabled(false);
-      if (demo) return;
-      recorder.cancel();
       return;
     }
 
-    void captureClip();
-  };
+    activeCapturePromiseRef.current = capturePromise;
+    void capturePromise
+      .then(saveCaptureResult)
+      .catch((error) => reportError(error))
+      .finally(() => {
+        if (activeCapturePromiseRef.current === capturePromise) {
+          activeCapturePromiseRef.current = null;
+        }
+        captureInFlightRef.current = false;
+      });
+  }, [
+    clipLimitReached,
+    clips.loading,
+    demo,
+    isFinishing,
+    needsPermission,
+    recorder,
+    recorderState,
+    saveCaptureResult,
+    startDemoRecording,
+  ]);
 
-  const handleRecordButtonHoldStart = () => {
-    if (!longHoldUnlocked || recorderState !== "idle") return;
+  const stopCapture = useCallback(() => {
+    if (!activeCapturePromiseRef.current) return;
+    if (demo) {
+      void stopDemoRecording();
+      return;
+    }
 
-    void captureClip(longRecordMs);
-  };
+    recorder.stop();
+  }, [demo, recorder, stopDemoRecording]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat || (event.code !== "Space" && event.key !== " ")) return;
+      if (event.repeat || (event.code !== "Space" && event.key !== " " && event.key !== "Enter")) return;
       if (mode !== "capture" || isTextEntryTarget(event.target)) return;
 
       event.preventDefault();
-      if (recorderState === "recording") {
-        setAutoShotsEnabled(false);
-        if (!demo) {
-          recorder.cancel();
-        }
-        return;
-      }
+      startCapture();
+    };
 
-      setAutoShotsEnabled((enabled) => !enabled);
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== "Space" && event.key !== " " && event.key !== "Enter") return;
+      if (mode !== "capture" || isTextEntryTarget(event.target)) return;
+
+      event.preventDefault();
+      stopCapture();
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [demo, mode, recorder, recorderState]);
-
-  useEffect(() => {
-    if (
-      !autoShotsEnabled ||
-      mode !== "capture" ||
-      needsPermission ||
-      clipLimitReached ||
-      clips.loading ||
-      recorderState === "recording" ||
-      recorderState === "saving"
-    ) {
-      return;
-    }
-
-    autoCaptureTimerRef.current = window.setTimeout(() => {
-      autoCaptureTimerRef.current = null;
-      void captureClip();
-    }, 0);
-
+    window.addEventListener("keyup", handleKeyUp);
     return () => {
-      if (autoCaptureTimerRef.current !== null) {
-        window.clearTimeout(autoCaptureTimerRef.current);
-        autoCaptureTimerRef.current = null;
-      }
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [
-    autoShotsEnabled,
-    captureClip,
-    clipLimitReached,
-    clips.loading,
-    mode,
-    needsPermission,
-    recorderState,
-  ]);
+  }, [mode, startCapture, stopCapture]);
 
   const switchCamera = useCallback(async () => {
     if (!canSwitchCamera) return;
@@ -820,6 +864,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
           demo.captureClipDurationMs ?? 3000,
         );
         await saveVlogAndClearSessionDraft(nextVlog);
+        setHasAnySavedVlog(true);
         clips.clearLocalClips();
         showResult(nextVlog, "replace");
         return;
@@ -897,6 +942,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
 
       const nextVlog = generationResult.value;
       await saveVlogAndClearSessionDraft(nextVlog);
+      setHasAnySavedVlog(true);
       clips.clearLocalClips();
       showResult(nextVlog, "replace");
     } catch (error) {
@@ -1048,6 +1094,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
           >
             <ClipReviewPanel
               clips={clips.clips}
+              isFirstVlog={!hasAnySavedVlog}
               isFinishing={isFinishing}
               onBack={() => {
                 setSlideDirection("right");
@@ -1060,6 +1107,7 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
                     await clearGeneratedVlogForSession(clips.session.id);
                   }
                   releaseAllVlogObjectUrls();
+                  await refreshSavedVlogPresence();
                   return true;
                 } catch (error) {
                   reportError(error);
@@ -1182,8 +1230,8 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
                   }
                   progress={recorderProgress}
                   state={recorderState}
-                  onClick={handleRecordButtonClick}
-                  onHoldStart={longHoldUnlocked ? handleRecordButtonHoldStart : undefined}
+                  onStart={startCapture}
+                  onStop={stopCapture}
                 />
 
                 <LatestDraftButton
@@ -1194,6 +1242,27 @@ export function CaptureScreen({ demo }: { demo?: CaptureScreenDemoConfig } = {})
                   onOpen={openReview}
                 />
               </div>
+
+              {showIdeaPromptButton ? (
+                <div className="mb-3 flex justify-center">
+                  <button
+                    className="inline-flex min-h-10 max-w-[min(22rem,calc(100vw_-_2rem))] items-center justify-center gap-2 rounded-lg border border-white/22 bg-black/52 px-3 py-2 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(0,0,0,0.24)] backdrop-blur-md transition hover:border-white/34 hover:bg-black/64 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    type="button"
+                    onClick={() =>
+                      setIdeaPromptIndex((currentIndex) =>
+                        currentIndex === null
+                          ? 0
+                          : (currentIndex + 1) % captureIdeaPrompts.length,
+                      )
+                    }
+                  >
+                    <Lightbulb className="size-4 shrink-0 text-memory" />
+                    <span>
+                      {activeIdeaPrompt ?? "Need an idea?"}
+                    </span>
+                  </button>
+                </div>
+              ) : null}
 
               {camera.error ? (
                 <div className="mb-3 rounded-lg border bg-surface-soft/82 p-3">

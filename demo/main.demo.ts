@@ -35,10 +35,19 @@ export default defineDemo({
       afterMs: 360,
     });
 
-    const recordButton = page.getByRole("button", { name: "Record three second clip" });
+    const recordButton = page.getByRole("button", { name: "Hold to record" });
     await recordButton.waitFor({ state: "visible", timeout: 10_000 });
     await gesture.wait(320);
-    await gesture.tap(recordButton);
+    const recordBox = await recordButton.boundingBox();
+    if (!recordBox) throw new Error("Record button bounds are unavailable");
+    await page.mouse.move(recordBox.x + recordBox.width / 2, recordBox.y + recordBox.height / 2);
+    await page.mouse.down();
+    await page.getByRole("button", { name: "Release to save" }).waitFor({
+      state: "visible",
+      timeout: 2_000,
+    });
+    await gesture.wait(820);
+    await page.mouse.up();
     await page.getByRole("button", { name: "Review draft clips" }).getByText("+5").waitFor({
       state: "visible",
       timeout: 10_000,

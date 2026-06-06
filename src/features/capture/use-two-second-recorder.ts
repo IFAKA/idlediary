@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
+import { maxRecordDurationMs, minRecordDurationMs } from "@/lib/motion";
 import { AppError } from "@/features/errors/app-error";
 import { addDebugEvent } from "@/features/errors/debug-store";
 import { reportError } from "@/features/errors/report-error";
@@ -13,12 +13,16 @@ export type RecordingState = "idle" | "recording" | "saving" | "success" | "erro
 type ActiveRecordingSession = {
   recorder: MediaRecorder;
   composition: ComposedRecordingStream;
+  chunks: BlobPart[];
+  startedAt: number;
   settled: boolean;
-  resolve: (blob: Blob | null) => void;
+  resolve: (clip: RecordingResult | null) => void;
+  reject: (error: unknown) => void;
 };
 
-type RecordOptions = {
-  durationMs?: number;
+export type RecordingResult = {
+  blob: Blob;
+  durationMs: number;
 };
 
 export function useTwoSecondRecorder(stream: MediaStream | null) {
@@ -31,33 +35,27 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
 
   const cleanup = useCallback(() => {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    if (progressTimerRef.current !== null) window.clearTimeout(progressTimerRef.current);
+    if (progressTimerRef.current !== null) window.clearInterval(progressTimerRef.current);
     if (resetRef.current !== null) window.clearTimeout(resetRef.current);
     timerRef.current = null;
     progressTimerRef.current = null;
     resetRef.current = null;
   }, []);
 
-  const cancel = useCallback(() => {
+  const stop = useCallback(() => {
     const session = activeSessionRef.current;
     if (!session || session.settled) return;
 
-    session.settled = true;
-    cleanup();
-    activeSessionRef.current = null;
-
     if (session.recorder.state === "recording") {
+      session.recorder.requestData();
       session.recorder.stop();
     }
+  }, []);
 
-    session.composition.stop();
-    setProgress(0);
-    setState("idle");
-    addDebugEvent("recording-canceled", "capture");
-    session.resolve(null);
-  }, [cleanup]);
-
-  const record = useCallback(async (options: RecordOptions = {}) => {
+  const start = useCallback(() => {
+    if (activeSessionRef.current) {
+      return null;
+    }
     if (!stream) {
       throw reportError(
         new AppError({
@@ -74,11 +72,9 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
     setProgress(0);
     addDebugEvent("recording-started", "capture");
 
-    return new Promise<Blob | null>((resolve, reject) => {
+    return new Promise<RecordingResult | null>((resolve, reject) => {
       const chunks: BlobPart[] = [];
       const startedAt = performance.now();
-      const durationMs = options.durationMs ?? twoSecondRecordMs;
-      const stopAfterMs = durationMs + recorderSettleMs;
       let recorder: MediaRecorder;
       let composition: ComposedRecordingStream | null = null;
       let session: ActiveRecordingSession | null = null;
@@ -127,8 +123,11 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
       session = {
         recorder,
         composition,
+        chunks,
+        startedAt,
         settled: false,
         resolve,
+        reject,
       };
       activeSessionRef.current = session;
 
@@ -138,13 +137,24 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
         cleanup();
         composition?.stop();
         activeSessionRef.current = null;
-        setState("saving");
+        const durationMs = Math.round(performance.now() - startedAt);
+        const isValidClip = durationMs >= minRecordDurationMs;
         const blob = new Blob(chunks, { type: recorder.mimeType || "video/mp4" });
         addDebugEvent("recording-stopped", "capture", {
           size: blob.size,
           mimeType: blob.type,
-          elapsedMs: Math.round(performance.now() - startedAt),
+          elapsedMs: durationMs,
+          saved: isValidClip,
         });
+
+        if (!isValidClip) {
+          setProgress(0);
+          setState("idle");
+          resolve(null);
+          return;
+        }
+
+        setState("saving");
         setProgress(100);
         setState("success");
         resetRef.current = window.setTimeout(() => {
@@ -152,21 +162,20 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
           setState("idle");
           resetRef.current = null;
         }, 650);
-        resolve(blob);
+        resolve({ blob, durationMs });
       };
 
       try {
         recorder.start();
-        progressTimerRef.current = window.setTimeout(() => {
-          setProgress(100);
-          progressTimerRef.current = null;
-        }, durationMs);
+        progressTimerRef.current = window.setInterval(() => {
+          setProgress(Math.min(100, ((performance.now() - startedAt) / maxRecordDurationMs) * 100));
+        }, 50);
         timerRef.current = window.setTimeout(() => {
           if (recorder.state === "recording") {
             recorder.requestData();
             recorder.stop();
           }
-        }, stopAfterMs);
+        }, maxRecordDurationMs);
       } catch (cause) {
         fail(
           new AppError({
@@ -181,7 +190,21 @@ export function useTwoSecondRecorder(stream: MediaStream | null) {
     });
   }, [cleanup, stream]);
 
-  useEffect(() => cleanup, [cleanup]);
+  useEffect(
+    () => () => {
+      const session = activeSessionRef.current;
+      cleanup();
+      if (!session || session.settled) return;
+      session.settled = true;
+      if (session.recorder.state === "recording") {
+        session.recorder.stop();
+      }
+      session.composition.stop();
+      session.resolve(null);
+      activeSessionRef.current = null;
+    },
+    [cleanup],
+  );
 
-  return { state, progress, record, cancel };
+  return { state, progress, start, stop };
 }

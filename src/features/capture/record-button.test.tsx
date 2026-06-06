@@ -9,7 +9,6 @@ describe("RecordButton", () => {
   let root: Root;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -20,73 +19,54 @@ describe("RecordButton", () => {
       root.unmount();
     });
     container.remove();
-    vi.useRealTimers();
   });
 
-  function renderButton(state: RecordingState, progress = 0, onHoldStart?: () => void, onClick = () => undefined) {
+  function renderButton(
+    state: RecordingState,
+    progress = 0,
+    onStart = vi.fn(),
+    onStop = vi.fn(),
+  ) {
     act(() => {
-      root.render(<RecordButton state={state} progress={progress} onClick={onClick} onHoldStart={onHoldStart} />);
+      root.render(
+        <RecordButton
+          state={state}
+          progress={progress}
+          onStart={onStart}
+          onStop={onStop}
+        />,
+      );
     });
+
+    return { onStart, onStop };
   }
 
-  function activeMarker() {
-    return container.querySelector('[data-record-marker-active="true"]');
-  }
-
-  function activeMarkerFor(second: number) {
-    return container.querySelector(`[data-record-marker="${second}"][data-record-marker-active="true"]`);
-  }
-
-  function activeSegmentPulse() {
-    return container.querySelector('[data-record-segment-pulse-active="true"]');
-  }
-
-  function activeSegmentPulseFor(second: number) {
-    return container.querySelector(
-      `[data-record-segment-pulse="${second}"][data-record-segment-pulse-active="true"]`,
-    );
-  }
-
-  function recordSegments() {
-    return container.querySelectorAll("[data-record-segment]");
-  }
-
-  function progressSegments() {
-    return container.querySelectorAll("[data-record-progress-segment]");
+  function button() {
+    const recordButton = container.querySelector("button");
+    expect(recordButton).not.toBeNull();
+    return recordButton!;
   }
 
   function recordRing() {
     return container.querySelector("[data-record-ring-hidden]");
   }
 
-  it("renders three ring segments while recording", () => {
-    renderButton("recording");
+  it("renders a single continuous progress ring", () => {
+    renderButton("recording", 50);
 
-    expect(recordSegments()).toHaveLength(3);
+    expect(container.querySelectorAll("[data-record-ring-track]")).toHaveLength(1);
+    expect(container.querySelectorAll("[data-record-progress-ring]")).toHaveLength(1);
+    expect(container.querySelectorAll("[data-record-segment]")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-record-progress-segment]")).toHaveLength(0);
   });
 
-  it("uses the same segment geometry after recording completes", () => {
-    renderButton("success", 100);
-
-    const baseSegments = Array.from(recordSegments());
-    const finishedSegments = Array.from(progressSegments());
-
-    expect(finishedSegments).toHaveLength(3);
-    for (const [index, finishedSegment] of finishedSegments.entries()) {
-      expect(finishedSegment).toHaveAttribute(
-        "stroke-dashoffset",
-        baseSegments[index]?.getAttribute("stroke-dashoffset"),
-      );
-    }
-  });
-
-  it("fades out the whole ring after recording completes", () => {
+  it("fades out the ring after recording completes", () => {
     renderButton("success", 100);
 
     expect(recordRing()).toHaveAttribute("data-record-ring-hidden", "true");
   });
 
-  it("keeps the segmented ring visible while idle or blocked", () => {
+  it("keeps the ring visible while idle or blocked", () => {
     renderButton("idle");
     expect(recordRing()).toHaveAttribute("data-record-ring-hidden", "false");
 
@@ -94,86 +74,64 @@ describe("RecordButton", () => {
     expect(recordRing()).toHaveAttribute("data-record-ring-hidden", "false");
   });
 
-  it("pulses each second marker during a three second recording", () => {
-    renderButton("recording");
-
-    expect(activeMarker()).toBeNull();
+  it("starts once on pointer down and stops once on pointer up", () => {
+    const handlers = renderButton("idle");
 
     act(() => {
-      vi.advanceTimersByTime(1000);
+      button().dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      button().dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      button().dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+      button().dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
     });
-    expect(activeMarkerFor(1)).not.toBeNull();
-    expect(activeSegmentPulseFor(1)).not.toBeNull();
-    expect(activeSegmentPulseFor(1)).toHaveAttribute(
-      "stroke-dasharray",
-      recordSegments()[0]?.getAttribute("stroke-dasharray"),
-    );
-    expect(activeSegmentPulseFor(1)).toHaveAttribute(
-      "stroke-dashoffset",
-      recordSegments()[0]?.getAttribute("stroke-dashoffset"),
-    );
 
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(activeMarkerFor(1)).not.toBeNull();
-    expect(activeMarkerFor(2)).not.toBeNull();
-    expect(activeSegmentPulseFor(1)).not.toBeNull();
-    expect(activeSegmentPulseFor(2)).not.toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(450);
-    });
-    expect(activeMarkerFor(1)).toBeNull();
-    expect(activeMarkerFor(2)).not.toBeNull();
-    expect(activeSegmentPulseFor(1)).toBeNull();
-    expect(activeSegmentPulseFor(2)).not.toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(850);
-    });
-    expect(activeMarkerFor(2)).not.toBeNull();
-    expect(activeMarkerFor(3)).not.toBeNull();
-    expect(activeSegmentPulseFor(2)).not.toBeNull();
-    expect(activeSegmentPulseFor(3)).not.toBeNull();
+    expect(handlers.onStart).toHaveBeenCalledTimes(1);
+    expect(handlers.onStop).toHaveBeenCalledTimes(1);
   });
 
-  it("clears pending marker pulses when recording stops", () => {
-    renderButton("recording");
+  it("stops active pointer recording on pointer leave", () => {
+    const handlers = renderButton("idle");
 
     act(() => {
-      vi.advanceTimersByTime(1000);
+      button().dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      button().dispatchEvent(new PointerEvent("pointerout", { bubbles: true }));
     });
-    expect(activeMarker()).toHaveAttribute("data-record-marker", "1");
-    expect(activeSegmentPulse()).toHaveAttribute("data-record-segment-pulse", "1");
 
-    renderButton("idle");
-    expect(activeMarker()).toBeNull();
-    expect(activeSegmentPulse()).toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
-    expect(activeMarker()).toBeNull();
-    expect(activeSegmentPulse()).toBeNull();
+    expect(handlers.onStart).toHaveBeenCalledTimes(1);
+    expect(handlers.onStop).toHaveBeenCalledTimes(1);
   });
 
-  it("starts the hold capture without also firing the tap action", () => {
-    const onClick = vi.fn();
-    const onHoldStart = vi.fn();
-    renderButton("idle", 0, onHoldStart, onClick);
-
-    const button = container.querySelector("button");
-    expect(button).not.toBeNull();
+  it("does not start from click alone", () => {
+    const handlers = renderButton("idle");
 
     act(() => {
-      button!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-      vi.advanceTimersByTime(520);
-      button!.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
-      button!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      button().dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(onHoldStart).toHaveBeenCalledTimes(1);
-    expect(onClick).not.toHaveBeenCalled();
+    expect(handlers.onStart).not.toHaveBeenCalled();
+    expect(handlers.onStop).not.toHaveBeenCalled();
+  });
+
+  it("starts and stops from Space key hold", () => {
+    const handlers = renderButton("idle");
+
+    act(() => {
+      button().dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: " " }));
+      button().dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: " " }));
+    });
+
+    expect(handlers.onStart).toHaveBeenCalledTimes(1);
+    expect(handlers.onStop).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts and stops from Enter key hold", () => {
+    const handlers = renderButton("idle");
+
+    act(() => {
+      button().dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+      button().dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Enter" }));
+    });
+
+    expect(handlers.onStart).toHaveBeenCalledTimes(1);
+    expect(handlers.onStop).toHaveBeenCalledTimes(1);
   });
 });

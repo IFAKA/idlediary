@@ -21,7 +21,7 @@ export function PermissionPanel({ permission, error, onStart }: PermissionPanelP
         </div>
         <h1 className="text-4xl font-semibold leading-tight text-balance">IdleDiary</h1>
         <p className="mt-3 text-base leading-7 text-muted-foreground">
-          Tap once, save three seconds, keep moving. Camera and microphone stay local unless you export.
+          Hold to record, release to save, keep moving. Camera and microphone stay local unless you export.
         </p>
         {error ? (
           <p className="mt-4 rounded-md border border-destructive/45 bg-destructive/10 p-3 text-sm leading-6 text-destructive-foreground">

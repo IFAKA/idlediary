@@ -16,6 +16,19 @@ test.beforeEach(async ({ page }) => {
   await page.request.post("/__nextjs_disable_dev_indicator");
 });
 
+async function holdToRecordOneClip(page: Page) {
+  const record = page.getByRole("button", { name: "Hold to record" });
+  await expect(record).toBeVisible();
+  const box = await record.boundingBox();
+  expect(box).not.toBeNull();
+
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await expect(page.getByRole("button", { name: "Release to save" })).toBeVisible();
+  await page.waitForTimeout(820);
+  await page.mouse.up();
+}
+
 test("normal app route does not expose demo tap trigger", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("idlediary:intro-seen", "true");
@@ -51,7 +64,7 @@ test.describe("launch demo route", () => {
       .poll(() => page.evaluate(() => window.__idleDiaryStartedStreams ?? 0))
       .toBe(0);
 
-    await page.getByRole("button", { name: "Record three second clip" }).click();
+    await holdToRecordOneClip(page);
     await expect(page.getByText("+1")).toBeVisible({ timeout: 5_000 });
   });
 
@@ -83,7 +96,7 @@ test.describe("launch demo route", () => {
     await page.goto("/demo/launch?scene=intro");
 
     await page.getByRole("button", { name: "Start recording" }).click();
-    await page.getByRole("button", { name: "Record three second clip" }).click();
+    await holdToRecordOneClip(page);
     await expect(
       page.getByRole("button", { name: "Review draft clips" }).getByText("+5"),
     ).toBeVisible({ timeout: 10_000 });
@@ -109,7 +122,9 @@ test.describe("launch demo route", () => {
     await page.getByRole("button", { name: "Close fullscreen preview" }).click();
     await expect(page.getByRole("button", { name: "Close fullscreen preview" })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Make video" }).click({ force: true });
+    const makeVideo = page.getByRole("button", { name: "Make video" });
+    await expect(makeVideo).toBeEnabled({ timeout: 15_000 });
+    await makeVideo.click();
     await expect(page.getByRole("button", { name: "Done" })).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: "Done" }).click();
     await expect(page.getByRole("status", { name: "Saved video guide" })).toContainText(

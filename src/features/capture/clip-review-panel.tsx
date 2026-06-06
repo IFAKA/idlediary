@@ -24,7 +24,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowLeft,
+  CheckCircle2,
   Clapperboard,
+  Circle,
+  CircleDot,
   LoaderCircle,
   Play,
   RotateCcw,
@@ -57,6 +60,7 @@ const deleteZoneId = "clip-review-delete-zone";
 
 type ClipReviewPanelProps = {
   clips: ClipRecord[];
+  isFirstVlog: boolean;
   isFinishing: boolean;
   onBack: () => void;
   onClearDraft: () => Promise<boolean>;
@@ -67,6 +71,7 @@ type ClipReviewPanelProps = {
 
 export function ClipReviewPanel({
   clips,
+  isFirstVlog,
   isFinishing,
   onBack,
   onClearDraft,
@@ -88,6 +93,13 @@ export function ClipReviewPanel({
   ).length;
   const activeClip =
     visibleClips.find((clip) => clip.id === activeClipId) ?? null;
+  const showFirstVlogHelper =
+    isFirstVlog &&
+    visibleClips.length > 0 &&
+    !activeClipId &&
+    !isOverDeleteZone &&
+    !deleteTarget &&
+    !confirmClearDraft;
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
@@ -299,6 +311,11 @@ export function ClipReviewPanel({
         onDragStart={handleDragStart}
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+          <AnimatePresence>
+            {showFirstVlogHelper ? (
+              <FirstVlogHelper clipCount={visibleClips.length} />
+            ) : null}
+          </AnimatePresence>
           <SortableContext
             items={visibleClips.map((clip) => clip.id)}
             strategy={rectSortingStrategy}
@@ -407,6 +424,61 @@ export function ClipReviewPanel({
   );
 }
 
+function FirstVlogHelper({ clipCount }: { clipCount: number }) {
+  const steps = [
+    { label: "Record one moment", state: clipCount > 0 ? "complete" : "current" },
+    { label: "Review the order", state: "current" },
+    { label: "Say how today felt", state: "upcoming" },
+    { label: "Make your video", state: "upcoming" },
+  ] as const;
+
+  return (
+    <motion.section
+      aria-label="First vlog helper"
+      className="mb-3 rounded-lg border border-white/18 bg-black/52 p-3 text-white shadow-[0_14px_36px_rgba(0,0,0,0.25)] backdrop-blur-md"
+      data-testid="first-vlog-helper"
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      initial={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+    >
+      <h2 className="text-sm font-semibold leading-5">First vlog helper</h2>
+      <ol className="mt-2 grid gap-1.5 text-xs font-medium leading-5">
+        {steps.map((step) => {
+          const isComplete = step.state === "complete";
+          const isCurrent = step.state === "current";
+          const Icon = isComplete ? CheckCircle2 : isCurrent ? CircleDot : Circle;
+
+          return (
+            <li
+              key={step.label}
+              className={`flex items-center gap-2 ${
+                isComplete
+                  ? "text-primary"
+                  : isCurrent
+                    ? "text-white"
+                    : "text-white/48"
+              }`}
+            >
+              <Icon
+                aria-hidden="true"
+                className={`size-4 shrink-0 ${
+                  isComplete
+                    ? "text-primary"
+                    : isCurrent
+                      ? "text-memory"
+                      : "text-white/36"
+                }`}
+              />
+              <span>{step.label}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </motion.section>
+  );
+}
+
 function EmptyDraft({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
@@ -415,7 +487,7 @@ function EmptyDraft({ onBack }: { onBack: () => void }) {
       </div>
       <h2 className="text-2xl font-semibold">No draft clips yet</h2>
       <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-        Record a few three-second clips, then come back here to review them.
+        Record a few short clips, then come back here to review them.
       </p>
       <Button className="mt-6" type="button" onClick={onBack}>
         <ArrowLeft className="size-4" />

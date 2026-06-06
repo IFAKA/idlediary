@@ -2,14 +2,15 @@ import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportProfile } from "@/features/video/export-profile";
-import { useTwoSecondRecorder } from "./use-two-second-recorder";
+import { maxRecordDurationMs } from "@/lib/motion";
+import { useTwoSecondRecorder, type RecordingResult } from "./use-two-second-recorder";
 
 const recorderInstances: MockMediaRecorder[] = [];
 const stoppedCanvasTracks = vi.hoisted(() => ({
   stop: vi.fn(),
 }));
 let latestRecorder: ReturnType<typeof useTwoSecondRecorder> | null = null;
-let pendingRecording: Promise<Blob | null> | null = null;
+let pendingRecording: Promise<RecordingResult | null> | null = null;
 
 class MockMediaRecorder extends EventTarget {
   static isTypeSupported() {
@@ -64,20 +65,14 @@ function RecorderHarness() {
       <button
         type="button"
         onClick={() => {
-          pendingRecording = recorder.record();
-          void pendingRecording.catch(() => undefined);
+          pendingRecording = recorder.start();
+          void pendingRecording?.catch(() => undefined);
         }}
       >
-        Record
+        Start
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          pendingRecording = recorder.record({ durationMs: 6000 });
-          void pendingRecording.catch(() => undefined);
-        }}
-      >
-        Record long
+      <button type="button" onClick={recorder.stop}>
+        Stop
       </button>
       <output aria-label="state">{recorder.state}</output>
       <output aria-label="progress">{Math.round(recorder.progress)}</output>
@@ -160,31 +155,59 @@ describe("useTwoSecondRecorder", () => {
     vi.unstubAllGlobals();
   });
 
-  it("resets progress after a successful recording returns to idle", async () => {
+  function state() {
+    return container.querySelector('[aria-label="state"]');
+  }
+
+  function progress() {
+    return container.querySelector('[aria-label="progress"]');
+  }
+
+  async function startRecording() {
+    await act(async () => {
+      container.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+  }
+
+  it("returns null for holds shorter than the minimum duration", async () => {
     await act(async () => {
       root.render(<RecorderHarness />);
     });
 
-    const state = () => container.querySelector('[aria-label="state"]');
-    const progress = () => container.querySelector('[aria-label="progress"]');
-
+    await startRecording();
+    const recording = pendingRecording;
     await act(async () => {
-      container.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      vi.advanceTimersByTime(699);
+      latestRecorder?.stop();
     });
 
+    await expect(recording).resolves.toBeNull();
+    expect(state()).toHaveTextContent("idle");
+    expect(progress()).toHaveTextContent("0");
+    expect(stoppedCanvasTracks.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns a blob with the actual released duration", async () => {
     await act(async () => {
-      vi.advanceTimersByTime(3000);
+      root.render(<RecorderHarness />);
     });
 
-    expect(state()).toHaveTextContent("recording");
-    expect(progress()).toHaveTextContent("100");
-
+    await startRecording();
+    const recording = pendingRecording;
     await act(async () => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(925);
+      latestRecorder?.stop();
     });
 
+    const result = await recording;
+    expect(result?.blob).toBeInstanceOf(Blob);
+    expect(result?.durationMs).toBe(925);
     expect(state()).toHaveTextContent("success");
     expect(progress()).toHaveTextContent("100");
+    expect(HTMLCanvasElement.prototype.captureStream).toHaveBeenCalledWith(exportProfile.fps);
+    expect(recorderInstances[0]?.stream.getVideoTracks()).toHaveLength(1);
+    expect(recorderInstances[0]?.stream.getAudioTracks()).toHaveLength(1);
+    expect(stoppedCanvasTracks.stop).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       vi.advanceTimersByTime(650);
@@ -192,67 +215,25 @@ describe("useTwoSecondRecorder", () => {
 
     expect(state()).toHaveTextContent("idle");
     expect(progress()).toHaveTextContent("0");
-    expect(HTMLCanvasElement.prototype.captureStream).toHaveBeenCalledWith(exportProfile.fps);
-    expect(recorderInstances[0]?.stream.getVideoTracks()).toHaveLength(1);
-    expect(recorderInstances[0]?.stream.getAudioTracks()).toHaveLength(1);
-    expect(stoppedCanvasTracks.stop).toHaveBeenCalledTimes(1);
   });
 
-  it("cancels an active recording and resolves with no blob", async () => {
+  it("auto-stops and saves at the maximum duration", async () => {
     await act(async () => {
       root.render(<RecorderHarness />);
     });
 
-    await act(async () => {
-      container.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
+    await startRecording();
     const recording = pendingRecording;
-    if (!recording) {
-      throw new Error("Expected recording promise");
-    }
-
     await act(async () => {
-      latestRecorder?.cancel();
+      vi.advanceTimersByTime(maxRecordDurationMs);
     });
 
-    await expect(recording).resolves.toBeNull();
-    expect(container.querySelector('[aria-label="state"]')).toHaveTextContent("idle");
-    expect(container.querySelector('[aria-label="progress"]')).toHaveTextContent("0");
-    expect(stoppedCanvasTracks.stop).toHaveBeenCalledTimes(1);
-  });
-
-  it("uses a requested longer recording duration before stopping", async () => {
-    await act(async () => {
-      root.render(<RecorderHarness />);
-    });
-
-    await act(async () => {
-      Array.from(container.querySelectorAll("button"))
-        .find((button) => button.textContent === "Record long")
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    expect(container.querySelector('[aria-label="state"]')).toHaveTextContent("recording");
-    expect(recorderInstances[0]?.requestData).not.toHaveBeenCalled();
-
-    await act(async () => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    expect(container.querySelector('[aria-label="progress"]')).toHaveTextContent("100");
-    expect(recorderInstances[0]?.requestData).not.toHaveBeenCalled();
-
-    await act(async () => {
-      vi.advanceTimersByTime(250);
-    });
-
+    const result = await recording;
+    expect(result?.blob).toBeInstanceOf(Blob);
+    expect(result?.durationMs).toBe(maxRecordDurationMs);
     expect(recorderInstances[0]?.requestData).toHaveBeenCalledTimes(1);
-    expect(container.querySelector('[aria-label="state"]')).toHaveTextContent("success");
+    expect(state()).toHaveTextContent("success");
+    expect(progress()).toHaveTextContent("100");
   });
 
   it("cleans up the composed stream after recorder errors", async () => {
@@ -260,15 +241,13 @@ describe("useTwoSecondRecorder", () => {
       root.render(<RecorderHarness />);
     });
 
-    await act(async () => {
-      container.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    await startRecording();
 
     await act(async () => {
       recorderInstances[0]?.onerror?.(new Event("error"));
     });
 
-    expect(container.querySelector('[aria-label="state"]')).toHaveTextContent("error");
+    expect(state()).toHaveTextContent("error");
     expect(stoppedCanvasTracks.stop).toHaveBeenCalledTimes(1);
   });
 });

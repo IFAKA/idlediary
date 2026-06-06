@@ -163,6 +163,7 @@ describe("thumbnail rendering", () => {
     act(() => {
       root.render(
         <ClipReviewPanel
+          isFirstVlog={false}
           clips={[withThumbnail, withoutThumbnail]}
           isFinishing={false}
           onBack={() => undefined}
@@ -189,6 +190,7 @@ describe("thumbnail rendering", () => {
     act(() => {
       root.render(
         <ClipReviewPanel
+          isFirstVlog={false}
           clips={[withoutThumbnail]}
           isFinishing={false}
           onBack={() => undefined}
@@ -224,6 +226,7 @@ describe("thumbnail rendering", () => {
     act(() => {
       root.render(
         <ClipReviewPanel
+          isFirstVlog={false}
           clips={[readyClip, processingClip]}
           isFinishing={false}
           onBack={() => undefined}
@@ -249,6 +252,7 @@ describe("thumbnail rendering", () => {
     act(() => {
       root.render(
         <ClipReviewPanel
+          isFirstVlog={false}
           clips={[
             readyClip,
             {

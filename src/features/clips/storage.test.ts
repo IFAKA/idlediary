@@ -6,6 +6,7 @@ import {
   getOrCreateSession,
   getOrCreateTodaySession,
   getVlog,
+  hasAnySavedVlog,
   hasNeedsActionVlog,
   listClips,
   listVlogSummaries,
@@ -171,6 +172,14 @@ describe("storage media split", () => {
     expect(rawMetadata?.needsActionKey).toBe("false");
     const rawMedia = await getRawStoreRecord<Record<string, unknown>>("vlog-media", saved.id);
     expect(rawMedia?.blob).toBeDefined();
+  });
+
+  it("checks saved vlog presence using metadata only", async () => {
+    expect(await hasAnySavedVlog()).toBe(false);
+
+    await saveVlog(vlog("vlog-1", "2026-05-27T11:00:00.000Z"));
+
+    expect(await hasAnySavedVlog()).toBe(true);
   });
 
   it("marks every saved video that needs action as handled", async () => {

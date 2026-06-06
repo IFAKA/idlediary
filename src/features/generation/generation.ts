@@ -10,7 +10,7 @@ import {
   type ThumbnailResult,
 } from "@/features/clips/thumbnail";
 import { getVlogByGenerationFingerprint } from "@/features/clips/storage";
-import { recorderSettleMs, twoSecondRecordMs } from "@/lib/motion";
+import { defaultClipDurationMs, recorderSettleMs } from "@/lib/motion";
 import { exportProfile } from "@/features/video/export-profile";
 import { buildMusicPlan, musicProfileVersion } from "@/features/music/plan";
 import { buildVisualMusicProfile } from "@/features/music/profile";
@@ -91,7 +91,7 @@ let recentRawLogs: string[] = [];
 let activeRenderValue = 24;
 let activeFfmpegProgressBucket = -1;
 
-export function buildFfmpegArgs(durationMs = twoSecondRecordMs + recorderSettleMs) {
+export function buildFfmpegArgs(durationMs = defaultClipDurationMs + recorderSettleMs) {
   const durationSeconds = Math.max(0.1, durationMs / 1000);
   const fadeOutStart = Math.max(0, durationSeconds - 2.4).toFixed(3);
   const videoFilter = [
@@ -660,6 +660,6 @@ export function suggestTitle(clipCount: number) {
 }
 
 export function suggestCaption(clipCount: number) {
-  const seconds = Math.round((clipCount * (twoSecondRecordMs + recorderSettleMs)) / 1000);
+  const seconds = Math.round((clipCount * (defaultClipDurationMs + recorderSettleMs)) / 1000);
   return `A quiet ${seconds}-second diary from today.`;
 }

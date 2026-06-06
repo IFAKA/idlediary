@@ -10,6 +10,7 @@ export const easeOut = {
   ease: [0.16, 1, 0.3, 1],
 } as const;
 
-export const twoSecondRecordMs = 3000;
-export const longRecordMs = 6000;
+export const defaultClipDurationMs = 3000;
+export const minRecordDurationMs = 700;
+export const maxRecordDurationMs = 15000;
 export const recorderSettleMs = 250;

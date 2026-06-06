@@ -1131,6 +1131,23 @@ export async function hasNeedsActionVlog() {
   }
 }
 
+export async function hasAnySavedVlog() {
+  try {
+    const db = await getDb();
+    return (await db.count("vlogs")) > 0;
+  } catch (cause) {
+    throw reportError(
+      new AppError({
+        code: "storage-read-failed",
+        area: "storage",
+        message: "Could not check saved video history",
+        userMessage: "Saved video history could not be loaded.",
+        cause,
+      }),
+    );
+  }
+}
+
 export async function listVlogs() {
   try {
     const summaries = await listVlogSummaries();
